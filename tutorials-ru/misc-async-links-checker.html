@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем проверку ссылок на Nim»
+          <b>Оригинальный источник:</b> «Writing an async links checker in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day04_asynclinkschecker.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-async-links-checker.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,63 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует инструмент проверки ссылок на Nim: обход страниц, извлечение URL, проверка их доступности через HTTP и параллельный запуск проверок, чтобы массовые обходы не тормозили.</p>
+      <h2>Задача: проверить сотни ссылок</h2>
+        <p>Несколько сотен ссылок на веб-странице. Если проверять по одной (последовательно), каждый запрос ждёт несколько сотен миллисекунд, и вся работа займёт несколько минут. Решение: отправлять все запросы «одновременно» и обрабатывать результаты по мере поступления — это и есть идея async I/O.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Извлечение ссылок из HTML</li>
-          <li>Асинхронные HTTP-запросы и их агрегация</li>
-          <li>Обработка кодов 200/404/5xx и таймаутов</li>
-          <li>Параллельные проверки: пул задач вместо очереди</li>
-        </ul>
+      <h2>async в Nim</h2>
+        <p>Nim с библиотекой <code>asyncdispatch</code> имеет собственную модель async/await со своим event loop (без системного оператора). Каждая async-функция похожа на задачу; <code>await</code> приостанавливает задачу, пока I/O не завершится:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">import asyncdispatch, httpclient
+
+# Получение HTML страницы в async-режиме
+proc fetch(url: string): Future[string] {.async.} =
+  let client = newAsyncHttpClient()
+  result = await client.getContent(url)
+  client.close()
+
+# Проверка статуса ссылки без блокировки event loop
+proc checkLink(url: string): Future[(string, bool)] {.async.} =
+  try:
+    let resp = await client.head(url)   # только заголовки
+    result = (url, resp.status in {Http200, Http301, Http302})
+  except:
+    result = (url, false)</code></pre>
+        <p>С помощью <code>accept</code> (ручная проверка event loop) или комбинирования futures можно запустить все проверки ссылок параллельно.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Проверка ссылок — задача, удобная для асинхронности: сотни URL, каждый требует сетевого запроса, и все они не зависят друг от друга. Ядро инструмента — сопоставление URL и результата запроса.</p>
-        <p>Проверка одного адреса — несколько строк:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>proc check(url: string): HttpCode =
-  # Отправляем запрос и смотрим статус
-  let client = newHttpClient()
-  defer: client.close()
-  return client.head(url).status</code></pre>
+      <h2>Одновременный запуск всех ссылок</h2>
+        <p>Ключ работы — создать массив Future и ждать все сразу через <code>await</code>. У каждой проверки свой клиент, поэтому event loop отправляет все запросы в сеть одновременно:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc main() {.async.} =
+  let html = await fetch(&quot;https://example.com&quot;)
+  let links = extractLinks(html)   # извлечение href
+
+  # Создание Future для всех ссылок
+  var futures: seq[Future[(string, bool)]]
+  for link in links:
+    futures.add(checkLink(link))
+
+  # Ожидание прибытия всех
+  let results = await all(futures)
+
+  for (url, ok) in results:
+    echo (if ok: &quot;✓ &quot; else: &quot;✗ &quot;), url</code></pre>
+        <p>Результаты сохраняют порядок, потому что массив Future сохраняет порядок. Примечание: <code>all</code> бросает ошибку, если ошибается хотя бы один; с <code>failOnError: false</code> можно получить частичные результаты.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Инструменты вебмастера — это сотни маленьких программ вроде этой: написав проверку ссылок, вы освоите асинхронную обработку и поймёте, как устроены линтеры сайтов и SEO-сканеры.</p>
+      <h2>Сравнение с другими моделями</h2>
+        <p>async/await — только одна из трёх моделей конкурентности. Модель потоков (1000 Thread или ThreadPool) хороша для CPU-нагруженных задач; модель event loop (Node.js) — для I/O-нагруженных. Тот же файл можно скомпилировать с <code>--threads:on</code> и запустить с потоками. С практикой из этого урока вы глубоко поймёте event loop, который есть и в Node.js.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day04_asynclinkschecker.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем проверку ссылок на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем проверку ссылок на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day04_asynclinkschecker.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day04_asynclinkschecker.html</a>.
       </div>
     </article>

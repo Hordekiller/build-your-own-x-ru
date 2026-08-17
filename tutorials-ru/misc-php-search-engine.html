@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Поиск по сайту на PHP»
+          <b>Оригинальный источник:</b> «Code for a search engine in PHP»
         </div>
         <a class="btn solid" href="https://boyter.org/2013/01/code-for-a-search-engine-in-php-part-1/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-php-search-engine.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,58 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует веб-поиск на PHP: индексирование страниц, разбиение на слова, поиск по запросу с ранжированием и выдачу результатов — поисковик в миниатюре.</p>
+      <h2>Как работает поисковый движок?</h2>
+        <p>У любого поискового движка две фазы: <b>индексация (indexing)</b> и <b>запрос (query)</b>. При индексации каждый документ разбивается на «токены» (слова), и строится инвертированная карта «слово → документы»; при запросе слова поисковой фразы находятся в этой карте, и возвращаются документы, содержащие их все.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Краулер: обход страниц и сбор текста</li>
-          <li>Индекс: термы, документы и частоты</li>
-          <li>Поиск по запросу и булевская логика</li>
-          <li>Ранжирование результатов по релевантности</li>
-        </ul>
+      <h2>Токенизация и база данных</h2>
+        <p>Бен в этой серии использует SQLite: таблица документов + таблица слов + таблица связей (слово → документ со счётчиком). Токенизация — это разделение на слова и удаление мусорных символов:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">function tokenise($text) {
+    // простое разделение на слова (с сохранением регистра)
+    $words = str_word_count(strtolower($text), 1);
+    // удаление стоп-слов (stop words) типа «и, с, для»
+    $stop = [&#x27;the&#x27;, &#x27;and&#x27;, &#x27;for&#x27;, &#x27;php&#x27;];
+    return array_diff($words, $stop);
+}</code></pre>
+        <p>Удаление стоп-слов не даёт самым частым словам создавать гигантские файлы, а результаты становятся точнее.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Поиск — это инверсия: вместо «страница со словами» строится индекс «слово → страницы». Запрос превращается в пересечение списков, а результаты упорядочиваются по частоте совпадений.</p>
-        <p>Индекс на простейшем уровне — таблица:</p>
-        <pre class="code"><span class="lang-tag">php</span><code>// Слово -&gt; список документов, где оно встречается
-INSERT INTO index_terms (term, doc_id) VALUES (?, ?);</code></pre>
+      <h2>Индексация документов</h2>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">foreach ($documents as $doc) {
+    $docId = insertDocument($db, $doc[&#x27;url&#x27;], $doc[&#x27;title&#x27;]);
+
+    foreach (tokenise($doc[&#x27;body&#x27;]) as $word) {
+        $wordId = getOrCreateWord($db, $word);
+        // строка связи: слово—документ со счётчиком повторов
+        incrementLink($db, $wordId, $docId);
+    }
+}</code></pre>
+        <p>Таблица <code>links</code> с (word_id, doc_id, count) — сердце «инвертированного индекса»: прозрачный формат того, что коммерческие движки хранят в более сжатом виде.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Google начинался с такого же индекса, только больше: реализовав поиск сами, вы поймёте, почему повторные слова в тексте важны и как работают полнотекстовые поиски.</p>
+      <h2>Запрос</h2>
+        <p>Поиск выполняется JOIN между словами и связями, а подсчёт и сортировка дают самые релевантные результаты. Простая ранжировка TF (частота повторения слова в документе) даже без IDF даёт хорошие результаты:</p>
+        <pre class="code"><span class="lang-tag">sql</span><code style="direction:ltr;text-align:left">SELECT d.url, SUM(l.count) AS score
+FROM words w
+JOIN links  l ON l.word_id = w.id
+JOIN docs   d ON d.id = l.doc_id
+WHERE w.word IN (&#x27;php&#x27;, &#x27;search&#x27;)
+GROUP BY d.id
+ORDER BY score DESC
+LIMIT 10;</code></pre>
+        <p>После этой реализации примерно на 100 строк понятия BM25, PageRank и распределённая индексация больше не загадка — всё это апгрейды той же основы.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ben Boyter. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://boyter.org/2013/01/code-for-a-search-engine-in-php-part-1/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Поиск по сайту на PHP» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Поиск по сайту на PHP» принадлежит автору оригинала (Ben Boyter). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ben Boyter). Читайте оригинал на
         <a href="https://boyter.org/2013/01/code-for-a-search-engine-in-php-part-1/" target="_blank" rel="noopener">https://boyter.org/2013/01/code-for-a-search-engine-in-php-part-1/</a>.
       </div>
     </article>

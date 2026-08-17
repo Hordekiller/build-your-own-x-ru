@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Как создать настоящий Node CLI для реального мира»
+          <b>Оригинальный источник:</b> «How to create a real-world Node CLI app»
         </div>
         <a class="btn solid" href="https://medium.freecodecamp.org/how-to-create-a-real-world-node-cli-app-with-node-391b727bbed3" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-node-cli.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,76 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство по разработке готового к публикации CLI-инструмента на Node.js: аргументы командной строки, цветной вывод, интерактивные подсказки и публикация в npm.</p>
+      <h2>Как выглядит настоящий CLI?</h2>
+        <p>Профессиональный инструмент командной строки: понимает аргументы и флаги, имеет цветной аккуратный вывод, беседует с пользователем (например, запрашивает подтверждение), умеет интерактивные вопросы и устанавливается через npm. Пример из урока — инструмент, печатающий вашу git-статистику.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Разбор аргументов командной строки</li>
-          <li>Ошибки, коды возврата и понятный вывод</li>
-          <li>Цвета и форматирование терминала</li>
-          <li>Структура проекта и публикация в npm</li>
-        </ul>
+      <h2>Каркас проекта</h2>
+        <p>В <code>package.json</code> нужно определить <code>bin</code>, чтобы npm создал команду из вашего скрипта. А в начале файла — shebang для прямого запуска:</p>
+        <pre class="code"><span class="lang-tag">json</span><code style="direction:ltr;text-align:left">{
+  &quot;name&quot;: &quot;git-stats-cli&quot;,
+  &quot;bin&quot;: {
+    &quot;git-stats&quot;: &quot;./index.js&quot;
+  },
+  &quot;dependencies&quot;: {
+    &quot;chalk&quot;: &quot;^2.0.0&quot;,
+    &quot;inquirer&quot;: &quot;^5.0.0&quot;,
+    &quot;simple-git&quot;: &quot;^1.0.0&quot;
+  }
+}</code></pre>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">#!/usr/bin/env node
+&#x27;use strict&#x27;;
+const chalk = require(&#x27;chalk&#x27;);
+const inquirer = require(&#x27;inquirer&#x27;);
+
+async function run() {
+  const { repo } = await inquirer.prompt([{
+    type: &#x27;input&#x27;,
+    name: &#x27;repo&#x27;,
+    message: &#x27;Папка проекта?&#x27;,
+    default: &#x27;.&#x27;
+  }]);
+
+  const stats = await analyzeGit(repo);
+  console.log(chalk.green.bold(&#x27;Коммиты:&#x27;), stats.total);
+  console.log(chalk.cyan(&#x27;Активный автор:&#x27;), stats.topAuthor);
+}</code></pre>
+        <p><code>chalk</code> управляет цветом, а <code>inquirer</code> — интерактивными вопросами: две главные опоры любого современного CLI.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>CLI-инструмент — это программа с десятком мелочей: разбор флагов, человекочитаемый вывод, коды ошибок. Node.js даёт всё для этого из коробки, остальное — дисциплина формата.</p>
-        <p>Разбор аргумента — несколько строк:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>import { Command } from "commander";
-const program = new Command();
-program.option("-p, --port &lt;number&gt;", "порт для запуска");
-program.parse();
-const port = program.opts().port ?? 8080;</code></pre>
+      <h2>Обработка аргументов</h2>
+        <p>Настоящие клиенты принимают флаги (например, <code>--json</code> или <code>-r</code>). Простейший способ без отдельной библиотеки — читать <code>process.argv</code> и искать известные паттерны:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">function parseFlags(argv) {
+  const flags = { json: false, repo: &#x27;.&#x27; };
+  for (let i = 2; i &lt; argv.length; i++) {
+    switch (argv[i]) {
+      case &#x27;--json&#x27;: flags.json = true; break;
+      case &#x27;-r&#x27;:
+      case &#x27;--repo&#x27;: flags.repo = argv[++i]; break;
+      case &#x27;--help&#x27;:
+        console.log(&#x27;Использование: git-stats [-r repo] [--json]&#x27;);
+        process.exit(0);
+    }
+  }
+  return flags;
+}</code></pre>
+        <p>Для крупных CLI есть библиотеки commander или yargs, но понимание этого ручного цикла объясняет, что они делают под капотом.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Утилиты — то, чем разработчики пользуются каждый день: умение сделать свою — мощный навык, а понимание их внутренностей упростит отладку любых инструментов.</p>
+      <h2>Публикация в npm</h2>
+        <p>Добавив <code>"bin"</code>, достаточно выполнить <code>npm publish</code>, чтобы ваш инструмент стал доступен на любой системе через <code>npx git-stats</code> или <code>npm i -g</code>. Опыт создания и публикации инструмента сам по себе — половина урока программирования.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> freeCodeCamp. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://medium.freecodecamp.org/how-to-create-a-real-world-node-cli-app-with-node-391b727bbed3" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Как создать настоящий Node CLI для реального мира» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Как создать настоящий Node CLI для реального мира» принадлежит автору оригинала (freeCodeCamp). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (freeCodeCamp). Читайте оригинал на
         <a href="https://medium.freecodecamp.org/how-to-create-a-real-world-node-cli-app-with-node-391b727bbed3" target="_blank" rel="noopener">https://medium.freecodecamp.org/how-to-create-a-real-world-node-cli-app-with-node-391b727bbed3</a>.
       </div>
     </article>

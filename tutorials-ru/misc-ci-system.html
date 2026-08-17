@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Система непрерывной интеграции (CI) на Python»
+          <b>Оригинальный источник:</b> «A Continuous Integration System (500 Lines)»
         </div>
         <a class="btn solid" href="http://aosabook.org/en/500L/a-continuous-integration-system.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-ci-system.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,66 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство строит свою CI-систему на Python: мониторинг git-репозитория, запуск сборок при новых коммитах, выполнение тестов и публикация статуса — как устроены GitHub Actions изнутри.</p>
+      <h2>Что такое CI и что оно делает?</h2>
+        <p>Непрерывная интеграция (Continuous Integration): с каждым коммитом тесты автоматически запускаются на отдельном сервере, а результат показывается в веб-интерфейсе. GitHub Actions и GitLab CI делают именно это; эта глава (из известной книги 500 Lines) строит такую систему с объектно-ориентированным сервером и простым runner'ом.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Отслеживание изменений и триггеры сборки</li>
-          <li>Запуск команд сборки и тестов</li>
-          <li>Агрегация результатов и статусы</li>
-          <li>Очередь заданий и параллельность</li>
-        </ul>
+      <h2>Архитектура: две основные части</h2>
+        <p>Система состоит из двух независимых компонентов: <b>серверная программа</b>, которая записывает состояние тестов и отчитывается, и <b>runner</b>, выполняющий тесты на каждой машине. Publisher'ы отправляют события в каналы (email, IRC). Такое разделение значит, что тесты можно гонять на любом сервере, а сервер — только координатор.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>CI-система — это слушатель событий: новый коммит будит сборщик, тот запускает тесты и возвращает статус. Всё остальное — управление очередью и логами.</p>
-        <p>Триггер на новый коммит — сердце системы:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>for commit in watch_repo():
-    status = run_build(commit)   # тесты + сборка
-    report(commit, status)       # статус на панель</code></pre>
+      <h2>Модель данных</h2>
+        <p>Каждый тест — это <code>Build</code> с разными состояниями. Смена состояния уведомляет подписчиков (subscribe/unsubscribe) — паттерн Observer:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class BuildStatus:
+    &quot;&quot;&quot;Состояние сборки, уведомляющее подписчиков.&quot;&quot;&quot;
+    def __init__(self, name):
+        self.name = name
+        self.status = &#x27;pending&#x27;
+        self.subscribers = []
+
+    def subscribe(self, sub):
+        self.subscribers.append(sub)
+
+    def set_status(self, status):
+        self.status = status
+        for sub in self.subscribers:
+            sub(self)   # уведомить: сборка перешла в это состояние</code></pre>
+        <p>Уведомление подписчиков (например, email) в момент смены состояния — а не в цикле опроса — просто и прямо.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Непрерывная интеграция — стандарт современной разработки: собрав свою, вы поймёте, что за кулисами CI-сервисов, и сможете строить собственные внутренние пайплайны.</p>
+      <h2>Runner: запуск тестов</h2>
+        <p>Runner получает запросы и запускает тесты. Интересный момент главы: тесты выполняются в отдельном потоке с timeout, чтобы зависший тест (hang) не блокировал CI — «борьба» между смертью потока и timeout'ом:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def run_tests(repo, test_cmd, timeout=60):
+    &quot;&quot;&quot;Запуск тестов в отдельном потоке с ограничением по времени.&quot;&quot;&quot;
+    result = {&#x27;status&#x27;: &#x27;running&#x27;}
+
+    def _run():
+        # clone/update репозитория, запуск и запись результата
+        rc = subprocess.run(test_cmd, shell=True, timeout=timeout)
+        result[&#x27;status&#x27;] = &#x27;success&#x27; if rc.returncode == 0 else &#x27;failed&#x27;
+
+    t = threading.Thread(target=_run)
+    t.start(); t.join(timeout)
+    if t.is_alive():
+        result[&#x27;status&#x27;] = &#x27;timeout&#x27;   # тест завис
+    return result</code></pre>
+        <p>Видно, что CI в своей сердцевине знает всего 4 состояния: pending, running, success, failed — их достаточно для всей экосистемы Actions.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Вся книга умещается примерно в 500 строк; большие концепции (Observer, Publisher/Subscriber, threading с timeout, REST API) связываются в реальном проекте. После этого любая CI-платформа станет для вас прозрачной по архитектуре.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Michael DiBernardo. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="http://aosabook.org/en/500L/a-continuous-integration-system.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Система непрерывной интеграции (CI) на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Система непрерывной интеграции (CI) на Python» принадлежит автору оригинала (Michael DiBernardo). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Michael DiBernardo). Читайте оригинал на
         <a href="http://aosabook.org/en/500L/a-continuous-integration-system.html" target="_blank" rel="noopener">http://aosabook.org/en/500L/a-continuous-integration-system.html</a>.
       </div>
     </article>

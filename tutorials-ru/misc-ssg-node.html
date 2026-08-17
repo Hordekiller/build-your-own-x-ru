@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Мгновенный генератор статических сайтов на Node.js за 40 строк»
+          <b>Оригинальный источник:</b> «Build a static site generator with Node.js in 40 lines»
         </div>
         <a class="btn solid" href="https://www.webdevdrops.com/en/build-static-site-generator-nodejs-8969ebe34b22/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-ssg-node.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок показывает, что генератор статических сайтов можно написать за 40 строк на Node.js: разбор Markdown, шаблоны страниц, сборка HTML и запись результата в папку сайта.</p>
+      <h2>Что такое SSG и зачем он нужен?</h2>
+        <p>Генератор статических сайтов превращает контент (обычно Markdown) в HTML на этапе сборки (Build) — в отличие от CMS, которая собирает страницу на сервере в момент запроса. Преимущества: предельно быстро, безопасно и дёшево — подойдёт любой статический хостинг. Jekyll, Hugo и Next.js (в режиме SSG) делают то же самое.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Чтение и разбор Markdown-файлов</li>
-          <li>Подстановка данных в шаблоны</li>
-          <li>Сборка списка страниц и карты сайта</li>
-          <li>Запись готовых HTML-файлов на диск</li>
-        </ul>
+      <h2>Сердце SSG на 40 строках</h2>
+        <p>Markdown-файлы лежат в папке <code>posts</code>. Node-скрипт для каждого файла: читает содержимое, превращает Markdown в HTML и встраивает результат в шаблон полной HTML-страницы:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">const fs = require(&#x27;fs&#x27;);
+const path = require(&#x27;path&#x27;);
+const MarkdownIt = require(&#x27;markdown-it&#x27;)();
+
+const md = new MarkdownIt();               // парсер Markdown
+const DIR = &#x27;posts&#x27;;
+const OUT = &#x27;public&#x27;;
+
+// HTML-шаблон вокруг каждого поста
+const template = (title, body) =&gt; `&lt;!DOCTYPE html&gt;
+&lt;html lang=&quot;ru&quot;&gt;&lt;head&gt;&lt;meta charset=&quot;utf-8&quot;&gt;
+&lt;title&gt;${title}&lt;/title&gt;&lt;/head&gt;
+&lt;body&gt;&lt;article&gt;${body}&lt;/article&gt;&lt;/body&gt;&lt;/html&gt;`;
+
+fs.readdirSync(DIR).forEach(file =&gt; {
+  const content = fs.readFileSync(path.join(DIR, file), &#x27;utf8&#x27;);
+  const html = md.render(content);         // Markdown → HTML
+  const title = file.replace(&#x27;.md&#x27;, &#x27;&#x27;);
+  fs.writeFileSync(path.join(OUT, title + &#x27;.html&#x27;), template(title, html));
+});</code></pre>
+        <p>Всё! Для каждого файла <code>*.md</code> создаётся HTML-файл — без сервера и без базы данных.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Магия статических сайтов — в сборке: исходники в Markdown превращаются в HTML по шаблону, а итог — набор готовых файлов, которые можно отдать любому хостингу без серверного кода.</p>
-        <p>Сердце генератора — цикл по файлам:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>const md = require("marked");
-for (const file of files) {
-  const html = template.replace("{{content}}", md.parse(read(file)));
-  write("site/" + name(file), html);
-}</code></pre>
+      <h2>Добавление метаданных</h2>
+        <p>Настоящие посты имеют front matter (заголовок, дату, теги). Можно начать просто и добавить её позже, отделяя двумя строками <code>---</code> в начале файла. Тот же паттерн развивается вместе с шаблонами — можно генерировать и список постов (index):</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Создание страницы-списка из всех постов
+const indexItems = fs.readdirSync(DIR)
+  .map(f =&gt; `&lt;li&gt;&lt;a href=&quot;${f.replace(&#x27;.md&#x27;, &#x27;.html&#x27;)}&quot;&gt;${f}&lt;/a&gt;&lt;/li&gt;`)
+  .join(&#x27;\n&#x27;);
+fs.writeFileSync(path.join(OUT, &#x27;index.html&#x27;),
+  template(&#x27;Мой блог&#x27;, `&lt;ul&gt;${indexItems}&lt;/ul&gt;`));</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Jekyll, Hugo, Astro — все они делают ровно это с комфортом: написав свой за 40 строк, вы поймёте, что и когда выбрать и как ускорить собственный сайт.</p>
+      <h2>Итог</h2>
+        <p>Этот урок показал, что «большой» SSG складывается из трёх простых операций: чтение файла, преобразование Markdown, встраивание в шаблон. Увеличьте эти блоки (теги, RSS, страницы-списки) — и у вас настоящий генератор, без сложных технологий.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> команда WebDevDrops. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.webdevdrops.com/en/build-static-site-generator-nodejs-8969ebe34b22/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Мгновенный генератор статических сайтов на Node.js за 40 строк» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Мгновенный генератор статических сайтов на Node.js за 40 строк» принадлежит автору оригинала (команда WebDevDrops). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (команда WebDevDrops). Читайте оригинал на
         <a href="https://www.webdevdrops.com/en/build-static-site-generator-nodejs-8969ebe34b22/" target="_blank" rel="noopener">https://www.webdevdrops.com/en/build-static-site-generator-nodejs-8969ebe34b22/</a>.
       </div>
     </article>

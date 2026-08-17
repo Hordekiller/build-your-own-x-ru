@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем сервис коротких ссылок на Nim»
+          <b>Оригинальный источник:</b> «Writing a URL shortener service in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day07_shorturl.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-shorturl.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,63 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок строит сервис коротких ссылок на Nim: приём длинного URL, выдача короткого идентификатора, перенаправление и хранение соответствий — полный мини-сервис из одного файла.</p>
+      <h2>Что делает сервис сокращения ссылок?</h2>
+        <p>На вход подаётся длинный URL (например, новости или страницы магазина), а сервис возвращает короткий код вроде <code>abc123</code>. Затем по запросу <code>GET /abc123</code> пользователь с редиректом <code>301 Redirect</code> попадает на исходную ссылку. Хорошая новость: само «сокращение» решается простым сопоставлением в Redis/базе данных.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Маршрутизация: POST создание и GET перенаправление</li>
-          <li>Генерация коротких идентификаторов без коллизий</li>
-          <li>Хранение соответствий в памяти или на диске</li>
-          <li>Обработка несуществующих ключей</li>
-        </ul>
+      <h2>Ключевая идея: кодирование Base62</h2>
+        <p>Используем возрастающие числа (например, счётчик в Redis через INCR) и переводим число в 62-символьный алфавит (a-z, A-Z, 0-9), чтобы код был коротким и упорядоченным:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">const Alphabet = &quot;abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789&quot;
+
+# Преобразование числа в код base62
+proc toBase62(num: int): string =
+  var n = num
+  while n &gt; 0:
+    result.add(Alphabet[n mod 62])
+    n = n div 62
+  result.reverse()   # наименее значимая цифра в конце
+
+# Преобразование кода обратно в число (для декодера / поиска)
+proc fromBase62(code: string): int =
+  for c in code:
+    result = result * 62 + Alphabet.find(c)</code></pre>
+        <p>С 7 символами 62^7 ≈ 3.5 триллиона ссылок — этого достаточно для любого практического применения.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Короткая ссылка — это ключ в таблице: сервис кладёт пару ключ→URL при создании и при переходе по ключу возвращает редирект 301/302. Простота прячет за собой вопросы коллизий и масштабирования.</p>
-        <p>Редирект по ключу — пара строк:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>proc redirect(key: string): string =
-  # Возвращаем полный URL по короткому ключу
-  let url = store.get(key)
-  return if url.len &gt; 0: $url else: "404"</code></pre>
+      <h2>HTTP-сервис</h2>
+        <p>HTTP-часть: два основных маршрута. <code>GET /</code> показывает форму сокращения; <code>POST /shorten</code> регистрирует ссылку; а <code>GET /&lt;code&gt;</code> перенаправляет на целевой адрес. Для устойчивости счётчиков используется Redis:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc shortenHandler(req: Request, resp: Response) =
+  let longUrl = req.body[&quot;url&quot;]
+  # Увеличиваем счётчик в Redis на единицу
+  let id = redis.incr(&quot;url_counter&quot;)
+  let code = toBase62(id)
+  # Сохраняем сопоставление код → URL
+  redis.set(&quot;short:&quot; &amp; code, longUrl)
+  resp.send(&quot;Короткая ссылка: /&quot; &amp; code)
+
+proc redirectHandler(code: string, resp: Response) =
+  let target = redis.get(&quot;short:&quot; &amp; code)
+  if target.isEmpty:
+    resp.send(&quot;Не найдено&quot;, Http404)
+  else:
+    resp.redirect(target, Http301)   # постоянный редирект</code></pre>
+        <p>Использование <code>301</code> важно: поисковики считают его «постоянным переносом контента» и передают рейтинг страницы.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Сервисы вроде bit.ly — это простые ключи-таблицы плюс статистика: реализовав свой, вы поймёте базу практически любого URL-редиректа и шортлинка.</p>
+      <h2>Реальные задачи</h2>
+        <p>Для настоящего сервиса нужно: валидация URL, защита от спама (чтобы ссылки не вели на плохие сайты), ограничение частоты запросов и статистика переходов. Но ядро сервиса — счётчик + Base62 + redirect — показано именно здесь и укладывается меньше чем в 100 строк.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day07_shorturl.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем сервис коротких ссылок на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем сервис коротких ссылок на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day07_shorturl.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day07_shorturl.html</a>.
       </div>
     </article>

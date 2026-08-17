@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание DNS-сервера на Node.js»
+          <b>Оригинальный источник:</b> «A DNS server in Node.js»
         </div>
         <a class="btn solid" href="https://engineerhead.github.io/dns-server/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-dns-server-node.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,58 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок строит DNS-сервер на Node.js: приём DNS-запросов по UDP, разбор доменных имён, поиск в локальной таблице и ответ клиенту — вы напишете настоящий мини-DNS.</p>
+      <h2>Как работает DNS?</h2>
+        <p>Когда браузер хочет открыть <code>example.com</code>, сначала нужно найти его IP. Это и есть DNS — «телефонная книга интернета»: запрос отправляется по UDP на порт 53; ответ говорит <code>example.com → 93.184.216.34</code>. Имена имеют иерархическую структуру: от корня (.) до TLD (com) и до серверов имён домена.</p>
+        <p>В этом уроке DNS-сообщение читается и пишется вручную, в бинарном виде, — без библиотек.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Запрос и ответ DNS: заголовки, вопросы, записи</li>
-          <li>Разбор доменного имени: метки и их кодировка</li>
-          <li>Обработка UDP-дейтаграмм на Node.js</li>
-          <li>Ответы: A-записи и обработка неизвестных имён</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>DNS-запрос — это бинарная структура: заголовок, вопрос о домене и тип записи. Сервер разбирает её, находит ответ и упаковывает. Всё это — несколько десятков байт по UDP.</p>
-        <p>Разбор доменного имени из запроса:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>while (offset &lt; end &amp;&amp; data[offset] !== 0) {
-  const len = data[offset++];        // длина метки
-  name += data.slice(offset, offset + len).toString() + ".";
-  offset += len;
+      <h2>Формат DNS-сообщения</h2>
+        <p>Каждое DNS-сообщение имеет 12-байтовый заголовок, а затем вопросы (questions) и ответы (answers). Важные части заголовка: идентификатор (ID), флаги (QR, Opcode, RD) и счётчики. Имена используют формат label (длина + символы) и заканчиваются <code>\0</code>:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Создание секции вопроса для &quot;example.com&quot;
+// Формат: labels + тип (A) + класс (IN)
+function makeQuestion(name) {
+  const labels = name.split(&#x27;.&#x27;).map(l =&gt;
+    Buffer.from([l.length]).toString() + l).join(&#x27;&#x27;);
+  return Buffer.from(labels + &#x27;\x00&#x27; + &#x27;\x00\x01&#x27; + &#x27;\x00\x01&#x27;, &#x27;binary&#x27;);
 }</code></pre>
+        <p><code>\x00\x01</code> — тип записи A (адрес IPv4), и ещё раз <code>\x00\x01</code> — класс IN (интернет).</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>DNS — одна из скелетных инфраструктур интернета: написав свой сервер, вы поймёте, что скрывается за каждым «домен не найден» и как работают резолверы.</p>
+      <h2>Сам сервер</h2>
+        <p>Сервер слушает через <code>dgram</code> (UDP) порт 53, разбирает запрос и может ответить заранее заданным ответом (например, фиксированной записью A) — точно как простой DNS в духе hosts file:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">const dgram = require(&#x27;dgram&#x27;);
+const server = dgram.createSocket(&#x27;udp4&#x27;);
+
+const ZONE = { &#x27;example.com&#x27;: &#x27;93.184.216.34&#x27; };
+
+server.on(&#x27;message&#x27;, (msg, rinfo) =&gt; {
+  // 1. Разбор вопроса из сообщения
+  const qname = parseName(msg, 12);
+  // 2. Поиск в зоне
+  const ip = ZONE[qname];
+  // 3. Ответ: копируем ID запроса + запись A
+  const response = buildResponse(msg, qname, ip);
+  server.send(response, rinfo.port, rinfo.address);
+});
+
+server.bind(53);</code></pre>
+        <p>Важнейший момент: ответ должен копировать тот же <code>ID</code>, что и в запросе, иначе клиент не примет ответ.</p>
+      </section>
+      <section>
+      <h2>Следующий шаг: рекурсивный резолвер</h2>
+        <p>Настоящий DNS-сервер, если не знает ответа, отправляет запрос вышестоящим серверам (корень → TLD → сервер имён домена) и идёт по цепочке. На этой базе можно добавить и такой алгоритм: вызывать встроенный <code>dns.resolve</code> Node как «вышестоящий сервер» и кешировать ответы для пользователей.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> EngineerHead. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://engineerhead.github.io/dns-server/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание DNS-сервера на Node.js» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание DNS-сервера на Node.js» принадлежит автору оригинала (EngineerHead). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (EngineerHead). Читайте оригинал на
         <a href="https://engineerhead.github.io/dns-server/" target="_blank" rel="noopener">https://engineerhead.github.io/dns-server/</a>.
       </div>
     </article>

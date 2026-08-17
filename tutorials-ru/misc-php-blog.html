@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Сделай собственный блог на PHP»
+          <b>Оригинальный источник:</b> «Make your own blog»
         </div>
         <a class="btn solid" href="https://ilovephp.jondh.me.uk/en/tutorial/make-your-own-blog" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-php-blog.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,62 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Полное руководство по блогу на чистом PHP: статьи, их хранение в базе, вывод на странице, комментарии и админка — сайт, полностью написанный своими руками.</p>
+      <h2>Блог без фреймворка</h2>
+        <p>Простой блог состоит из трёх частей: список постов, просмотр одного поста и админка (написание/редактирование). Этот урок делает всё на чистом PHP и MySQL, чтобы было видно, какое простое существо скрывается за словами WordPress и Laravel.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Хранение статей и записей в базе данных</li>
-          <li>Вывод списка и отдельных статей</li>
-          <li>Комментарии и их модерация</li>
-          <li>Простая админпанель для публикаций</li>
-        </ul>
+      <h2>Подключение и таблицы</h2>
+        <p>Сначала база данных: таблица для постов (id, title, content, created_at), а в полной версии — таблица комментариев. Подключение выполняется через PDO:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">// db.php — общее подключение
+$pdo = new PDO(
+    &#x27;mysql:host=localhost;dbname=blog;charset=utf8&#x27;,
+    &#x27;user&#x27;, &#x27;pass&#x27;,
+    [PDO::ATTR_ERRMODE =&gt; PDO::ERRMODE_EXCEPTION]
+);
+
+// Получение постов (подготовленный запрос)
+$stmt = $pdo-&gt;query(&#x27;SELECT * FROM posts ORDER BY created_at DESC&#x27;);
+$posts = $stmt-&gt;fetchAll();</code></pre>
+        <p>Включение <code>ERRMODE_EXCEPTION</code> заставляет SQL-ошибку выбрасывать исключение, а не молчать — это критично для отладки.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Блог — классический учебный проект: CRUD над статьями, вывод на странице и управление публикацией. Каждый шаг — типичная задача веб-разработки в миниатюре.</p>
-        <p>Выборка статей — один запрос:</p>
-        <pre class="code"><span class="lang-tag">php</span><code>$posts = $db-&gt;query(
-  "SELECT * FROM posts ORDER BY created_at DESC"
-)-&gt;fetchAll();</code></pre>
+      <h2>Написание поста через форму</h2>
+        <p>Админка состоит из HTML-формы и вставки через prepared statement — защита от SQL-инъекций:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">if ($_SERVER[&#x27;REQUEST_METHOD&#x27;] === &#x27;POST&#x27;) {
+    $title = $_POST[&#x27;title&#x27;] ?? &#x27;&#x27;;
+    $content = $_POST[&#x27;content&#x27;] ?? &#x27;&#x27;;
+
+    $stmt = $pdo-&gt;prepare(
+        &#x27;INSERT INTO posts (title, content) VALUES (:t, :c)&#x27;
+    );
+    $stmt-&gt;execute([&#x27;:t&#x27; =&gt; $title, &#x27;:c&#x27; =&gt; $content]);
+
+    header(&#x27;Location: index.php&#x27;);   // возвращаемся к списку
+    exit;
+}</code></pre>
+        <p>Правило безопасности <code>htmlspecialchars</code> при выводе заголовка во вью: не оставляйте пользовательский ввод в сыром HTML, иначе получите XSS.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Собственный блог учит всему сразу — БД, HTML, формы: вы увидите, сколько деталей (пагинация, безопасность, кеш) прячет любой, даже простейший, сайт.</p>
+      <h2>Просмотр одного поста</h2>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">$id = (int)($_GET[&#x27;id&#x27;] ?? 0);   // cast в int: инъекция невозможна
+$stmt = $pdo-&gt;prepare(&#x27;SELECT * FROM posts WHERE id = ?&#x27;);
+$stmt-&gt;execute([$id]);
+$post = $stmt-&gt;fetch();
+
+if (!$post) { http_response_code(404); echo &#x27;Пост не найден&#x27;; exit; }</code></pre>
+        <p>Паттерны этого урока (PDO, prepared, форма, redirect-after-POST) — те же, что фреймворки выполняют автоматически. После этого блога WordPress больше не чёрный ящик.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Jon (ilovephp.jondh.me.uk). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://ilovephp.jondh.me.uk/en/tutorial/make-your-own-blog" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Сделай собственный блог на PHP» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Сделай собственный блог на PHP» принадлежит автору оригинала (Jon (ilovephp.jondh.me.uk)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Jon (ilovephp.jondh.me.uk)). Читайте оригинал на
         <a href="https://ilovephp.jondh.me.uk/en/tutorial/make-your-own-blog" target="_blank" rel="noopener">https://ilovephp.jondh.me.uk/en/tutorial/make-your-own-blog</a>.
       </div>
     </article>

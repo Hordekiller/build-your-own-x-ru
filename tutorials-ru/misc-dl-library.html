@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай собственную библиотеку глубокого обучения на Python»
+          <b>Оригинальный источник:</b> «Neural Networks from Scratch (video series)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=o64FV-ez6Gw" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-dl-library.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,60 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Проект Ruchi et al.: библиотека глубокого обучения на NumPy с нуля — автоматическое дифференцирование, слои, оптимизатор и обучение сетей как на маленьком PyTorch.</p>
+      <h2>Об этом видеоуроке</h2>
+        <p>Этот видеосериал Харрисона Кинсли (Sentdex) строит нейронные сети полностью с нуля на numpy: слои, активации, оптимизатор и backpropagation — простым языком, без готовых библиотек. Далее на этой странице ключевые технические моменты серии разобраны в виде кода.</p>
+        <p><a class="btn solid" href="https://www.youtube.com/watch?v=o64FV-ez6Gw" target="_blank" rel="noopener">▶ Смотреть видео</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Автоматическое дифференцирование и граф вычислений</li>
-          <li>Слои: линейный, активации, потеря</li>
-          <li>Обратное распространение из первых принципов</li>
-          <li>Мини-обучение: градиентный спуск на данных</li>
-        </ul>
+      <h2>Зачем сеть с нуля?</h2>
+        <p>Большинство людей просто «вызывают библиотеку»: <code>model.add(...)</code> и <code>model.fit(...)</code>. В этой серии вы строите то же самое на numpy и понимаете, что на самом деле делают forward pass, backpropagation и gradient descent. Это понимание — единственный способ разобраться, почему сеть работает хорошо или плохо.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Глубокое обучение — это вычисления с градиентами: библиотека строит граф операций, а автодифференцирование проходит по нему назад, вычисляя производные для каждого параметра.</p>
-        <p>Ядро автодифа — одна операция с градиентом:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>class Mul(Op):
-    def forward(self, a, b): return a * b
-    def backward(self, grad):  # градиент через правило произведения
-        return grad * b, grad * a</code></pre>
+      <h2>Нейрон и слой</h2>
+        <p>Слой Dense — это: умножение матрицы входов на веса + смещение. В numpy весь слой записывается двумя строками:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import numpy as np
+
+class Layer_Dense:
+    def __init__(self, n_inputs, n_neurons):
+        # маленькие случайные веса + смещения
+        self.weights = np.random.randn(n_inputs, n_neurons) * 0.01
+        self.biases = np.zeros((1, n_neurons))
+
+    def forward(self, inputs):
+        self.inputs = inputs
+        self.output = np.dot(inputs, self.weights) + self.biases
+        return self.output</code></pre>
+        <p>Матричное умножение значит, что все нейроны и все образцы одного batch считаются одновременно — в этом сила numpy.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Под PyTorch и TensorFlow лежат именно эти механизмы: написав свою библиотеку на NumPy, вы увидите, что автодиф — это просто правила дифференцирования в коде.</p>
+      <h2>Вместе с активацией и ошибкой</h2>
+        <p>После слоя добавляются функция активации (ReLU в промежуточных слоях, Softmax на выходе) и функция ошибки (Cross-Entropy). Важная деталь серии: всё это отдельные классы с forward и (позже) backward:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def relu_forward(inputs):
+    return np.maximum(0, inputs)
+
+def softmax_forward(z):
+    exp = np.exp(z - np.max(z, axis=1, keepdims=True))  # числовая устойчивость
+    return exp / np.sum(exp, axis=1, keepdims=True)
+
+def cross_entropy(y_pred, y_true):
+    return -np.log(y_pred[range(len(y_pred)), y_true] + 1e-9).mean()</code></pre>
+        <p>Вычитание максимума перед exp нужно, чтобы не произошло переполнения — деталь, которую не видно в готовых библиотеках.</p>
+      </section>
+      <section>
+      <h2>К обучению</h2>
+        <p>Дальше в серии: backpropagation по правилу цепочки, оптимизатор SGD и тесты на реальных данных. Когда вы увидите всё на такой глубине, использовать Keras/PyTorch — всё равно что водить машину, двигатель которой вы видели собственными глазами.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Harrison Kinsley (Sentdex). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.youtube.com/watch?v=o64FV-ez6Gw" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай собственную библиотеку глубокого обучения на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай собственную библиотеку глубокого обучения на Python» принадлежит автору оригинала (Harrison Kinsley (Sentdex)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Harrison Kinsley (Sentdex)). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=o64FV-ez6Gw" target="_blank" rel="noopener">https://www.youtube.com/watch?v=o64FV-ez6Gw</a>.
       </div>
     </article>

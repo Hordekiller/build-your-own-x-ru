@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Современный PHP без фреймворков»
+          <b>Оригинальный источник:</b> «Modern PHP without a framework»
         </div>
         <a class="btn solid" href="https://kevinsmith.io/modern-php-without-a-framework" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-php-no-framework.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,71 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство по написанию современного PHP-приложения без каркасов: автозагрузка, роутер, шаблоны, DI-контейнер и PSR-стандарты — осознанное использование фич языка.</p>
+      <h2>Современный PHP = Composer + стандарты</h2>
+        <p>Современный PHP ушёл далеко вперёд от тегов, разбросанных по HTML: управление зависимостями через Composer, стандартная автозагрузка PSR-4, строгие типы и аккуратный роутинг. Этот урок показывает, что всё это можно получить и без какого-либо фреймворка.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Автозагрузка по PSR-4 вместо require</li>
-          <li>Собственный роутер и обработчики</li>
-          <li>Шаблоны и защищённый вывод</li>
-          <li>Своя инфраструктура: контейнер, мидлвары, конфиг</li>
-        </ul>
+      <h2>Автозагрузка и namespace</h2>
+        <p>С PSR-4 каждый класс <code>App\X</code> лежит в папке <code>src/X.php</code>, и Composer сам загрузит его где угодно. Никаких цепочек include и ручных require:</p>
+        <pre class="code"><span class="lang-tag">json</span><code style="direction:ltr;text-align:left">{
+  &quot;name&quot;: &quot;me/my-app&quot;,
+  &quot;autoload&quot;: {
+    &quot;psr-4&quot;: { &quot;App\\&quot;: &quot;src/&quot; }
+  }
+}</code></pre>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">namespace App;
+
+require __DIR__ . &#x27;/../vendor/autoload.php&#x27;;
+
+use App\Http\Request;
+use App\Http\Response;
+
+$request = Request::capture();
+$response = new Response(&#x27;Привет, мир!&#x27;, 200);
+$response-&gt;send();</code></pre>
+        <p>После каждого нового класса нужен <code>composer dump-autoload</code>, чтобы карта файлов обновилась.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Современный PHP — это возможности, а не строка в начале файла: автозагрузка, типы, замыкания. Без фреймворка вы используете их напрямую и понимаете каждую деталь.</p>
-        <p>Автозагрузка классов по PSR-4:</p>
-        <pre class="code"><span class="lang-tag">php</span><code>spl_autoload_register(function ($class) {
-  $path = "src/" . str_replace("\\", "/", $class) . ".php";
-  if (file_exists($path)) require $path;
-});</code></pre>
+      <h2>Свой маленький роутер</h2>
+        <p>Определим всего несколько маршрутов без борьбы с фреймворком. Тонкий момент: сравнение HTTP-метода через <code>strtoupper</code> и параметры <code>{id}</code> через regex для безопасности:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">final class Router
+{
+    private array $routes = [];
+
+    public function add(string $method, string $path, callable $handler): void
+    {
+        $this-&gt;routes[] = [$method, $path, $handler];
+    }
+
+    public function dispatch(string $method, string $uri): Response
+    {
+        foreach ($this-&gt;routes as [$m, $path, $handler]) {
+            if ($m !== $method) continue;
+            $pattern = &#x27;#^&#x27; . str_replace(&#x27;{id}&#x27;, &#x27;(\d+)&#x27;, $path) . &#x27;$#&#x27;;
+            if (preg_match($pattern, $uri, $m)) {
+                return $handler((int) $m[1]);
+            }
+        }
+        return new Response(&#x27;Not Found&#x27;, 404);
+    }
+}</code></pre>
+        <p>После этого всё, что дают фреймворки (валидация, шаблоны, контейнер), можно собрать такими же кусочками или взять маленькие независимые пакеты Composer.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Фреймворки — это инструменты поверх языка: поняв современный PHP без них, вы сможете выбирать каркасы осознанно и не теряться, когда нужны нестандартные решения.</p>
+      <h2>Зачем это делать?</h2>
+        <p>Для маленьких проектов полный фреймворк избыточен; для обучения лучший учитель — увидеть слои без обёрток. Навыки, которые вы получаете (PSR, autoload, тесты), напрямую работают и во фреймворк-проектах.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Kevin Smith. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://kevinsmith.io/modern-php-without-a-framework" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Современный PHP без фреймворков» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Современный PHP без фреймворков» принадлежит автору оригинала (Kevin Smith). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Kevin Smith). Читайте оригинал на
         <a href="https://kevinsmith.io/modern-php-without-a-framework" target="_blank" rel="noopener">https://kevinsmith.io/modern-php-without-a-framework</a>.
       </div>
     </article>

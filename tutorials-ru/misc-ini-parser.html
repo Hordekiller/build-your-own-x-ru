@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем INI-парсер на Nim»
+          <b>Оригинальный источник:</b> «Writing an INI parser in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day05_iniparser.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-ini-parser.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,76 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует парсер INI-файлов на Nim: секции, ключи, значения, комментарии и типизированный доступ — маленький модуль, который читает конфигурацию ваших программ.</p>
+      <h2>Формат INI</h2>
+        <p>INI — простейший текстовый формат конфигурации: секции отделяются <code>[именем]</code>, а внутри секции идут пары <code>ключ=значение</code>. Комментарии начинаются с <code>;</code> или <code>#</code>. Формат до сих пор используется повсюду для небольших инструментов — от php.ini до системных конфигов:</p>
+        <pre class="code"><span class="lang-tag">ini</span><code style="direction:ltr;text-align:left">[server]
+host = 0.0.0.0
+port = 8080
+
+[database]
+name = byox
+user = admin
+; это строка-комментарий
+pass = secret123</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Формат INI: секции, ключи и значения</li>
-          <li>Комментарии и пробелы</li>
-          <li>Типизированное чтение: строки, числа, булевы значения</li>
-          <li>Обработка ошибок конфигурации</li>
-        </ul>
+      <h2>Настройка парсера</h2>
+        <p>Парсер работает построчно: пропускает пустые строки и комментарии, <code>[x]</code> регистрирует как новую секцию, а <code>ключ=значение</code> добавляет в текущую секцию. Состояние текущей секции нужно сохранять между строками:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">import strutils, tables
+
+type IniFile = Table[string, Table[string, string]]
+
+proc parseIni(content: string): IniFile =
+  var
+    currentSection = &quot;&quot;         # текущая секция
+    section = initTable[string, string]()
+
+  for line in content.splitLines():
+    let trimmed = line.strip()
+
+    # Пропуск пустых строк и комментариев
+    if trimmed.len == 0 or trimmed[0] in {&#x27;;&#x27;, &#x27;#&#x27;}: continue
+
+    if trimmed[0] == &#x27;[&#x27;:       # начало новой секции
+      if currentSection != &quot;&quot;:
+        result[currentSection] = section
+      currentSection = trimmed[1..^2]
+      section = initTable[string, string]()
+    else:                       # ключ=значение
+      let parts = trimmed.split(&quot;=&quot;, 1)
+      let key = parts[0].strip()
+      let value = (if parts.len &gt; 1: parts[1].strip() else: &quot;&quot;)
+      section[key] = value
+
+  if currentSection != &quot;&quot;:
+    result[currentSection] = section</code></pre>
+        <p>Обратите внимание: <code>split("=", 1)</code> разбивает строку только по первому <code>=</code> — это важно для значений вроде URL, где тоже есть <code>=</code>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>INI — самый простой конфигурационный формат: секции в квадратных скобках, внутри — пары ключ=значение. Парсер построчно разбирает файл и собирает словарь.</p>
-        <p>Разбор строки секции — три строки кода:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>if line[0] == '[':
-  # новая секция: [имя]
-  current = line[1 .. ^2]</code></pre>
+      <h2>Базовое использование</h2>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">let config = parseIni(readFile(&quot;app.ini&quot;))
+echo config[&quot;server&quot;][&quot;port&quot;]       # 8080
+echo config[&quot;database&quot;][&quot;name&quot;]     # byox
+
+# Безопасный доступ при отсутствии секции/ключа:
+echo config.getOrDefault(&quot;missing&quot;, initTable[string, string]())</code></pre>
+        <p>Вложенные таблицы в Nim — это те же словари, поэтому параметр по умолчанию <code>getOrDefault</code> должен быть типа <code>Table[string,string]</code>; это та же структура, которую возвращает <code>parseIni</code>.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Конфигурация — часть любой программы: написав парсер, вы поймёте, как устроены форматы конфигов (INI, TOML, YAML) и сможете выбирать правильный для своих проектов.</p>
+      <h2>Следующие шаги</h2>
+        <p>Настоящие парсеры идут дальше базовой версии: поддержка <code>:</code> вместо <code>=</code>, снятие кавычек со значений, многострочные значения и автоматическое приведение типов (int, bool). Всё это добавляется к той же построчной структуре — каждое новое правило это просто ещё один разбор текущей строки.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day05_iniparser.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем INI-парсер на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем INI-парсер на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day05_iniparser.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day05_iniparser.html</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание простого Single Sign On (SSO) сервера на Node.js»
+          <b>Оригинальный источник:</b> «Building a simple Single Sign On (SSO) server from scratch in Node.js»
         </div>
         <a class="btn solid" href="https://codeburst.io/building-a-simple-single-sign-on-sso-server-and-solution-from-scratch-in-node-js-ea6ee5fdf340" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-sso-server.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,58 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство реализует механизм на базе Node.js: центральная служба аутентификации, выдающая токены, и проверка сессии на сайтах — вы построите мини-SSO для нескольких приложений.</p>
+      <h2>Проблема SSO</h2>
+        <p>У организации несколько приложений: почта, календарь, внутренняя система. Пользователь не хочет входить в каждое заново. Решение: центральный сервер аутентификации — пользователь логинится один раз, а остальные приложения узнают его автоматически.</p>
+        <p>В простейшей форме (из этого урока): SSO-сервер хранит сессию, приложения подключаются по «случайному токену», а список разрешённых приложений записан на сервере.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что такое SSO и зачем он нужен</li>
-          <li>Центральная аутентификация и выдача сессий</li>
-          <li>Проверка токена на подключаемых сайтах</li>
-          <li>Безопасность: подпись и срок жизни токенов</li>
-        </ul>
+      <h2>Поток входа</h2>
+        <p>Когда пользователь приходит в приложение B без сессии, его редиректит на SSO-сервер. Если и там нет сессии, он видит форму логина; после успешного входа сервер возвращает его в B с кукой, и B должен подтвердить этот токен у сервера:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// На SSO-сервере: проверка токена, присланного приложением
+app.post(&#x27;/validate&#x27;, (req, res) =&gt; {
+  const { appId, token } = req.body;
+
+  // Это приложение разрешено? Токен валиден?
+  const session = sessions[token];
+  if (!apps.includes(appId) || !session) {
+    return res.status(401).json({ error: &#x27;Недействительно&#x27; });
+  }
+
+  // Возвращаем только идентификатор пользователя, не пароль!
+  res.json({ ok: true, userId: session.userId });
+});</code></pre>
+        <p>Важный момент безопасности: приложения обмениваются только токеном; пароль и лишние данные им никогда не отправляются.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>SSO — единый вход: пользователь логинится один раз в центральном сервисе, а сайты доверяют его токену. Секрет — в криптографической подписи: сайт проверяет токен, не обращаясь к базе пользователей.</p>
-        <p>Выдача подписанного токена — ключ всей схемы:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>const token = jwt.sign(
-  { user: login, exp: Date.now() + 3600_000 },
-  SECRET // подпись, известная всем доверенным сайтам
-);</code></pre>
+      <h2>Сторона приложения</h2>
+        <p>Каждое приложение знает, где живёт SSO (общая зона домена или кука). Логика приложения проста: если у нас нет сессии пользователя — редирект в SSO; с <code>app.validate</code> проверяем статус:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// В каждом приложении: middleware для проверки входа
+function requireSSO(req, res, next) {
+  if (req.cookies.sso_token) {
+    // Подтверждаем токен у SSO-сервера
+    return ssoServer.validate(req.cookies.sso_token)
+      .then(userId =&gt; { req.userId = userId; next(); })
+      .catch(() =&gt; res.redirect(`${SSO_URL}/login?next=${req.path}`));
+  }
+  res.redirect(`${SSO_URL}/login?next=${req.path}`);
+}</code></pre>
+        <p>Параметр <code>next</code> важен: после входа пользователь возвращается именно на ту страницу, которую хотел, а не всегда на главную.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждый вход через Google или GitHub — это SSO: реализовав свою версию, вы поймёте, как работают OAuth-флоу и единые точки входа в корпоративных системах.</p>
+      <h2>Границы упрощения</h2>
+        <p>Это решение отлично для обучения; но для продакшена токены должны подписываться (HMAC/JWT), сессии храниться в Redis, поток должен быть защищён от CSRF и timing-атак, и лучше использовать стандарты OIDC/SAML. Поняв эту простую версию, читать документацию OIDC гораздо легче.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Codeburst. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://codeburst.io/building-a-simple-single-sign-on-sso-server-and-solution-from-scratch-in-node-js-ea6ee5fdf340" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание простого Single Sign On (SSO) сервера на Node.js» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание простого Single Sign On (SSO) сервера на Node.js» принадлежит автору оригинала (Codeburst). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Codeburst). Читайте оригинал на
         <a href="https://codeburst.io/building-a-simple-single-sign-on-sso-server-and-solution-from-scratch-in-node-js-ea6ee5fdf340" target="_blank" rel="noopener">https://codeburst.io/building-a-simple-single-sign-on-sso-server-and-solution-from-scratch-in-node-js-ea6ee5fdf340</a>.
       </div>
     </article>

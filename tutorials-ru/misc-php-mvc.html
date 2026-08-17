@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «MVC своими руками с нуля на PHP»
+          <b>Оригинальный источник:</b> «Writing your own MVC from scratch in PHP»
         </div>
         <a class="btn solid" href="https://chaitya62.github.io/2018/04/29/Writing-your-own-MVC-from-Scratch-in-PHP.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-php-mvc.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,69 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство по созданию MVC-фреймворка на PHP с нуля: маршрутизация, контроллеры, представления, модели и подключение к базе — архитектура, на которой держится Laravel.</p>
+      <h2>Что такое MVC?</h2>
+        <p>MVC — это разделение ответственности: <b>Model</b> работает с данными и логикой, <b>View</b> занимается только отображением (HTML), а <b>Controller</b> — мост между ними: принимает запрос пользователя, вызывает Model и передаёт результат во View. Фреймворки Laravel и CodeIgniter упорядочили именно этот паттерн.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Роутер: от URL к контроллеру</li>
-          <li>Контроллеры и передача данных в представления</li>
-          <li>Модели и работа с базой данных</li>
-          <li>Компоновка: главный скрипт и автозагрузка</li>
-        </ul>
-      </section>
+      <h2>Front Controller и роутинг</h2>
+        <p>Первый шаг: все запросы должны приходить в один файл (<code>index.php</code>). С помощью <code>.htaccess</code> всё направляется на index, а он по тексту URL решает, какой контроллер/экшен выполнить:</p>
+        <pre class="code"><span class="lang-tag">htaccess</span><code style="direction:ltr;text-align:left">RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^(.*)$ index.php?url=$1 [QSA,L]</code></pre>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">class Application {
+    public function run() {
+        // Например: home/index/5
+        $parts = explode(&#x27;/&#x27;, trim($_GET[&#x27;url&#x27;] ?? &#x27;home/index&#x27;, &#x27;/&#x27;));
+        $controller = ucfirst($parts[0] ?? &#x27;Home&#x27;) . &#x27;Controller&#x27;;
+        $action = $parts[1] ?? &#x27;index&#x27;;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>MVC делит приложение на три роли: модель хранит данные, представление их рисует, контроллер связывает одно с другим. Роутер дирижирует всем: URL превращается в вызов метода контроллера.</p>
-        <p>Минимальный контроллер выглядит так:</p>
-        <pre class="code"><span class="lang-tag">php</span><code>class HomeController {
-  // Метод обработки GET /
-  public function index() {
-    $posts = Post::all();
-    return view("home", ["posts" =&gt; $posts]);
-  }
+        $file = &quot;app/controllers/$controller.php&quot;;
+        if (!file_exists($file)) { http_response_code(404); die(&#x27;Не найдено&#x27;); }
+
+        require $file;
+        $obj = new $controller;
+        $obj-&gt;$action();   // вызываем контроллер с экшеном
+    }
 }</code></pre>
+        <p>Весь секрет роутинга в этом: разбить URL и вызвать нужный класс. (Безопасность: в контроллерах принимаются только допустимые имена директорий.)</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждый популярный PHP-фреймворк — эта архитектура плюс удобства: собрав MVC сами, вы будете читать чужой код на Laravel и Symfony без словаря.</p>
+      <h2>Контроллер и модель</h2>
+        <p>Контроллер берёт данные из модели и отдаёт во вью:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">class HomeController {
+    public function index() {
+        $posts = (new PostModel())-&gt;latest();   // данные из модели
+        require &quot;app/views/home.php&quot;;          // отображение: $posts
+    }
+}</code></pre>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">class Model {
+    protected $db;
+    public function __construct() {
+        $this-&gt;db = new PDO(&#x27;sqlite:app.db&#x27;);   // общее подключение
+    }
+    protected function query($sql, $params = []) {
+        $st = $this-&gt;db-&gt;prepare($sql);
+        $st-&gt;execute($params);
+        return $st-&gt;fetchAll();
+    }
+}</code></pre>
+        <p>С <code>PDO</code> — prepared-запросы и bind параметров, первый след безопасности против SQL-инъекций.</p>
+      </section>
+      <section>
+      <h2>Итоговая структура</h2>
+        <p>Базовая структура папок: <code>app/controllers</code>, <code>app/models</code>, <code>app/views</code>, <code>core/</code> для базовых классов и <code>public/</code> для статики. Это та же структура, что во всех известных фреймворках; построив её с нуля, вы будете читать исходники фреймворков как знакомый текст.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Chaitya (Chaitya62). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://chaitya62.github.io/2018/04/29/Writing-your-own-MVC-from-Scratch-in-PHP.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «MVC своими руками с нуля на PHP» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «MVC своими руками с нуля на PHP» принадлежит автору оригинала (Chaitya (Chaitya62)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Chaitya (Chaitya62)). Читайте оригинал на
         <a href="https://chaitya62.github.io/2018/04/29/Writing-your-own-MVC-from-Scratch-in-PHP.html" target="_blank" rel="noopener">https://chaitya62.github.io/2018/04/29/Writing-your-own-MVC-from-Scratch-in-PHP.html</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Мобильный сканер документов за 5 минут на Python»
+          <b>Оригинальный источник:</b> «Build a kick-ass mobile document scanner in just 5 minutes»
         </div>
         <a class="btn solid" href="https://www.pyimagesearch.com/2014/09/01/build-kick-ass-mobile-document-scanner-just-5-minutes/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-document-scanner.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство создаёт сканер документов: кадр с документа, поиск его краёв, перспективная трансформация и выравнивание — красивое приложение на OpenCV почти без магии.</p>
+      <h2>Четыре шага до скана</h2>
+        <p>Мобильный сканер (как CamScanner) делает четыре вещи: 1) находит края бумаги, 2) извлекает её углы, 3) выполняет перспективное преобразование (из-за съёмки под углом), 4) улучшает изображение (серый/порог). Всё это на OpenCV в несколько десятков строк.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Поиск контуров и обнаружение документа</li>
-          <li>Перспективная трансформация четырёхугольника</li>
-          <li>Предобработка: контраст, резкость, бинаризация</li>
-          <li>Сборка: из фото в опрятный PDF</li>
-        </ul>
+      <h2>Поиск бумаги</h2>
+        <p>Классическая проблема: снимок под углом, плохое освещение, разный фон. Стандартное решение: серый → шумоподавление → поиск краёв → поиск большого контура:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import cv2
+import numpy as np
+
+def find_document(image):
+    gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    blur = cv2.GaussianBlur(gray, (5, 5), 0)
+    edged = cv2.Canny(blur, 75, 200)      # края
+
+    cnts, _ = cv2.findContours(edged.copy(), cv2.RETR_LIST,
+                               cv2.CHAIN_APPROX_SIMPLE)
+    # самый большой контур = бумага
+    cnt = max(cnts, key=cv2.contourArea)
+    peri = cv2.arcLength(cnt, True)
+    approx = cv2.approxPolyDP(cnt, 0.02 * peri, True)
+
+    # у бумаги должно быть четыре стороны
+    return approx if len(approx) == 4 else None</code></pre>
+        <p><code>approxPolyDP</code> упрощает углы контура; лист A4 на любом фото имеет четыре стороны.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Сканер — это геометрия: найти в кадре четыре угла документа, вычислить гомографию и перевести выделенную область в ровный прямоугольник. OpenCV даёт инструменты, вы даёте план.</p>
-        <p>Трансформация — одна функция:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>M = cv2.getPerspectiveTransform(corners, output_rect)
-scanned = cv2.warpPerspective(image, M, (w, h))</code></pre>
+      <h2>Перспективное преобразование</h2>
+        <p>Теперь у нас четыре угла. Отображаем их через <code>getPerspectiveTransform</code> в полноценный прямоугольник A4, а <code>warpPerspective</code> формирует новое изображение. Порядок углов (верх-лево, верх-право и т.д.) важен и должен быть отсортирован:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def order_points(pts):
+    # сортировка: TL, TR, BR, BL по сумме и разности координат
+    s = pts.sum(axis=1); d = np.diff(pts, axis=1)
+    return np.array([
+        pts[np.argmin(s)], pts[np.argmin(d)],
+        pts[np.argmax(s)], pts[np.argmax(d)]
+    ], dtype=&quot;float32&quot;)
+
+def scan(image, corners):
+    rect = order_points(corners)
+    w = int(max(np.linalg.norm(rect[0]-rect[1]),
+                np.linalg.norm(rect[2]-rect[3])))
+    h = int(max(np.linalg.norm(rect[0]-rect[2]),
+                np.linalg.norm(rect[1]-rect[3])))
+    dst = np.array([[0,0],[w-1,0],[w-1,h-1],[0,h-1]], dtype=&quot;float32&quot;)
+    M = cv2.getPerspectiveTransform(rect, dst)
+    return cv2.warpPerspective(image, M, (w, h))</code></pre>
+        <p>Видите — «всего 5 минут» это и есть эти ~30 строк! Результат прогоните через <code>cv2.threshold</code>, чтобы он стал как у настоящего сканера.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Приложения ежедневных дел (банки, почта) состоят из таких приёмов: вы научитесь превращать случайное фото в аккуратный документ и поймёте основы компьютерного зрения.</p>
+      <h2>Развития</h2>
+        <p>Настоящие приложения добавляют: автоматическое обнаружение краёв через Document Scanner API (в OpenCV), OCR через Tesseract для превращения в текст и устранение теней. Но сердце всех этих функций — те же четыре шага из этого урока.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Adrian Rosebrock (PyImageSearch). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.pyimagesearch.com/2014/09/01/build-kick-ass-mobile-document-scanner-just-5-minutes/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Мобильный сканер документов за 5 минут на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Мобильный сканер документов за 5 минут на Python» принадлежит автору оригинала (Adrian Rosebrock (PyImageSearch)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Adrian Rosebrock (PyImageSearch)). Читайте оригинал на
         <a href="https://www.pyimagesearch.com/2014/09/01/build-kick-ass-mobile-document-scanner-just-5-minutes/" target="_blank" rel="noopener">https://www.pyimagesearch.com/2014/09/01/build-kick-ass-mobile-document-scanner-just-5-minutes/</a>.
       </div>
     </article>

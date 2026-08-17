@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Рекомендательные системы в Python: курс для начинающих»
+          <b>Оригинальный источник:</b> «Recommender systems in Python (DataCamp)»
         </div>
         <a class="btn solid" href="https://www.datacamp.com/community/tutorials/recommender-systems-python" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-recommender-systems.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,60 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Вводный курс по рекомендательным системам на Python: коллаборативная фильтрация, метрики близости, обучение на оценках пользователей и построение простого рекомендателя.</p>
+      <h2>Что делают рекомендатели?</h2>
+        <p>Крупные магазины предлагают «вам может понравиться». Два главных семейства: <b>контентные (Content-Based)</b>, которые сравнивают признаки товара со вкусами пользователя, и <b>совместная фильтрация (Collaborative Filtering)</b>, которая сравнивает поведение похожих пользователей. Комбинация обоих даёт лучший результат.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что предсказывают рекомендательные системы</li>
-          <li>Коллаборативная фильтрация: похожесть пользователей</li>
-          <li>Метрики: косинусная близость, корреляция</li>
-          <li>Оценка качества рекомендаций</li>
-        </ul>
+      <h2>Совместная фильтрация на подобиях</h2>
+        <p>Идея: матрица пользователи×товары. Если пользователь A оценил фильмы X и Y и пользователь B тоже, вероятно, их вкусы близки; значит, новые фильмы B предлагаются и A. Сходство считается через косинусную меру или корреляцию:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import pandas as pd
+from sklearn.metrics.pairwise import cosine_similarity
+
+# матрица: строка = пользователь, столбец = фильм, ячейка = оценка
+ratings = pd.DataFrame({
+    &#x27;user&#x27;: [&#x27;u1&#x27;,&#x27;u1&#x27;,&#x27;u2&#x27;,&#x27;u2&#x27;,&#x27;u3&#x27;],
+    &#x27;movie&#x27;: [&#x27;M1&#x27;,&#x27;M2&#x27;,&#x27;M1&#x27;,&#x27;M3&#x27;,&#x27;M2&#x27;],
+    &#x27;rating&#x27;: [5, 3, 4, 1, 2]
+})
+matrix = ratings.pivot(index=&#x27;user&#x27;, columns=&#x27;movie&#x27;, values=&#x27;rating&#x27;)
+matrix = matrix.fillna(0)   # без оценки = 0
+
+sim = pd.DataFrame(          # сходство между пользователями
+    cosine_similarity(matrix),
+    index=matrix.index, columns=matrix.index)
+
+# что предложить u1? похожий пользователь: u2
+print(sim.loc[&#x27;u1&#x27;].sort_values(ascending=False))</code></pre>
+        <p>После нахождения похожего пользователя предложите фильмы, которым он поставил высокие оценки, но которых ваш пользователь ещё не видел.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Идея рекомендаций — в похожести: если два пользователя одинаково оценили многое, с большой вероятностью им понравится одно и то же. Код рекомендует товары, фильмы и музыку, опираясь на матрицу оценок.</p>
-        <p>Косинусная близость двух пользователей:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import numpy as np
-def cosine(u, v):
-    return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-9)</code></pre>
+      <h2>Подход с факторизацией матрицы</h2>
+        <p>Когда данных много, матрицу пользователь×фильм раскладывают на две маленькие (скрытые факторы); каждый пользователь и каждый фильм получают «скрытый вектор», а оценка = их скалярное произведение. Библиотека <code>surprise</code> делает это легко:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from surprise import SVD, Dataset, Reader
+from surprise.model_selection import cross_validate
+
+reader = Reader(rating_scale=(1, 5))
+data = Dataset.load_from_df(ratings, reader)
+
+algo = SVD()   # Singular Value Decomposition
+cross_validate(algo, data, cv=3, verbose=True)</code></pre>
+        <p>Этот алгоритм — тот самый, с которого начинали Netflix и Amazon.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Рекомендации — движок Netflix, Spotify и всех маркетплейсов: понимание их базовых механик пригодится и аналитикам, и разработчикам.</p>
+      <h2>Итог</h2>
+        <p>После этого урока вы знаете и теорию (сходство, матрицы, скрытые факторы), и реализацию. Следующий шаг: настоящие данные (например, MovieLens) и сравнение метрик RMSE/Precision между методами.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> DataCamp. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.datacamp.com/community/tutorials/recommender-systems-python" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Рекомендательные системы в Python: курс для начинающих» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Рекомендательные системы в Python: курс для начинающих» принадлежит автору оригинала (DataCamp). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (DataCamp). Читайте оригинал на
         <a href="https://www.datacamp.com/community/tutorials/recommender-systems-python" target="_blank" rel="noopener">https://www.datacamp.com/community/tutorials/recommender-systems-python</a>.
       </div>
     </article>
