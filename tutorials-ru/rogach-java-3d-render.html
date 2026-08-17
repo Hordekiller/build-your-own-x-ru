@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Пишем 3D-рендерер на Java</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">3D-рендерер</a>
+        <span class="sep">→</span>
+        <span>Пишем 3D-рендерер на Java</span>
+      </div>
+      <h1>Пишем 3D-рендерер на Java</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Java</span>
+        <span class="meta-badge">📁 3D-рендерер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="http://blog.rogach.org/2015/08/how-to-create-your-own-simple-3d-render.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Пишем 3D-рендерер на Java»
+        </div>
+        <a class="btn solid" href="http://blog.rogach.org/2015/08/how-to-create-your-own-simple-3d-render.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/rogach-java-3d-render.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/rogach-java-3d-render.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Серия уроков на Java создает программный рендерер: модели, камеры, проецирование, заливка граней и затенение — полноценный CAD-подобный просмотр 3D-объектов своими руками.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Загрузка простых 3D-моделей</li>
+          <li>Камера и проект граней на экран</li>
+          <li>Заливка и освещение граней</li>
+          <li>Вращение и орбита камеры</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Рендеринг на Java — линейно, без чудес: каждая грань — три вершины, каждая вершина проходит через матрицы и попадает на экран. Проекция и заливка — весь секрет.</p>
+        <p>Проверка видимости грани (backface culling):</p>
+        <pre class="code"><span class="lang-tag">Java</span><code>// Грань направлена к камере? Считаем знак нормали
+Vector3 n = face.normal();
+if (n.dot(cameraDirection) &gt; 0) drawFace(face);</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Восторг от первой 3D-модели на собственном рендерере не забывается: уроки дадут вам инструмент, с которым можно экспериментировать бесконечно.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Пишем 3D-рендерер на Java» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="http://blog.rogach.org/2015/08/how-to-create-your-own-simple-3d-render.html" target="_blank" rel="noopener">http://blog.rogach.org/2015/08/how-to-create-your-own-simple-3d-render.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

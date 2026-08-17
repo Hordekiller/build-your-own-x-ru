@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Простой ИИ-чат-бот с Web Speech API и Node.js</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Бот</a>
+        <span class="sep">→</span>
+        <span>Простой ИИ-чат-бот с Web Speech API и Node.js</span>
+      </div>
+      <h1>Простой ИИ-чат-бот с Web Speech API и Node.js</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Node.js</span>
+        <span class="meta-badge">📁 Бот</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.smashingmagazine.com/2017/08/ai-chatbot-web-speech-api-node-js/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Простой ИИ-чат-бот с Web Speech API и Node.js»
+        </div>
+        <a class="btn solid" href="https://www.smashingmagazine.com/2017/08/ai-chatbot-web-speech-api-node-js/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/chatbot-web-speech.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/chatbot-web-speech.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок делает голосового чат-бота: распознавание речи в браузере через Web Speech API, отправка текста на Node.js-сервер и синтез ответа голосом — интерфейс, которым можно говорить.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Web Speech API: распознавание и синтез</li>
+          <li>Микрофон и события речи</li>
+          <li>Сервер ответов на Node.js</li>
+          <li>Соединение: браузер ↔ сервер в реальном времени</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Бот оживает через два API: SpeechRecognition превращает голос в текст, а SpeechSynthesis — текст в голос. Между ними — ваш сервер, который формулирует ответ.</p>
+        <p>Запуск распознавания речи — три строки:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code>const rec = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+rec.lang = "ru";
+rec.start(); // говорите — текст появится в событии result</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Голосовые интерфейсы захватывают всё больше экранов: урок даст вам инструмент построить голосового помощника и понять, как устроены VA-ассистенты.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Простой ИИ-чат-бот с Web Speech API и Node.js» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.smashingmagazine.com/2017/08/ai-chatbot-web-speech-api-node-js/" target="_blank" rel="noopener">https://www.smashingmagazine.com/2017/08/ai-chatbot-web-speech-api-node-js/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

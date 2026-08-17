@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создание Reddit-бота на Python — часть 1</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Бот</a>
+        <span class="sep">→</span>
+        <span>Создание Reddit-бота на Python — часть 1</span>
+      </div>
+      <h1>Создание Reddit-бота на Python — часть 1</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Бот</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://pythonforengineers.com/blog/build-a-reddit-bot-part-1/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создание Reddit-бота на Python — часть 1»
+        </div>
+        <a class="btn solid" href="https://pythonforengineers.com/blog/build-a-reddit-bot-part-1/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/reddit-bot-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/reddit-bot-python.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Первая часть гайда по Reddit-боту на Python: OAuth-авторизация, чтение потоков, анализ комментариев и ответы на упоминания — старт автоматизации Reddit.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>OAuth и авторизация приложения Reddit</li>
+          <li>Чтение постов и комментариев</li>
+          <li>Поиск триггеров в тексте</li>
+          <li>Отправка ответов в треды</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Reddit-бот — скрипт, пользующийся API Reddit: он логинится через OAuth, подписывается на поток и реагирует. С первого запуска вы увидите, как легко оживить аккаунт кодом.</p>
+        <p>Логин и чтение постов — минимально:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>import praw
+reddit = praw.Reddit(client_id=..., user_agent="byox-bot")
+for comment in reddit.subreddit("memes").stream.comments():
+    if "hello bot" in comment.body.lower():
+        comment.reply("Привет!")</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Автоматизация соцсетей учит читать API правильно: вы освоите OAuth, стримы и лимиты, и сможете переносить навык на любые платформы.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создание Reddit-бота на Python — часть 1» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://pythonforengineers.com/blog/build-a-reddit-bot-part-1/" target="_blank" rel="noopener">https://pythonforengineers.com/blog/build-a-reddit-bot-part-1/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

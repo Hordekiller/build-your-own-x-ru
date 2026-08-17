@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Mini-Redis на Rust: маленький сетевой Redis</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">База данных</a>
+        <span class="sep">→</span>
+        <span>Mini-Redis на Rust: маленький сетевой Redis</span>
+      </div>
+      <h1>Mini-Redis на Rust: маленький сетевой Redis</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Rust</span>
+        <span class="meta-badge">📁 База данных</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://tokio.rs/tokio/tutorial/setup" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Mini-Redis на Rust: маленький сетевой Redis»
+        </div>
+        <a class="btn solid" href="https://tokio.rs/tokio/tutorial/setup" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/mini-redis-rust.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/mini-redis-rust.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Проект mini-redis на Rust: сервер с async-сетью (tokio), команды, транзакции и время жизни ключей — высокопроизводительная in-memory база.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Async-сеть с tokio</li>
+          <li>Команды и парсинг</li>
+          <li>Ключи и время жизни</li>
+          <li>Клиентская библиотека</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Mini-redis использует асинхронность Rust: сервер обслуживает тысячи соединений, команды исполняются без блокировок. Проект — официальный пример токио.</p>
+        <p>Async-обработка команды:</p>
+        <pre class="code"><span class="lang-tag">Rust</span><code>async fn process(cmd: Command) -&gt; Result&lt;Value&gt; {
+    match cmd {
+        Command::Set { key, value } =&gt; { store.set(key, value).await }
+        Command::Get { key } =&gt; store.get(key).await,
+    }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Современный async-Rust — стандарт сетевых сервисов: mini-redis показывает, как строятся высоконагруженные хранилища в 2020-е.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Mini-Redis на Rust: маленький сетевой Redis» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://tokio.rs/tokio/tutorial/setup" target="_blank" rel="noopener">https://tokio.rs/tokio/tutorial/setup</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

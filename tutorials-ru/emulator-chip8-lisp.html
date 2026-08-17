@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Эмулятор CHIP-8 на Common Lisp</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Эмулятор / Виртуальная машина</a>
+        <span class="sep">→</span>
+        <span>Эмулятор CHIP-8 на Common Lisp</span>
+      </div>
+      <h1>Эмулятор CHIP-8 на Common Lisp</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Common Lisp</span>
+        <span class="meta-badge">📁 Эмулятор / Виртуальная машина</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="http://stevelosh.com/blog/2016/12/chip8-cpu/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Эмулятор CHIP-8 на Common Lisp»
+        </div>
+        <a class="btn solid" href="http://stevelosh.com/blog/2016/12/chip8-cpu/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/emulator-chip8-lisp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/emulator-chip8-lisp.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Эмулятор CHIP-8 на Common Lisp: опкоды, графика и REPL-подход — ретро в функциональном стиле.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>CHIP-8 изнутри</li>
+          <li>Опкоды на CL</li>
+          <li>Графика</li>
+          <li>Отладка через REPL</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Common Lisp даёт эмуляции комфорт: REPL-отладка прямо во время работы, итерации над опкодами — быстрые.</p>
+        <p>Обработчик опкода на CL:</p>
+        <pre class="code"><span class="lang-tag">Lisp</span><code>(defun step (vm)
+  (let ((opcode (ldb (byte 12 0) (memory vm))))
+    (ecase (ash opcode -12)
+      (#x1 (jump vm)) ...)))</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Эмуляция на Lisp — веселье и практика: вы увидите, как функциональные языки ускоряют итерации и отладку.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Эмулятор CHIP-8 на Common Lisp» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="http://stevelosh.com/blog/2016/12/chip8-cpu/" target="_blank" rel="noopener">http://stevelosh.com/blog/2016/12/chip8-cpu/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

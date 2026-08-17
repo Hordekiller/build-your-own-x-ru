@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Физика видеоигр на C (часть 1)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Физический движок</a>
+        <span class="sep">→</span>
+        <span>Физика видеоигр на C (часть 1)</span>
+      </div>
+      <h1>Физика видеоигр на C (часть 1)</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">📁 Физический движок</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.toptal.com/game/video-game-physics-part-i-an-introduction-to-rigid-body-dynamics" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Физика видеоигр на C (часть 1)»
+        </div>
+        <a class="btn solid" href="https://www.toptal.com/game/video-game-physics-part-i-an-introduction-to-rigid-body-dynamics" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/physics-video-game-physics.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/physics-video-game-physics.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Физика для игр на C: векторы, интеграция движения и столкновения — базовый физический движок для своей игры.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Векторы и движение</li>
+          <li>Интеграция: dt и обновление</li>
+          <li>Простой collision detection</li>
+          <li>Реакции: упругость</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Игровая физика приближённа: шагаем интеграцией, сталкиваем сферы и меняем скорость по импульсам. На C это наглядно и быстро.</p>
+        <p>Интеграция скорости и позиции:</p>
+        <pre class="code"><span class="lang-tag">C</span><code>pos += vel * dt;      // перемещение
+vel += accel * dt;    // ускорение за шаг</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Физика делает игры живыми: базовый движок на C — ваш пропуск в мир реалистичной анимации.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Физика видеоигр на C (часть 1)» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.toptal.com/game/video-game-physics-part-i-an-introduction-to-rigid-body-dynamics" target="_blank" rel="noopener">https://www.toptal.com/game/video-game-physics-part-i-an-introduction-to-rigid-body-dynamics</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

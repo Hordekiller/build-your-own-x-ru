@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Нейросеть на F# — часть 2</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Нейросеть</a>
+        <span class="sep">→</span>
+        <span>Нейросеть на F# — часть 2</span>
+      </div>
+      <h1>Нейросеть на F# — часть 2</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: F#</span>
+        <span class="meta-badge">📁 Нейросеть</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Нейросеть на F# — часть 2»
+        </div>
+        <a class="btn solid" href="https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-fsharp-part2.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/neural-fsharp-part2.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Часть 2: полносвязная сеть на F# — прямые и обратные проходы, обучение на данных.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Архитектура сети</li>
+          <li>Прямой проход</li>
+          <li>Обратное распространение</li>
+          <li>Эксперименты</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Серия усложняется: сеть с несколькими слоями, сигмоида и обратное распространение — полный цикл обучения.</p>
+        <p>Активация слоя:</p>
+        <pre class="code"><span class="lang-tag">F#</span><code>let sigmoid x = 1.0 / (1.0 + exp(-x))
+let layerOutput w x = x |&gt; Array.map2 (*) w |&gt; Array.sum |&gt; sigmoid</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Вторая часть даёт полноценную сеть: вы увидите, как обучение превращается в математику и код.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Нейросеть на F# — часть 2» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6" target="_blank" rel="noopener">https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

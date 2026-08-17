@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Веб-приложение с нуля — 1-я часть</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Веб-приложение с нуля — 1-я часть</span>
+      </div>
+      <h1>Веб-приложение с нуля — 1-я часть</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://defn.io/2018/02/25/web-app-from-scratch-01/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Веб-приложение с нуля — 1-я часть»
+        </div>
+        <a class="btn solid" href="https://defn.io/2018/02/25/web-app-from-scratch-01/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/web-app-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/web-app-from-scratch.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Серия статей, в которой веб-приложение на Python создаётся полностью с нуля, без фреймворков: от разбора запросов и маршрутизации до рендеринга страниц. Вы узнаете, что прячется под капотом Django и Flask и почему фреймворки строятся именно так.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Архитектура веб-приложения без фреймворка</li>
+          <li>Маршрутизация запросов по URL собственными силами</li>
+          <li>Шаблонизация и генерация HTML-страниц</li>
+          <li>Разделение логики: запрос, обработчик, ответ</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>За веб-фреймворками стоит одна и та же идея: получить запрос, смаршрутизировать его к функции, собрать ответ. Приложение на чистом Python повторяет этот контур вручную.</p>
+        <p>Минимальный маршрутизатор умещается в несколько строк:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>ROUTES = {}
+
+def route(path):
+    def wrap(handler):
+        ROUTES[path] = handler
+        return handler
+    return wrap
+
+@route("/")
+def index(request):
+    return render_page("index.html")</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Сделав веб-приложение сами, вы перестанете воспринимать фреймворк как чёрный ящик: любой маршрут, форма или шаблон — всё это код, который вы уже видели собственными глазами.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Веб-приложение с нуля — 1-я часть» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://defn.io/2018/02/25/web-app-from-scratch-01/" target="_blank" rel="noopener">https://defn.io/2018/02/25/web-app-from-scratch-01/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

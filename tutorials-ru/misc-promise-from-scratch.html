@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Выучи промисы JavaScript, создав Promise с нуля</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Выучи промисы JavaScript, создав Promise с нуля</span>
+      </div>
+      <h1>Выучи промисы JavaScript, создав Promise с нуля</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: JavaScript</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Выучи промисы JavaScript, создав Promise с нуля»
+        </div>
+        <a class="btn solid" href="https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-promise-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-promise-from-scratch.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок реализует Promise с нуля: состояния, цепочки then, обработка ошибок и асинхронное выполнение — вы напишете свой Promise-класс и поймёте, что происходит за синтаксическим сахаром.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Состояния промиса: pending, fulfilled, rejected</li>
+          <li>Метод then: подписка на результат</li>
+          <li>Цепочки и прокидывание значений между then</li>
+          <li>Асинхронность: очередь микрозадач</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Промис — это контейнер для будущего значения. Он умеет запомнить, кто ждёт результата, и при наступлении события вызвать обработчики. Вся магия — в управлении списком подписчиков.</p>
+        <p>Ядро Promise — список обработчиков:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code>class MyPromise {
+  constructor(executor) {
+    this.state = "pending";
+    this.handlers = []; // ждём результата
+    executor(this.resolve.bind(this), this.reject.bind(this));
+  }
+  then(onFulfilled, onRejected) {
+    // запомнить обработчик и вернуть новый промис
+  }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Асинхронный JavaScript — вокруг промисов: собрав его сами, вы перестанете бояться замыканий и очередей и будете уверенно читать любой асинхронный код.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Выучи промисы JavaScript, создав Promise с нуля» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720" target="_blank" rel="noopener">https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

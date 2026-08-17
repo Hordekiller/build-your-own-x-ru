@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Простой веб-сервер — глава из книги «500 строк и меньше»</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Простой веб-сервер — глава из книги «500 строк и меньше»</span>
+      </div>
+      <h1>Простой веб-сервер — глава из книги «500 строк и меньше»</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="http://aosabook.org/en/500L/a-simple-web-server.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Простой веб-сервер — глава из книги «500 строк и меньше»»
+        </div>
+        <a class="btn solid" href="http://aosabook.org/en/500L/a-simple-web-server.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/simple-web-server-500lines.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/simple-web-server-500lines.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Глава классической книги «500 Lines or Less» строит веб-сервер на Python почти без чужого кода. Вы увидите, как обрабатываются соединения, разбираются запросы, истекают таймауты и планируются задачи, — на примере, который можно прочитать целиком за вечер.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Полный цикл обработки HTTP-запроса за несколько сотен строк</li>
+          <li>Параллельная обработка соединений и неблокирующий ввод-вывод</li>
+          <li>Таймауты и планирование работы сервера</li>
+          <li>Дисциплина простоты: почему лимит в 500 строк полезен</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Книга культивирует ограничение: если решение умещается в 500 строк, его можно понять целиком. Сервер начинается с сокета и функции-обработчика, а расширяется постепенно — соединением, парсером запроса и пулом клиентов.</p>
+        <p>Начало сервера выглядит привычно:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>import socket
+
+server = socket.socket()
+server.bind(("localhost", 8080))
+server.listen(1)
+
+while True:
+    conn, addr = server.accept()
+    # Обращаемся с клиентом
+    conn.close()</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Книжный сервер — образец ясности: минимум абстракций, максимум понимания. Прочитав его, вы без труда разберёте код gunicorn или uWSGI.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Простой веб-сервер — глава из книги «500 строк и меньше»» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="http://aosabook.org/en/500L/a-simple-web-server.html" target="_blank" rel="noopener">http://aosabook.org/en/500L/a-simple-web-server.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Как написать видеоплеер меньше чем в 1000 строк</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Как написать видеоплеер меньше чем в 1000 строк</span>
+      </div>
+      <h1>Как написать видеоплеер меньше чем в 1000 строк</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="http://dranger.com/ffmpeg/ffmpeg.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Как написать видеоплеер меньше чем в 1000 строк»
+        </div>
+        <a class="btn solid" href="http://dranger.com/ffmpeg/ffmpeg.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-ffmpeg-player.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-ffmpeg-player.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Классическое руководство по созданию собственного видеоплеера на C: вы используете библиотеку FFmpeg для декодирования и SDL для вывода, и за неполную тысячу строк получаете плеер, который читает файлы, ищет по времени и показывает картинку.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Конвейер FFmpeg: контейнер, потоки, пакеты, кадры</li>
+          <li>Декодирование видео и работа с форматом YUV</li>
+          <li>Вывод кадров через SDL и обработка клавиатуры</li>
+          <li>Перемотка и отслеживание времени воспроизведения</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Плеер — это конвейер: demuxer раскладывает контейнер на пакеты, декодер превращает их в кадры, а рендер показывает кадры на экране. FFmpeg предоставляет библиотечные функции, а связывает их ваша программа.</p>
+        <p>Ключевая функция чтения кадра выглядит так:</p>
+        <pre class="code"><span class="lang-tag">C</span><code>// Читаем пакет и декодируем кадр
+while (av_read_frame(ctx, packet) &gt;= 0) {
+    if (packet-&gt;stream_index == video_stream) {
+        avcodec_send_packet(codec_ctx, packet);
+        avcodec_receive_frame(codec_ctx, frame);
+    }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>После этого урока мультимедийное ПО перестаёт быть магией: вы поймёте, как распаковываются, декодируются и показываются видеофайлы, — и сможете читать любой проигрыватель.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Как написать видеоплеер меньше чем в 1000 строк» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="http://dranger.com/ffmpeg/ffmpeg.html" target="_blank" rel="noopener">http://dranger.com/ffmpeg/ffmpeg.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

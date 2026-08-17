@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Трассировка лучей за выходные (серия Питера Ширли)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">3D-рендерер</a>
+        <span class="sep">→</span>
+        <span>Трассировка лучей за выходные (серия Питера Ширли)</span>
+      </div>
+      <h1>Трассировка лучей за выходные (серия Питера Ширли)</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">📁 3D-рендерер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://raytracing.github.io/books/RayTracingInOneWeekend.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Трассировка лучей за выходные (серия Питера Ширли)»
+        </div>
+        <a class="btn solid" href="https://raytracing.github.io/books/RayTracingInOneWeekend.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/raytracing-in-one-weekend.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/raytracing-in-one-weekend.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Классическая серия Peter Shirley: за один уикенд вы получаете работающий трассировщик лучей на C++ — от чистой математики лучей до металлов, стекла и фотореалистичных сцен.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Камера, лучи и пиксели</li>
+          <li>Пересечения: сферы и поверхности</li>
+          <li>Материалы: матовые, металлические, стекло</li>
+          <li>Глубина резкости и случайные сцены</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Серия ставит цель: рабочий рендерер за выходные. Каждый раздел добавляет маленький кусок - сферу, свет, материал,- и к концу ваша программа рисует настоящие 3D-картинки.</p>
+        <p>Определение материала в коде:</p>
+        <pre class="code"><span class="lang-tag">C++</span><code>class material {
+public:
+    // сколько света рассеивается и в какую сторону
+    virtual bool scatter(const ray&amp; r_in, const hit_record&amp; rec,
+                         color&amp; attenuation, ray&amp; scattered) const = 0;
+};</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Лучший первый опыт в графике: схему можно повторить на любом языке, а полученное понимание (лучи, материалы, камеры) остаётся на всю жизнь.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Трассировка лучей за выходные (серия Питера Ширли)» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://raytracing.github.io/books/RayTracingInOneWeekend.html" target="_blank" rel="noopener">https://raytracing.github.io/books/RayTracingInOneWeekend.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создаём Telegram-бота на Python</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Бот</a>
+        <span class="sep">→</span>
+        <span>Создаём Telegram-бота на Python</span>
+      </div>
+      <h1>Создаём Telegram-бота на Python</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Бот</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.freecodecamp.org/news/how-to-create-a-telegram-bot-using-python/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создаём Telegram-бота на Python»
+        </div>
+        <a class="btn solid" href="https://www.freecodecamp.org/news/how-to-create-a-telegram-bot-using-python/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/telegram-bot-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/telegram-bot-python.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Подробный гайд по Telegram-боту на Python: токен от BotFather, обработка команд и сообщений, клавиатуры и публикация — удобный урок без лишней теории.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>BotFather: получение токена</li>
+          <li>Основа: polling и обработчики</li>
+          <li>Команды, клавиатуры, инлайн-кнопки</li>
+          <li>Запуск на сервере</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Используя python-telegram-bot, вы опираетесь на зрелую библиотеку: регистрируете обработчики, как в веб-фреймворке, и бот начинает жить.</p>
+        <p>Регистрация команды — одна строка:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>app.add_handler(CommandHandler("start", start_cmd))
+# и функция-обработчик
+async def start_cmd(update, context):
+    await update.message.reply_text("Привет! Напиши /help.")</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Telegram-разработка — отличный первый бэкенд: урок даст рабочий бот и уверенность переносить опыт на любые чат-платформы.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создаём Telegram-бота на Python» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.freecodecamp.org/news/how-to-create-a-telegram-bot-using-python/" target="_blank" rel="noopener">https://www.freecodecamp.org/news/how-to-create-a-telegram-bot-using-python/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

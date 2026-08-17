@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Handmade Hero: пишем игру с нуля на C</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Игра</a>
+        <span class="sep">→</span>
+        <span>Handmade Hero: пишем игру с нуля на C</span>
+      </div>
+      <h1>Handmade Hero: пишем игру с нуля на C</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">📁 Игра</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://handmadehero.org/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Handmade Hero: пишем игру с нуля на C»
+        </div>
+        <a class="btn solid" href="https://handmadehero.org/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-handmade-hero.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/game-handmade-hero.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Handmade Hero — легендарная серия разработки игры на C без движков: окно, рендеринг, ввод и звук — год походов по игровой инженерии на бесплатном стеке.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Окно, контекст и цикл</li>
+          <li>Пиксельный рендер</li>
+          <li>Ввод и физика</li>
+          <li>Инженерия игры целиком</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Вся игра — это код: ни Unity, ни Unreal, только Win32 и C. Серия идёт от пустого окна к платформеру через сотни часов инженерии.</p>
+        <p>Цикл игры — сердце Handmade Hero:</p>
+        <pre class="code"><span class="lang-tag">C</span><code>for (;;) {
+    process_input();   // клавиатура и мышь
+    update_game(dt);   // физика и логика
+    render_frame();    // пиксели в буфер
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Handmade Hero — инвестиция в инженерное мышление: вы увидите, как разрабатывают software на самом высоком уровне.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Handmade Hero: пишем игру с нуля на C» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://handmadehero.org/" target="_blank" rel="noopener">https://handmadehero.org/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Собери свой VR-шлем за 200 долларов</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Собери свой VR-шлем за 200 долларов</span>
+      </div>
+      <h1>Собери свой VR-шлем за 200 долларов</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://github.com/relativty/Relativ" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Собери свой VR-шлем за 200 долларов»
+        </div>
+        <a class="btn solid" href="https://github.com/relativty/Relativ" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-vr-headset.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-vr-headset.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>DIY-руководство по сборке виртуальной реальности: своими руками из доступных деталей (дисплеи, линзы, трекеры) собирается VR-гарнитура, а сопутствующий код на C++ связывает датчики и экран в единую систему.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Компоненты VR: дисплей, линзы, гироскоп и калибровка</li>
+          <li>Чтение ориентации с инерциальных датчиков</li>
+          <li>Отображение стереопары и коррекция линз</li>
+          <li>Сборка прототипа: от деталей к рабочему шлему</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>VR — это вопрос физики и математики: два маленьких экрана с линзами создают стереоэффект, а гироскопы сообщают программе, куда смотрит голова. С помощью мобильных дисплеев и линз всё это собирается дешевле магазинных устройств.</p>
+        <p>Сердце системы — преобразование ориентации в камеру:</p>
+        <pre class="code"><span class="lang-tag">C++</span><code>// Ориентация датчика -&gt; поворот камеры
+glm::quat q = imu.getOrientation();
+camera.setRotation(q);</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Этот проект стирает грань между железом и кодом: вы увидите, как аппаратные датчики превращаются в захватывающую иллюзию присутствия, и задумаетесь над архитектурой настоящих шлемов.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Собери свой VR-шлем за 200 долларов» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://github.com/relativty/Relativ" target="_blank" rel="noopener">https://github.com/relativty/Relativ</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

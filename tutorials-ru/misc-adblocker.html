@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создай свой блокировщик рекламы за (буквально) 10 минут</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Создай свой блокировщик рекламы за (буквально) 10 минут</span>
+      </div>
+      <h1>Создай свой блокировщик рекламы за (буквально) 10 минут</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: JavaScript</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создай свой блокировщик рекламы за (буквально) 10 минут»
+        </div>
+        <a class="btn solid" href="https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-adblocker.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-adblocker.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Весёлый и практичный урок: блокировщик рекламы как расширение браузера всего за 10 минут. Вы поймёте, как работают uBlock и AdBlock: блокировка запросов к известным рекламным доменам.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Структура расширения для браузера: manifest и скрипты</li>
+          <li>Перехват сетевых запросов и фильтрация доменов</li>
+          <li>Список блокируемых ресурсов и его обновление</li>
+          <li>Как блокировки влияют на скорость и приватность</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Блокировщик рекламы — это фильтр на уровне браузера: расширение перехватывает запросы и блокирует те, что идут на домены рекламных сетей. Список доменов — это и есть вся «база данных» фильтра.</p>
+        <p>Фильтрация одного запроса — несколько строк:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code>// Перехватываем сетевые запросы
+browser.webRequest.onBeforeRequest.addListener(
+  (details) =&gt; {
+    if (blockedDomains.includes(new URL(details.url).host)) {
+      return { cancel: true }; // реклама заблокирована
+    }
+  },
+  { urls: ["&lt;all_urls&gt;"] },
+  ["blocking"]
+);</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Каждый день ваши данные собираются рекламными сетями: свой блокировщик — это и отличный способ изучить API браузеров, и шаг к приватности.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создай свой блокировщик рекламы за (буквально) 10 минут» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd" target="_blank" rel="noopener">https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

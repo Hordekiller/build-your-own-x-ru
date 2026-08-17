@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Собственный программный 3D-движок на C# / TypeScript</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">3D-рендерер</a>
+        <span class="sep">→</span>
+        <span>Собственный программный 3D-движок на C# / TypeScript</span>
+      </div>
+      <h1>Собственный программный 3D-движок на C# / TypeScript</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C# / TypeScript / JavaScript</span>
+        <span class="meta-badge">📁 3D-рендерер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.davrous.com/2013/06/13/tutorial-series-learning-how-to-write-a-3d-soft-engine-from-scratch-in-c-typescript-or-javascript/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Собственный программный 3D-движок на C# / TypeScript»
+        </div>
+        <a class="btn solid" href="https://www.davrous.com/2013/06/13/tutorial-series-learning-how-to-write-a-3d-soft-engine-from-scratch-in-c-typescript-or-javascript/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/davrous-3d-soft-engine.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/davrous-3d-soft-engine.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Цикл уроков David Rousset строит 3D-движок с нуля: вершины, камеры, проекции, треугольники и затенение на чистом коде без графических API — сначала на C#, затем на TypeScript.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Матрицы и вершины; системы координат</li>
+          <li>Камера и проекция на экран</li>
+          <li>Отрисовка треугольников и сортировка глубины</li>
+          <li>Освещение и добавление движения</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Программный движок — это математика: вершины поворачиваются матрицами, проектируются на экран и соединяются треугольниками. Все графические API делают то же самое внутри.</p>
+        <p>Проекция точки — сердце 3D:</p>
+        <pre class="code"><span class="lang-tag">C#</span><code>// Перспективная проекция: z приближает к центру
+Vector3 project(Vector3 v, float fov) {
+    float factor = fov / (v.Z + fov);
+    return new Vector3(v.X * factor, v.Y * factor, v.Z);
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Ваш первый 3D-движок — поворотный момент: после него туториалы по WebGL и Unity читаются как знакомый язык, а матрицы перестают пугать.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Собственный программный 3D-движок на C# / TypeScript» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.davrous.com/2013/06/13/tutorial-series-learning-how-to-write-a-3d-soft-engine-from-scratch-in-c-typescript-or-javascript/" target="_blank" rel="noopener">https://www.davrous.com/2013/06/13/tutorial-series-learning-how-to-write-a-3d-soft-engine-from-scratch-in-c-typescript-or-javascript/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

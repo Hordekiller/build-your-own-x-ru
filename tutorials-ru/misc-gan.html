@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Строим простую Generative Adversarial Network (GAN) на TensorFlow</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Строим простую Generative Adversarial Network (GAN) на TensorFlow</span>
+      </div>
+      <h1>Строим простую Generative Adversarial Network (GAN) на TensorFlow</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://blog.paperspace.com/implementing-gans-in-tensorflow/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Строим простую Generative Adversarial Network (GAN) на TensorFlow»
+        </div>
+        <a class="btn solid" href="https://blog.paperspace.com/implementing-gans-in-tensorflow/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-gan.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-gan.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок реализует GAN на TensorFlow: генератор учится создавать правдоподобные картинки, а дискриминатор учится отличать их от настоящих — и так, соревнуясь, сеть учится творить.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Идея состязания: генератор против дискриминатора</li>
+          <li>Архитектуры двух сетей и их потери</li>
+          <li>Обучение по очереди и неустойчивость</li>
+          <li>Генерация рукописных цифр (MNIST)</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>GAN — соревнование: генератор (G) рисует картинки, дискриминатор (D) отличает подделку от оригинала. D улучшается, G старается его обхитрить — равновесие и есть качество генерации.</p>
+        <p>Оба шага обучения умещаются в цикл:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code># Сначала учим дискриминатор на честных и поддельных
+d_loss = disc.train_on_batch(batch, [real_label, fake_label])
+# Потом учим генератор обманывать дискриминатор
+g_loss = adv.train_on_batch(noise, fake_valid_labels)</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>GAN породили эру генеративных моделей — от deepfakes до дизайна: поняв механизм состязания, вы сможете осознанно работать с генеративным ИИ.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Строим простую Generative Adversarial Network (GAN) на TensorFlow» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://blog.paperspace.com/implementing-gans-in-tensorflow/" target="_blank" rel="noopener">https://blog.paperspace.com/implementing-gans-in-tensorflow/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

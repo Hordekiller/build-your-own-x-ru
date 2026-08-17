@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Алгоритмы и структуры данных на JavaScript</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Алгоритмы и структуры данных на JavaScript</span>
+      </div>
+      <h1>Алгоритмы и структуры данных на JavaScript</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: JavaScript</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://github.com/trekhleb/javascript-algorithms" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Алгоритмы и структуры данных на JavaScript»
+        </div>
+        <a class="btn solid" href="https://github.com/trekhleb/javascript-algorithms" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-javascript-algorithms.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-javascript-algorithms.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Обширный репозиторий и статья с реализацией десятков алгоритмов и структур данных на JavaScript: от очередей и деревьев до сортировок и динамического программирования, с тестами и объяснениями.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Базовые структуры: стек, очередь, связные списки</li>
+          <li>Деревья, графы и алгоритмы обхода</li>
+          <li>Классические сортировки и их сложность</li>
+          <li>Динамическое программирование и «жадные» алгоритмы</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Репозиторий — это энциклопедия: каждый алгоритм оформлен как отдельный модуль с тестами. Изучение строится на повторении — вы реализуете структуру, смотрите на сложность и сравниваете подходы.</p>
+        <p>Пример — очередь на массиве с двумя концами:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code>class Deque {
+  constructor() { this.items = []; }
+  addFront(x) { this.items.unshift(x); }
+  removeBack() { return this.items.pop(); }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Алгоритмы — язык собеседований и фундамент инженерии: JavaScript — отличная среда для их изучения, потому что каждая идея сразу исполнима в браузере.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Алгоритмы и структуры данных на JavaScript» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://github.com/trekhleb/javascript-algorithms" target="_blank" rel="noopener">https://github.com/trekhleb/javascript-algorithms</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

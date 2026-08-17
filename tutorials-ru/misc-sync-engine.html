@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Движок синхронизации на Node.js и Y.js</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Движок синхронизации на Node.js и Y.js</span>
+      </div>
+      <h1>Движок синхронизации на Node.js и Y.js</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Node.js</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://greenvitriol.com/posts/sync-engine-for-everyone" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Движок синхронизации на Node.js и Y.js»
+        </div>
+        <a class="btn solid" href="https://greenvitriol.com/posts/sync-engine-for-everyone" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-sync-engine.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-sync-engine.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок создаёт механизм синхронизации данных на основе Yjs: обмен изменениями между клиентами, совместное редактирование и слияние версий в реальном времени.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>CRDT: как Yjs объединяет изменения без конфликтов</li>
+          <li>Структуры данных Yjs: текст, массивы, карты</li>
+          <li>Обмен состоянием между клиентами по сети</li>
+          <li>Сохранение и восстановление состояния</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Yjs использует CRDT — структуры данных, где каждое изменение математически объединяется с любым другим, поэтому совместное редактирование не теряет данные. Движок лишь передаёт «дельты» между узлами.</p>
+        <p>Совместная правка одного документа:</p>
+        <pre class="code"><span class="lang-tag">Node.js</span><code>const ydoc = new Y.Doc();
+const text = ydoc.getText("shared");
+text.insert(0, "Привет, мир"); // изменение немедленно
+// и рассылается всем подключённым клиентам</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Онлайн-редакторы и Figma живут на таких движках: поняв, как объединяются изменения, вы сможете строить совместные приложения и успешно выбирать библиотеки для них.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Движок синхронизации на Node.js и Y.js» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://greenvitriol.com/posts/sync-engine-for-everyone" target="_blank" rel="noopener">https://greenvitriol.com/posts/sync-engine-for-everyone</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

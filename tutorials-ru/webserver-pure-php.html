@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создание веб-сервера на чистом PHP</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Создание веб-сервера на чистом PHP</span>
+      </div>
+      <h1>Создание веб-сервера на чистом PHP</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: PHP</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="http://station.clancats.com/writing-a-webserver-in-pure-php/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создание веб-сервера на чистом PHP»
+        </div>
+        <a class="btn solid" href="http://station.clancats.com/writing-a-webserver-in-pure-php/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/webserver-pure-php.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/webserver-pure-php.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Статья реализует HTTP-сервер на чистом PHP без каких-либо расширений: вы открываете сокет, принимаете соединения, разбираете запрос GET и POST и возвращаете корректные HTTP-ответы, полностью отказываясь от встроенного веб-сервера PHP.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Работа с сокетами: stream_socket_server, accept, чтение и запись</li>
+          <li>Разбор строки запроса и заголовков вручную</li>
+          <li>Формирование ответа с корректными заголовками</li>
+          <li>Обслуживание нескольких клиентов в цикле</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>PHP умеет работать с сетью на уровне сокетов точно так же, как C или Python. Сервер открывает порт, ждёт подключения и отвечает на каждый запрос, который готов сам разобрать.</p>
+        <p>Каркас сервера занимает десяток строк:</p>
+        <pre class="code"><span class="lang-tag">php</span><code>$server = stream_socket_server("tcp://0.0.0.0:8080", $errno, $errstr);
+
+while ($conn = stream_socket_accept($server)) {
+  // Читаем запрос и отвечаем
+  fclose($conn);
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Этот опыт показывает, что PHP — полноценный язык для сетевых задач, а встроенные в него серверные решения — лишь обёртки над теми же сокетами и строками ответов.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создание веб-сервера на чистом PHP» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="http://station.clancats.com/writing-a-webserver-in-pure-php/" target="_blank" rel="noopener">http://station.clancats.com/writing-a-webserver-in-pure-php/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

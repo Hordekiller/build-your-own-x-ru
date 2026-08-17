@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Twitter-бот на Python с Tweepy</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Бот</a>
+        <span class="sep">→</span>
+        <span>Twitter-бот на Python с Tweepy</span>
+      </div>
+      <h1>Twitter-бот на Python с Tweepy</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Бот</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://medium.freecodecamp.org/creating-a-twitter-bot-in-python-with-tweepy-ac524157a607" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Twitter-бот на Python с Tweepy»
+        </div>
+        <a class="btn solid" href="https://medium.freecodecamp.org/creating-a-twitter-bot-in-python-with-tweepy-ac524157a607" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/twitter-bot-tweepy.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/twitter-bot-tweepy.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок создаёт Twitter-бота на Tweepy: авторизация v2 API, чтение упоминаний, автоматические ответы и ретвиты по ключевым словам.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>API Twitter v2: ключи и access token</li>
+          <li>Чтение упоминаний и тредов</li>
+          <li>Автоматические ответы</li>
+          <li>Этика: лимиты и паузы</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Tweepy — тонкая обёртка над REST API: бот читает упоминания и отвечает, как обычный пользователь. Урок охватывает все шаги инстанса.</p>
+        <p>Ответ на упоминание — короткий цикл:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>for tweet in api.search_tweets("programming #byox"):
+    api.update_status("Интересная мысль!", in_reply_to_status_id=tweet.id)</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Социальные боты — живой урок работы с публичными API: вы узнаете про токены, лимиты и эхо-механику массовых ответов.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Twitter-бот на Python с Tweepy» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://medium.freecodecamp.org/creating-a-twitter-bot-in-python-with-tweepy-ac524157a607" target="_blank" rel="noopener">https://medium.freecodecamp.org/creating-a-twitter-bot-in-python-with-tweepy-ac524157a607</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

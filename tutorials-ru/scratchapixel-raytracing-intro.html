@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Введение в трассировку лучей: простой способ создания 3D-изображений</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">3D-рендерер</a>
+        <span class="sep">→</span>
+        <span>Введение в трассировку лучей: простой способ создания 3D-изображений</span>
+      </div>
+      <h1>Введение в трассировку лучей: простой способ создания 3D-изображений</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">📁 3D-рендерер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-ray-tracing/how-does-it-work" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Введение в трассировку лучей: простой способ создания 3D-изображений»
+        </div>
+        <a class="btn solid" href="https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-ray-tracing/how-does-it-work" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/scratchapixel-raytracing-intro.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/scratchapixel-raytracing-intro.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок из Scratchapixel объясняет трассировку лучей изнутри: как из камеры через каждый пиксель выпускается луч, который находит ближайшее пересечение со сценой и определяет цвет точки.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Модель камеры и первичные лучи</li>
+          <li>Пересечение луча с плоскостью и сферой</li>
+          <li>Свет: источники, тени, отражения</li>
+          <li>Как из математики рождаются фотореалистичные картинки</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Картинка — это тысячи лучей: для каждого пикселя из камеры выпускается луч, вычисляются пересечения с геометрией, и по закону освещения определяется цвет. Простота идеи — глубина результата.</p>
+        <p>Пересечение луча и сферы — корень всего:</p>
+        <pre class="code"><span class="lang-tag">C++</span><code>// Решаем квадратное уравнение для пересечения сферы
+bool intersectSphere(const Ray &amp;ray, const Sphere &amp;s, float &amp;t) {
+    // |o + t*d - c|^2 = R^2, раскрываем и решаем
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Трассировка лучей — техника, стоящая за фильмами Pixar и база современного рендеринга: вы поймёте, как пиксели превращаются в глубину, свет и реализм.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Введение в трассировку лучей: простой способ создания 3D-изображений» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-ray-tracing/how-does-it-work" target="_blank" rel="noopener">https://www.scratchapixel.com/lessons/3d-basic-rendering/introduction-to-ray-tracing/how-does-it-work</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

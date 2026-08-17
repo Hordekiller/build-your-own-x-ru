@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Рекомендательные системы в Python: курс для начинающих</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Рекомендательные системы в Python: курс для начинающих</span>
+      </div>
+      <h1>Рекомендательные системы в Python: курс для начинающих</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.datacamp.com/community/tutorials/recommender-systems-python" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Рекомендательные системы в Python: курс для начинающих»
+        </div>
+        <a class="btn solid" href="https://www.datacamp.com/community/tutorials/recommender-systems-python" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-recommender-systems.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-recommender-systems.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Вводный курс по рекомендательным системам на Python: коллаборативная фильтрация, метрики близости, обучение на оценках пользователей и построение простого рекомендателя.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Что предсказывают рекомендательные системы</li>
+          <li>Коллаборативная фильтрация: похожесть пользователей</li>
+          <li>Метрики: косинусная близость, корреляция</li>
+          <li>Оценка качества рекомендаций</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Идея рекомендаций — в похожести: если два пользователя одинаково оценили многое, с большой вероятностью им понравится одно и то же. Код рекомендует товары, фильмы и музыку, опираясь на матрицу оценок.</p>
+        <p>Косинусная близость двух пользователей:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>import numpy as np
+def cosine(u, v):
+    return np.dot(u, v) / (np.linalg.norm(u) * np.linalg.norm(v) + 1e-9)</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Рекомендации — движок Netflix, Spotify и всех маркетплейсов: понимание их базовых механик пригодится и аналитикам, и разработчикам.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Рекомендательные системы в Python: курс для начинающих» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.datacamp.com/community/tutorials/recommender-systems-python" target="_blank" rel="noopener">https://www.datacamp.com/community/tutorials/recommender-systems-python</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

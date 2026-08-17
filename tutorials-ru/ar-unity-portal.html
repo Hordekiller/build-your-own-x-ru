@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создаём AR-портал в Unity</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Дополненная реальность</a>
+        <span class="sep">→</span>
+        <span>Создаём AR-портал в Unity</span>
+      </div>
+      <h1>Создаём AR-портал в Unity</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C#</span>
+        <span class="meta-badge">📁 Дополненная реальность</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создаём AR-портал в Unity»
+        </div>
+        <a class="btn solid" href="https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/ar-unity-portal.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/ar-unity-portal.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок строит AR-портал в Unity: «телепортационный» проём, внутри которого виден другой мир. Портал размещается на плоскости, а вторая камера рендерит скрытую сцену в текстуру проёма.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Портал как проём в другую сцену</li>
+          <li>Рендер в текстуру: камера внутреннего мира</li>
+          <li>Размещение портала на плоскости AR</li>
+          <li>Сквозное движение: портал без «перегородок»</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Портал обманывает глаз: геометрия проёма остаётся, но сквозь него виден рендер скрытой камеры. Совмещение реальной сцены и внутреннего мира AR делает эффект телепортации.</p>
+        <p>Переключение камеры для внутренней сцены:</p>
+        <pre class="code"><span class="lang-tag">C#</span><code>// Внутренняя камера рисует мир в текстуру портала
+portalCamera.targetTexture = portalTexture;
+// Внешняя камера рисует реальный мир с проёмом
+RenderTexture.active = portalTexture;</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Порталы — зрелищный приём AR: освоив его, вы поймёте технику рендера в текстуру, из которой состоят зеркала, экраны и «окна в другие миры» в играх.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создаём AR-портал в Unity» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

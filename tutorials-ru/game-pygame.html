@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Игры на Pygame: первая игра</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Игра</a>
+        <span class="sep">→</span>
+        <span>Игры на Pygame: первая игра</span>
+      </div>
+      <h1>Игры на Pygame: первая игра</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Игра</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://pythonprogramming.net/pygame-python-3-part-1-intro/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Игры на Pygame: первая игра»
+        </div>
+        <a class="btn solid" href="https://pythonprogramming.net/pygame-python-3-part-1-intro/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-pygame.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/game-pygame.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Pygame с нуля: окно, спрайты и ввод — первая игра на Python за один вечер.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Окно и поверхность</li>
+          <li>Спрайты и движение</li>
+          <li>События</li>
+          <li>Сборка игры</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Pygame — прямой вход в игры на Python: поверхности, спрайты и события — всё просто и наглядно.</p>
+        <p>Движение и отрисовка в цикле:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>while True:
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT: leave()
+    screen.fill(BLACK)
+    screen.blit(player_img, (x, y))
+    pygame.display.flip()</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Pygame — первый контакт тысяч геймдев-начинающих: урок даст вам его же, но по-взрослому.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Игры на Pygame: первая игра» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://pythonprogramming.net/pygame-python-3-part-1-intro/" target="_blank" rel="noopener">https://pythonprogramming.net/pygame-python-3-part-1-intro/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

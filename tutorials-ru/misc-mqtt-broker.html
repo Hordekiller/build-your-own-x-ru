@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Sol — MQTT-брокер с нуля на C</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Sol — MQTT-брокер с нуля на C</span>
+      </div>
+      <h1>Sol — MQTT-брокер с нуля на C</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://codepr.github.io/posts/sol-mqtt-broker" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Sol — MQTT-брокер с нуля на C»
+        </div>
+        <a class="btn solid" href="https://codepr.github.io/posts/sol-mqtt-broker" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-mqtt-broker.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-mqtt-broker.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Проект Sol реализует MQTT-брокер на C с нуля: приём подключений клиентов, разбор пакетов протокола CONNECT, PUBLISH, SUBSCRIBE и доставку сообщений подписчикам в реальном времени.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Протокол MQTT 3.1.1: типы пакетов и заголовки</li>
+          <li>Приём подключения: CONNECT и подтверждение CONNACK</li>
+          <li>Темы, подписки и доставка публикаций</li>
+          <li>Обработка отключений и поддержание сессий</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Брокер — это посредник между издателями и подписчиками: сообщения публикуются в темы, а подписчики получают их по своим интересам. MQTT спроектирован для лёгкого устройств IoT, поэтому каждый пакет компактен и чёток.</p>
+        <p>Разбор первого байта пакета MQTT:</p>
+        <pre class="code"><span class="lang-tag">C</span><code>// Старший полубайт — тип пакета, младший — флаги
+uint8_t type  = (packet[0] &gt;&gt; 4) &amp; 0x0F;
+uint8_t flags = packet[0] &amp; 0x0F;</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>MQTT — протокол «умного дома» и IoT-сенсоров: написав брокера, вы поймёте, как строятся масштабируемые pub/sub системы, от Mosquitto до внутренностей облачных шин.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Sol — MQTT-брокер с нуля на C» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://codepr.github.io/posts/sol-mqtt-broker" target="_blank" rel="noopener">https://codepr.github.io/posts/sol-mqtt-broker</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

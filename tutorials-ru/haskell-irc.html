@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создай IRC-бота на Haskell</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Бот</a>
+        <span class="sep">→</span>
+        <span>Создай IRC-бота на Haskell</span>
+      </div>
+      <h1>Создай IRC-бота на Haskell</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Haskell</span>
+        <span class="meta-badge">📁 Бот</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://wiki.haskell.org/Roll_your_own_IRC_bot" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создай IRC-бота на Haskell»
+        </div>
+        <a class="btn solid" href="https://wiki.haskell.org/Roll_your_own_IRC_bot" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/haskell-irc.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/haskell-irc.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок пишет IRC-бота на Haskell: подключение к серверу по TCP, разбор простейших команд протокола и реакции на события — функциональный подход к сетевому боту.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Протокол IRC: соединение и команды</li>
+          <li>Чтение строк канала и обработчики</li>
+          <li>Реакция: ответ в канал</li>
+          <li>Шаблоны функционального кода</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>IRC — старейший чат-протокол: строки вида PRIVMSG #chan :text приходят по сокету, бот отвечает такими же строками. Функциональный стиль отлично подходит для обработки потока событий.</p>
+        <p>Ответ на сообщение — три строчки:</p>
+        <pre class="code"><span class="lang-tag">Haskell</span><code>respond :: String -&gt; String
+respond msg | "!ping" `isInfixOf` msg = "PRIVMSG #chan :pong"
+            | otherwise               = ""</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>IRC-боты — урок по сетям и чистоте: вы освоите разбор протокола и увидите, как функциональные паттерны делают обработку событий простой и надёжной.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создай IRC-бота на Haskell» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://wiki.haskell.org/Roll_your_own_IRC_bot" target="_blank" rel="noopener">https://wiki.haskell.org/Roll_your_own_IRC_bot</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

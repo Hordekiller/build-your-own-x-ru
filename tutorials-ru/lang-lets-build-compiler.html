@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Let's Build a Compiler: классика на C и x86</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Язык программирования</a>
+        <span class="sep">→</span>
+        <span>Let's Build a Compiler: классика на C и x86</span>
+      </div>
+      <h1>Let's Build a Compiler: классика на C и x86</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">📁 Язык программирования</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://github.com/lotabout/Let-s-build-a-compiler" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Let's Build a Compiler: классика на C и x86»
+        </div>
+        <a class="btn solid" href="https://github.com/lotabout/Let-s-build-a-compiler" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-lets-build-compiler.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/lang-lets-build-compiler.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Классический курс «Let's Build a Compiler»: компилятор выражений на C — лексер, парсер и генерация кода на x86.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Грамматика и парсер</li>
+          <li>Выражения</li>
+          <li>Генерация x86</li>
+          <li>Модульный компилятор</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Курс Джэка Креншоу разбирает компиляторы на пальцах: грамматика → парсер → код. Уроки 80-х остаются актуальными.</p>
+        <p>Парсинг и генерация умножения:</p>
+        <pre class="code"><span class="lang-tag">C</span><code>// 5 * x -&gt; mov eax, 5 ; imul x
+expression():
+    term();
+    while (look == '*') { match('*'); term(); gen_imul(); }</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Первый компилятор в жизни — переломный момент: курс Креншоу подарит его вам самым чистым способом.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Let's Build a Compiler: классика на C и x86» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://github.com/lotabout/Let-s-build-a-compiler" target="_blank" rel="noopener">https://github.com/lotabout/Let-s-build-a-compiler</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

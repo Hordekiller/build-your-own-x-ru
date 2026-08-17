@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | LLM с нуля: как устроены большие языковые модели</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Модели ИИ</a>
+        <span class="sep">→</span>
+        <span>LLM с нуля: как устроены большие языковые модели</span>
+      </div>
+      <h1>LLM с нуля: как устроены большие языковые модели</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Python</span>
+        <span class="meta-badge">📁 Модели ИИ</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://github.com/rasbt/LLMs-from-scratch" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «LLM с нуля: как устроены большие языковые модели»
+        </div>
+        <a class="btn solid" href="https://github.com/rasbt/LLMs-from-scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/ai-llm-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/ai-llm-from-scratch.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Курс по созданию большой языковой модели с нуля: токенизация, эмбеддинги, трансформер, обучение на текстах и генерация — полный путь от корпуса текстов до модели, умеющей говорить.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Пайплайн LLM: токены, эмбеддинги, слои</li>
+          <li>Архитектура трансформера: внимание и позиции</li>
+          <li>Обучение: предсказание следующего токена</li>
+          <li>Генерация текста и декодирование</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>LLM учится предсказывать следующий токен: увидев много текста, модель выучивает статистические закономерности языка. Трансформер обрабатывает последовательности через механизм внимания — все современные NLP-модели построены на нём.</p>
+        <p>Внимание в миниатюре — веса между токенами:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code># Attention(Q,K,V): вес пары токенов из их векторов
+scores = (Q @ K.T) / sqrt(d)
+weights = softmax(scores, dim=-1)
+out = weights @ V</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>ChatGPT и все языковые интерфейсы — это масштабированный трансформер: собрав мини-LLM, вы поймёте, почему модели «воображают», и сможете читать статьи об ИИ на профессиональном языке.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «LLM с нуля: как устроены большие языковые модели» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://github.com/rasbt/LLMs-from-scratch" target="_blank" rel="noopener">https://github.com/rasbt/LLMs-from-scratch</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

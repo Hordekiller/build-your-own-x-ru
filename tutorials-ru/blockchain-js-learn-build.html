@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Учим и строим блокчейн на JavaScript (часть 1)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Блокчейн / Криптовалюта</a>
+        <span class="sep">→</span>
+        <span>Учим и строим блокчейн на JavaScript (часть 1)</span>
+      </div>
+      <h1>Учим и строим блокчейн на JavaScript (часть 1)</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: JavaScript</span>
+        <span class="meta-badge">📁 Блокчейн / Криптовалюта</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://medium.com/digital-alchemy-holdings/learn-build-a-javascript-blockchain-part-1-ca61c285821e" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Учим и строим блокчейн на JavaScript (часть 1)»
+        </div>
+        <a class="btn solid" href="https://medium.com/digital-alchemy-holdings/learn-build-a-javascript-blockchain-part-1-ca61c285821e" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/blockchain-js-learn-build.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/blockchain-js-learn-build.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Начало серии, где блокчейн сначала объясняется, а затем строится на JavaScript: майнинг, транзакции и развитие от простой цепочки до полноценной монеты.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Идеи блокчейна простыми словами</li>
+          <li>Первый блок и его хеш</li>
+          <li>Сложность и PoW</li>
+          <li>Консенсус: какая цепочка «правильная»</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Первая часть умиротворяет теорию: термин «блокчейн» раскладывается на хеши, цепочки и работу. Код идёт рядом с объяснением — учитесь сразу двумя руками.</p>
+        <p>Добавление блока с проверкой:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code>addBlock(data) {
+  const prev = this.latestBlock();
+  const block = new Block(prev.hash, data, this.difficulty);
+  this.blocks.push(block);
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Постепенность — лучший способ изучения: эта серия даёт теорию и практику вместе, и к концу части у вас будет хеширующаяся, проверяемая цепочка.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Учим и строим блокчейн на JavaScript (часть 1)» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://medium.com/digital-alchemy-holdings/learn-build-a-javascript-blockchain-part-1-ca61c285821e" target="_blank" rel="noopener">https://medium.com/digital-alchemy-holdings/learn-build-a-javascript-blockchain-part-1-ca61c285821e</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

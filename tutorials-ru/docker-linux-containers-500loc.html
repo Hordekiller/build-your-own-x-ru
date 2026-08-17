@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Контейнеры Linux за 500 строк (глава книги)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Docker</a>
+        <span class="sep">→</span>
+        <span>Контейнеры Linux за 500 строк (глава книги)</span>
+      </div>
+      <h1>Контейнеры Linux за 500 строк (глава книги)</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">📁 Docker</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://blog.lizzie.io/linux-containers-in-500-loc.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Контейнеры Linux за 500 строк (глава книги)»
+        </div>
+        <a class="btn solid" href="https://blog.lizzie.io/linux-containers-in-500-loc.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/docker-linux-containers-500loc.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/docker-linux-containers-500loc.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Глава «500 Lines or Less» показывает контейнеры Linux изнутри: namespaces, cgroups, файловые системы и сборку образов — изолированный процесс своими руками.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Что такое namespace и зачем они</li>
+          <li>Изоляция процессов</li>
+          <li>Cgroups: ограничение ресурсов</li>
+          <li>Минимальная инфраструктура image</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Контейнер — это процесс с изоляцией: Linux namespaces скрывают соседей, cgroups ограничивают ресурсы, а файловая система — только своя. 500 строк — и вы в ядре Docker.</p>
+        <p>Изоляция хоста в Python:</p>
+        <pre class="code"><span class="lang-tag">Python</span><code>import os
+os.unshare(os.CLONE_NEWPID | os.CLONE_NEWNS)
+os.chroot("/container-root")  # своя файловая система</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Docker — это не магия, а системные вызовы: глава открывает устройство контейнеров на уровне ядра, после чего Docker станет привычным инструментом.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Контейнеры Linux за 500 строк (глава книги)» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://blog.lizzie.io/linux-containers-in-500-loc.html" target="_blank" rel="noopener">https://blog.lizzie.io/linux-containers-in-500-loc.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

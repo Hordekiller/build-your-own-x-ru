@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Пишем отладчик для Linux</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Пишем отладчик для Linux</span>
+      </div>
+      <h1>Пишем отладчик для Linux</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Пишем отладчик для Linux»
+        </div>
+        <a class="btn solid" href="https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-linux-debugger.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-linux-debugger.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Серия руководств по написанию собственного отладчика для Linux на C++: системный вызов ptrace, точки останова, управление регистрами, чтение памяти и символов ELF — весь набор инструментов, из которого состоит gdb.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Системный вызов ptrace: прикрепление и трассировка процесса</li>
+          <li>Точки останова: замена инструкции на INT3</li>
+          <li>Чтение и запись регистров и памяти</li>
+          <li>Разбор ELF и таблицы символов DWARF</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Отладчик опирается на ptrace: с его помощью отладчик может останавливать процесс, читать его регистры и память. Точка останова — это инструкция INT3, подставленная на место кода, и отладчик восстанавливает оригинал при срабатывании.</p>
+        <p>Установка точки останова — три шага:</p>
+        <pre class="code"><span class="lang-tag">C++</span><code>// 1) читаем инструкцию по адресу
+long orig = ptrace(PTRACE_PEEKTEXT, pid, addr, 0);
+// 2) подменяем её на INT3 (0xCC)
+ptrace(PTRACE_POKETEXT, pid, addr, (orig &amp; ~0xFF) | 0xCC);</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Внутри gdb и lldb работают ровно эти механизмы: написав свой отладчик, вы будете смотреть на краши и трассировки совсем иначе — и, возможно, даже добавите свою фичу любимому отладчику.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Пишем отладчик для Linux» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/" target="_blank" rel="noopener">https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

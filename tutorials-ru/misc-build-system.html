@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Пишем систему сборки на Nim</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Пишем систему сборки на Nim</span>
+      </div>
+      <h1>Пишем систему сборки на Nim</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Nim</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://xmonader.github.io/nimdays/day11_buildsystem.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Пишем систему сборки на Nim»
+        </div>
+        <a class="btn solid" href="https://xmonader.github.io/nimdays/day11_buildsystem.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-build-system.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-build-system.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок реализует систему сборки на Nim в духе Make: правила, зависимости и пересборка только изменённых целей. Вы напишете свой маленький build-инструмент и поймёте, как работают make и ninja.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Правила сборки: цель, источники, команды</li>
+          <li>Граф зависимостей и порядок сборки</li>
+          <li>Пересборка только устаревших целей</li>
+          <li>Проверка изменения файлов по времени</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Система сборки — это граф целей: каждая цель зависит от источников, и если источник новее результата, цель пересобирается. Механизм прост, но именно он стоит за всем миром компиляции.</p>
+        <p>Правило в миниатюре:</p>
+        <pre class="code"><span class="lang-tag">Nim</span><code>rule "app":
+  # Если исходник новее бинарника — пересобираем
+  if newer("src/app.nim", "app"):
+    run("nim c src/app.nim")</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Сборка проектов — повседневная работа программиста: понимание её внутренностей (make, ninja, bazel) позволит вам быстро находить причины медленных сборок и правильно их настраивать.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Пишем систему сборки на Nim» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://xmonader.github.io/nimdays/day11_buildsystem.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day11_buildsystem.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Давайте создадим простой балансировщик нагрузки</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Давайте создадим простой балансировщик нагрузки</span>
+      </div>
+      <h1>Давайте создадим простой балансировщик нагрузки</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Go</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://kasvith.me/posts/lets-create-a-simple-lb-go/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Давайте создадим простой балансировщик нагрузки»
+        </div>
+        <a class="btn solid" href="https://kasvith.me/posts/lets-create-a-simple-lb-go/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-load-balancer.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-load-balancer.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Руководство реализует балансировщик нагрузки на Go: распределение запросов между серверами по алгоритмам round-robin и по наименьшему количеству соединений, плюс проверка здоровья бэкендов.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Зачем нужен балансировщик и что он делает</li>
+          <li>Алгоритмы: round-robin и least connections</li>
+          <li>Проверка здоровья серверов и вывод из ротации</li>
+          <li>Проксирование запросов: пересылка заголовков и тел</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Балансировщик — это прокси-узел, который решает, какому серверу отдать запрос. Равномерное распределение (round-robin) и наименее загруженный сервер — два классических алгоритма, с которых всё начинается.</p>
+        <p>Round-robin на один ход — выбор по счётчику:</p>
+        <pre class="code"><span class="lang-tag">Go</span><code>next := (counter % len(backends))
+counter++
+return backends[next]</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Балансировка нагрузки — база любой отказоустойчивой архитектуры: от Nginx до облачных load balancer'ов. Понимание алгоритмов поможет вам настраивать и проектировать масштабируемые системы.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Давайте создадим простой балансировщик нагрузки» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://kasvith.me/posts/lets-create-a-simple-lb-go/" target="_blank" rel="noopener">https://kasvith.me/posts/lets-create-a-simple-lb-go/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

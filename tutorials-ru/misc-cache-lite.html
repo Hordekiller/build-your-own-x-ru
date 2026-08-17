@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создай свой кеш на Kotlin — cache-lite</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Создай свой кеш на Kotlin — cache-lite</span>
+      </div>
+      <h1>Создай свой кеш на Kotlin — cache-lite</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Kotlin</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://github.com/kezhenxu94/cache-lite" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создай свой кеш на Kotlin — cache-lite»
+        </div>
+        <a class="btn solid" href="https://github.com/kezhenxu94/cache-lite" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-cache-lite.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-cache-lite.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Проект cache-lite реализует собственный кеш на Kotlin: хранение значений, время жизни записей, ограничение размера и понятный API — маленькая библиотека, которую можно использовать в приложениях.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Интерфейс кеша: put, get, удаление по ключу</li>
+          <li>Время жизни записи и истечение (TTL)</li>
+          <li>Ограничение размера и политики вытеснения</li>
+          <li>Потокобезопасность и простота API</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Кеш — это словарь, который умеет забывать: записи живут ограниченное время, а при переполнении старые удаляются. Простая идея, но именно она делает приложения быстрыми.</p>
+        <p>Классический get с проверкой срока жизни:</p>
+        <pre class="code"><span class="lang-tag">Kotlin</span><code>fun get(key: String): T? {
+  val entry = store[key] ?: return null
+  // Запись устарела — удаляем и возвращаем null
+  if (entry.expiresAt &lt; now()) { store.remove(key); return null }
+  return entry.value
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Кеширование — главный трюк производительности: от DNS до CDN и кешей приложений. Собрав свою библиотеку, вы поймёте нюансы TTL и вытеснения и будете осознанно выбирать готовые решения.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создай свой кеш на Kotlin — cache-lite» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://github.com/kezhenxu94/cache-lite" target="_blank" rel="noopener">https://github.com/kezhenxu94/cache-lite</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

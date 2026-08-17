@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Пишем CLI на Rust (уроки Matt Gathu)</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Инструмент командной строки</a>
+        <span class="sep">→</span>
+        <span>Пишем CLI на Rust (уроки Matt Gathu)</span>
+      </div>
+      <h1>Пишем CLI на Rust (уроки Matt Gathu)</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Rust</span>
+        <span class="meta-badge">📁 Инструмент командной строки</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://mattgathu.dev/2017/08/29/writing-cli-app-rust.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Пишем CLI на Rust (уроки Matt Gathu)»
+        </div>
+        <a class="btn solid" href="https://mattgathu.dev/2017/08/29/writing-cli-app-rust.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/rust-cli-mattgathu.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/rust-cli-mattgathu.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Серия уроков по созданию CLI на Rust: парсинг аргументов, файловые операции, error handling и цветной вывод — практическое введение в системные утилиты.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Основы Rust CLI</li>
+          <li>Работа с файлами</li>
+          <li>Обработка ошибок</li>
+          <li>Цвета и тесты</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Серия наращивает навыки от «hello» к утилите: аргументы, чтение файлов, ошибки, стиль. Каждая глава — готовый кусок production-кода.</p>
+        <p>Простой парсер аргументов:</p>
+        <pre class="code"><span class="lang-tag">Rust</span><code>let args: Vec&lt;String&gt; = env::args().collect();
+match args.get(1).map(String::as_str) {
+    Some("list") =&gt; list_files(),
+    _ =&gt; print_usage()
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Системные утилиты на Rust — тренд 2020-х: уроки Гатху ведут вас от набросков к зрелым инструментам.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Пишем CLI на Rust (уроки Matt Gathu)» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://mattgathu.dev/2017/08/29/writing-cli-app-rust.html" target="_blank" rel="noopener">https://mattgathu.dev/2017/08/29/writing-cli-app-rust.html</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

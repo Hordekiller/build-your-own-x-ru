@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Создание DNS-сервера на Rust</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>Создание DNS-сервера на Rust</span>
+      </div>
+      <h1>Создание DNS-сервера на Rust</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Rust</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://github.com/EmilHernvall/dnsguide/blob/master/README.md" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Создание DNS-сервера на Rust»
+        </div>
+        <a class="btn solid" href="https://github.com/EmilHernvall/dnsguide/blob/master/README.md" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-dns-server-rust.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-dns-server-rust.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Руководство реализует DNS-сервер на Rust с нуля без внешних зависимостей: бинарный протокол запросов и ответов, рекурсивные запросы и собственная обработка UDP-дейтаграмм.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Бинарный формат DNS: заголовок, вопрос, ответы</li>
+          <li>Сжатие имён и labels</li>
+          <li>Основной UDP-цикл сервера</li>
+          <li>Пересылка запросов реальным DNS-серверам</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>DNS — идеальный полигон для Rust: бинарные структуры, строгие типы, безопасная работа с сетью. Сервер принимает запрос, находит запись и формирует ответ байт в байт.</p>
+        <p>Разбор заголовка DNS — структура с as_bytes:</p>
+        <pre class="code"><span class="lang-tag">Rust</span><code>struct Header {
+    id: u16,
+    flags: u16,
+    qdcount: u16, ancount: u16, nscount: u16, arcount: u16,
+}
+impl Header {
+    fn read(bytes: &amp;[u8]) -&gt; Self { /* строгий разбор без паники */ }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Протоколы — это структуры: на Rust вы по-настоящему почувствуете, как типы помогают писать корректные сетевые серверы с первого раза.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Создание DNS-сервера на Rust» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://github.com/EmilHernvall/dnsguide/blob/master/README.md" target="_blank" rel="noopener">https://github.com/EmilHernvall/dnsguide/blob/master/README.md</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

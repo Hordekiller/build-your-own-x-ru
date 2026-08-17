@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Пишем блокчейн на Node.js</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Блокчейн / Криптовалюта</a>
+        <span class="sep">→</span>
+        <span>Пишем блокчейн на Node.js</span>
+      </div>
+      <h1>Пишем блокчейн на Node.js</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: JavaScript</span>
+        <span class="meta-badge">📁 Блокчейн / Криптовалюта</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.smashingmagazine.com/2020/02/cryptocurrency-blockchain-node-js/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Пишем блокчейн на Node.js»
+        </div>
+        <a class="btn solid" href="https://www.smashingmagazine.com/2020/02/cryptocurrency-blockchain-node-js/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/blockchain-node-smashing.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/blockchain-node-smashing.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок пишет блокчейн на Node.js: блоки, PoW, транзакции с подписями, синхронизация между нодами и API — компактная реализация на серверном JavaScript.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Блоки и их хеширование</li>
+          <li>Proof of Work в Node.js</li>
+          <li>Подписи транзакций</li>
+          <li>Синхронизация и консенсус нод</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Блокчейн на Node — одинаковая структура с другими реализациями, но важный бонус: async-сеть и JSON-протокол делает общение нод очевидным.</p>
+        <p>Обмен блоками между нодами:</p>
+        <pre class="code"><span class="lang-tag">Node.js</span><code>// Нода получает новую цепочку и проверяет её
+socket.on("chain", (chain) =&gt; {
+  if (isValid(chain) &amp;&amp; chain.length &gt; myChain.length) {
+    myChain = chain;
+  }
+});</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Node.js — идеальный язык для P2P: урок покажет, как ноды договариваются о цепочке, и вы соберёте свою сеть блокчейна за вечер.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Пишем блокчейн на Node.js» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.smashingmagazine.com/2020/02/cryptocurrency-blockchain-node-js/" target="_blank" rel="noopener">https://www.smashingmagazine.com/2020/02/cryptocurrency-blockchain-node-js/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

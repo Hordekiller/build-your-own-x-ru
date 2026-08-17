@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | WebGL + Rust: обучающий пример воды</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>WebGL + Rust: обучающий пример воды</span>
+      </div>
+      <h1>WebGL + Rust: обучающий пример воды</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Rust</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://www.chinedufn.com/3d-webgl-basic-water-tutorial/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «WebGL + Rust: обучающий пример воды»
+        </div>
+        <a class="btn solid" href="https://www.chinedufn.com/3d-webgl-basic-water-tutorial/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-webgl-water.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-webgl-water.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок объединяет Rust и WebGL: сетка треугольника в браузере, симуляция волн в вершинах шейдера и интерактивная сцена — веб-графика на скорости низкого уровня.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Rust в браузере и компиляция в WASM</li>
+          <li>Создание сетки и буферов WebGL</li>
+          <li>Вершинный шейдер: волны из математики</li>
+          <li>Связка Rust и JS в реальном времени</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Идея — тяжелые вычисления на Rust, вывод через WebGL: сетка точек, а их высоты считаются математикой волн в шейдере. Браузер становится полноценным 3D-канвасом.</p>
+        <p>Значение волны в вершине — формула в шейдере:</p>
+        <pre class="code"><span class="lang-tag">GLSL</span><code>// Высота точки на волне
+float h = 0.5 * sin(x * 3.0 + time * 2.0)
+         + 0.3 * sin(y * 2.0 + time * 1.5);</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Сочетание быстрого системного кода и браузера — подход современных веб-приложений: урок откроет вам мир WASM и интерактивной графики.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «WebGL + Rust: обучающий пример воды» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://www.chinedufn.com/3d-webgl-basic-water-tutorial/" target="_blank" rel="noopener">https://www.chinedufn.com/3d-webgl-basic-water-tutorial/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

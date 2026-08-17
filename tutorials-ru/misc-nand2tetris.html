@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | От NAND к «Тетрису»: строим современный компьютер с нуля</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Веб-сервер</a>
+        <span class="sep">→</span>
+        <span>От NAND к «Тетрису»: строим современный компьютер с нуля</span>
+      </div>
+      <h1>От NAND к «Тетрису»: строим современный компьютер с нуля</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: (هر زبانی)</span>
+        <span class="meta-badge">📁 Веб-сервер</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="http://nand2tetris.org/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «От NAND к «Тетрису»: строим современный компьютер с нуля»
+        </div>
+        <a class="btn solid" href="http://nand2tetris.org/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-nand2tetris.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/misc-nand2tetris.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Знаменитый курс «From NAND to Tetris» проводит вас от простейшего логического элемента NAND до работающего компьютера с собственным ассемблером, виртуальной машиной, компилятором и операционной системой. Всё строится в специальном симуляторе или на собранной плате — по проекту за занятие.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Простейшие вентили из NAND: NOT, AND, OR, мультиплексоры</li>
+          <li>АЛУ, регистры и память — оперативная и постоянная</li>
+          <li>Сборка CPU и машинный язык собственной архитектуры</li>
+          <li>Ассемблер, виртуальная машина и компилятор языка Jack</li>
+          <li>Мини-ОС: ввод-вывод, графика, слой абстракции Jack OS</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Весь курс построен на иерархии: на каждом шаге вы используете только то, что собрали сами. Чипы собираются из вентилей, CPU — из чипов, машина запускает ассемблер, а на вершине работает простая (но полноценная) операционная система для игры «Тетрис».</p>
+        <p>Даже процессор начинается с одной строки на HDL:</p>
+        <pre class="code"><span class="lang-tag">HDL</span><code>CHIP Not {
+  IN in;
+  OUT out;
+  PARTS:
+    Nand(a=in, b=in, out=out); // NOT = NAND с одним входом
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Это лучшее путешествие вглубь вычислительной техники: после курса вы понимаете весь путь — от вентиля до языка программирования — и смотрите на каждый компьютер иначе.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «От NAND к «Тетрису»: строим современный компьютер с нуля» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="http://nand2tetris.org/" target="_blank" rel="noopener">http://nand2tetris.org/</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>

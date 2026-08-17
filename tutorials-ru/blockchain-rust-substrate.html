@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BYOX | Строим блокчейн на Rust с Substrate</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&amp;display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="../assets/css/style.css?v=1" />
+</head>
+<body>
+
+  <header class="topbar">
+    <div class="container inner">
+      <a class="brand" href="../index.html">
+        <span class="logo">◈</span>
+        <span>BYOX <small style="font-weight:400;color:var(--muted)">— build your own X</small></span>
+      </a>
+      <nav class="links">
+        <a href="../index.html">Все уроки</a>
+        <a href="https://hordekiller.github.io/build-your-own-x-en" title="English version">EN</a>
+        <a href="https://hordekiller.github.io/build-your-own-x" title="Персидская версия">فارسی</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container">
+    <header class="page-header">
+      <div class="crumbs">
+        <a href="../index.html">Главная</a>
+        <span class="sep">→</span>
+        <a href="../index.html">Блокчейн / Криптовалюта</a>
+        <span class="sep">→</span>
+        <span>Строим блокчейн на Rust с Substrate</span>
+      </div>
+      <h1>Строим блокчейн на Rust с Substrate</h1>
+      <div class="meta-row">
+        <span class="meta-badge">⚙ Язык: Rust</span>
+        <span class="meta-badge">📁 Блокчейн / Криптовалюта</span>
+        <span class="meta-badge">🌐 Русская страница</span>
+        <span class="meta-badge"><a href="https://hackernoon.com/building-a-blockchain-in-rust-and-substrate-a-step-by-step-guide-for-developers-kc223ybp" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
+      </div>
+
+      <div class="sourcebox">
+        <div class="txt">
+          <b>Оригинальный источник:</b> «Строим блокчейн на Rust с Substrate»
+        </div>
+        <a class="btn solid" href="https://hackernoon.com/building-a-blockchain-in-rust-and-substrate-a-step-by-step-guide-for-developers-kc223ybp" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/blockchain-rust-substrate.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
+        <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x-en/tutorials-en/blockchain-rust-substrate.html" target="_blank" rel="noopener">EN — English version</a>
+      </div>
+    </header>
+
+    <article class="content">
+
+      <section>
+        <h2>О чём это</h2>
+        <p>Урок создаёт собственный блокчейн на Rust с фреймворком Substrate (Polkadot): палитра модулей, рантайм, нода и решение консенсуса — кастомный блокчейн из стандартных кубиков.</p>
+      </section>
+
+      <section>
+        <h2>Что вы узнаете</h2>
+        <ul>
+          <li>Что такое Substrate и зачем он</li>
+          <li>Палитры: баланс, стейкинг, смарт-контракты</li>
+          <li>Рантайм на Rust и WebAssembly</li>
+          <li>Запуск собственной ноды</li>
+        </ul>
+      </section>
+
+      <section>
+        <h2>Основная идея</h2>
+        <p>Substrate — конструктор блокчейнов: вы выбираете палитры (модули языка), пишете рантайм на Rust, и получаете работающую ноду со своей логикой.</p>
+        <p>Рантайм-палитра — объявление логики:</p>
+        <pre class="code"><span class="lang-tag">Rust</span><code>decl_module! {
+  pub struct Module&lt;T: Trait&gt; {
+    // Метод, который можно вызвать из транзакции
+    #[weight = 10_000]
+    pub fn do_something(origin, value: u64) {
+      let me = ensure_signed(origin)?;
+      Something::put(&amp;me, value);
+    }
+  }
+}</code></pre>
+      </section>
+
+      <section>
+        <h2>Почему это важно</h2>
+        <p>Substrate — стандарт индустрии для своих сетей: урок откроет мир полкадатов, парачейнов и современной блокчейн-инженерии на Rust.</p>
+      </section>
+
+      <div class="callout note">
+        <strong>Авторские права:</strong> «Строим блокчейн на Rust с Substrate» принадлежит автору оригинала. Эта страница — русский
+        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <a href="https://hackernoon.com/building-a-blockchain-in-rust-and-substrate-a-step-by-step-guide-for-developers-kc223ybp" target="_blank" rel="noopener">https://hackernoon.com/building-a-blockchain-in-rust-and-substrate-a-step-by-step-guide-for-developers-kc223ybp</a>.
+      </div>
+    </article>
+  </main>
+
+  <footer>
+    <p>Сделано с <span class="heart">♥</span> для тех, кто строит — уроки принадлежат их авторам.</p>
+    <p style="margin-top:6px;font-size:0.78rem;opacity:0.8" dir="ltr">All tutorials belong to their original authors.</p>
+  </footer>
+
+</body>
+</html>
