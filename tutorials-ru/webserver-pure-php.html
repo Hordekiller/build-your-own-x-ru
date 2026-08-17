@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание веб-сервера на чистом PHP»
+          <b>Оригинальный источник:</b> «webserver-pure-php»
         </div>
         <a class="btn solid" href="http://station.clancats.com/writing-a-webserver-in-pure-php/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/webserver-pure-php.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,415 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Статья реализует HTTP-сервер на чистом PHP без каких-либо расширений: вы открываете сокет, принимаете соединения, разбираете запрос GET и POST и возвращаете корректные HTTP-ответы, полностью отказываясь от встроенного веб-сервера PHP.</p>
+      <h2>Введение: да, это почти бесполезно, но возможно!</h2>
+        <p>Этот учебник поможет вам лучше понять, как может работать простой веб-сервер, и что написать его на PHP — совершенно несложно. Но использовать его в продакшене — это как есть суп вилкой; так что... просто не делайте этого. Позвольте вкратце объяснить, почему это не самая лучшая идея:</p>
+        <blockquote>PHP — это скриптовый язык, который на самом деле не создан для подобных вещей.</blockquote>
+        <p>Веб-сервер — это долгоживущий процесс, а PHP не создан для такого. Также PHP изначально не поддерживает многопоточность (pthreads), что делает разработку хорошего и быстрого веб-сервера трудной или невозможной. Выделение памяти в PHP тоже может быть затратным, и даже при высокой скорости интерпретатора присутствуют накладные расходы интерпретатора.</p>
+        <p>Но в будущем всё может измениться. Если вы общались с программистами, вы встречали хотя бы одного, кто шутит о том, как плох PHP, и у него есть веские причины, почему PHP стал таким «промышленным анекдотом». Но язык и его экосистема сильно эволюционировали. Всё ещё есть люди, которые не видят подоплёки шуток; многие из них либо не прикасались к PHP как минимум 10 лет, либо слепо копируют чужое мнение. Готов поспорить, что таких вещей, как долгоживущие PHP-приложения со встроенными веб-серверами, будет появляться всё больше и больше.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Основы: как работает веб-сервер?</h2>
         <ul>
-          <li>Работа с сокетами: stream_socket_server, accept, чтение и запись</li>
-          <li>Разбор строки запроса и заголовков вручную</li>
-          <li>Формирование ответа с корректными заголовками</li>
-          <li>Обслуживание нескольких клиентов в цикле</li>
+          <li>Сервер ожидает входящие соединения.</li>
+          <li>Клиент подключается к серверу.</li>
+          <li>Сервер принимает соединение и обрабатывает входные данные.</li>
+          <li>Сервер отвечает клиенту.</li>
         </ul>
+        <p>Весь исходный код доступен на GitHub: <a href="https://github.com/ClanCatsStation/PHPWebserver" target="_blank" rel="noopener">ClanCatsStation/PHPWebserver</a></p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>PHP умеет работать с сетью на уровне сокетов точно так же, как C или Python. Сервер открывает порт, ждёт подключения и отвечает на каждый запрос, который готов сам разобрать.</p>
-        <p>Каркас сервера занимает десяток строк:</p>
-        <pre class="code"><span class="lang-tag">php</span><code>$server = stream_socket_server("tcp://0.0.0.0:8080", $errno, $errstr);
+      <h2>Структура</h2>
+        <p>Мы строим это на абстракциях Request и Response. Способов спроектировать приложение много; автор, как первый шаг, предпочитает написать часть программы, которая потребляет API, а потом уже сам API. Значит, мы ожидаем, что сможем использовать его вот так:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">// Создание экземпляра сервера
+$server = new Server( &#x27;127.0.0.1&#x27;, 80 );
 
-while ($conn = stream_socket_accept($server)) {
-  // Читаем запрос и отвечаем
-  fclose($conn);
+// Начало прослушивания
+$server-&gt;listen( function( Request $request ) 
+{
+	return new Response( &#x27;Hello Dude&#x27; );
+});</code></pre>
+        <p>Структура каталогов:</p>
+        <pre class="code"><span class="lang-tag">Text</span><code style="direction:ltr;text-align:left">server
+composer.json
+src/Request.php
+src/Response.php
+src/Server.php
+src/Exception.php</code></pre>
+        <p>Мы используем автозагрузку <code class="inline">PSR-4</code>; сначала создайте файл <code class="inline">composer.json</code> (не забудьте потом выполнить <code class="inline">composer install</code>):</p>
+        <pre class="code"><span class="lang-tag">json</span><code style="direction:ltr;text-align:left">{
+	&quot;autoload&quot;:
+	{
+		&quot;psr-4&quot;: 
+		{
+			&quot;ClanCats\Station\PHPServer\&quot;: &quot;src/&quot;	
+		}
+	}
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Этот опыт показывает, что PHP — полноценный язык для сетевых задач, а встроенные в него серверные решения — лишь обёртки над теми же сокетами и строками ответов.</p>
+      <h2>Запуск</h2>
+        <p>Теперь создадим файл скрипта (<code class="inline">server</code>), отвечающий за запуск сервера. Расширение <code class="inline">.php</code> мы не добавляем, чтобы bash знал, что делать; добавьте этот заголовок:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">#!/usr/bin/env php
+&lt;?php</code></pre>
+        <p>Сервер всегда подключаем к localhost, но порт хотим задавать аргументом командной строки:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">// Первый аргумент нам не нужен
+array_shift( $argv );
+
+// Следующий аргумент должен быть портом; если его нет — используем 80
+if ( empty( $argv ) )
+{
+	$port = 80;
+} else {
+	$port = array_shift( $argv );
+}</code></pre>
+        <p>Это позволит позже запускать сервер вот так:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">$ sudo php server 8008</code></pre>
+        <p>В сочетании с ранее определённым получается такой файл:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">#!/usr/bin/env php
+&lt;?php
+use ClanCats\Station\PHPServer\Server; 
+use ClanCats\Station\PHPServer\Request;
+use ClanCats\Station\PHPServer\Response;
+
+// Первый аргумент нам не нужен
+array_shift( $argv );
+
+// Следующий аргумент должен быть портом; если его нет — используем 80
+if ( empty( $argv ) )
+{
+	$port = 80;
+} else {
+	$port = array_shift( $argv );
+}
+
+require &#x27;vendor/autoload.php&#x27;;
+
+// Создание экземпляра сервера
+$server = new Server( &#x27;127.0.0.1&#x27;, $port );
+
+// Начало прослушивания
+$server-&gt;listen( function( Request $request ) 
+{
+	return new Response( &#x27;Hello Dude&#x27; );
+});</code></pre>
+      </section>
+      <section>
+      <h2>Объект Server</h2>
+        <p>Далее создаём файл <code class="inline">src/Server.php</code>, который работает с сокетом:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">&lt;?php namespace ClanCats\Station\PHPServer;
+
+class Server 
+{
+}</code></pre>
+        <p>Наш класс сервера должен хранить <em>host</em>, <em>port</em> и <em>ресурс сокета</em>; добавьте эти переменные класса:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">protected $host = null;
+protected $port = null;
+protected $socket = null;</code></pre>
+        <h3>Создание сокета</h3>
+        <p>Нам нужен он, чтобы сделать bind сокета; создадим функцию <code class="inline">createSocket</code>:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">protected function createSocket()
+{
+	$this-&gt;socket = socket_create( AF_INET, SOCK_STREAM, 0 );
+}</code></pre>
+        <ul>
+          <li>Первый аргумент задаёт семейство протоколов/домен; <code class="inline">AF_INET</code> — для протоколов <code class="inline">IPv4</code>, TCP и UDP.</li>
+          <li>Второй аргумент определяет тип соединения сокета; <code class="inline">SOCK_STREAM</code> — простой байтовый поток на основе соединения, полнодуплексный (full-duplex).</li>
+          <li>Третий аргумент задаёт протокол.</li>
+        </ul>
+        <h3>Bind сокета</h3>
+        <p>Функция <code class="inline">socket_bind</code> возвращает <code class="inline">false</code> при ошибке. Такого никогда не должно происходить, поэтому бросаем исключение с сообщением об ошибке сокета:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">protected function bind()
+{
+	if ( !socket_bind( $this-&gt;socket, $this-&gt;host, $this-&gt;port ) )
+	{
+		throw new Exception( &#x27;Could not bind: &#x27;.$this-&gt;host.&#x27;:&#x27;.$this-&gt;port.&#x27; - &#x27;.socket_strerror( socket_last_error() ) );
+	}
+}</code></pre>
+        <h3>Создание и bind сокета в конструкторе</h3>
+        <p>Для простоты делаем это внутри конструктора:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function __construct( $host, $port )
+{
+	$this-&gt;host = $host;
+	$this-&gt;port = (int) $port;
+	
+	// Создание сокета
+	$this-&gt;createSocket();
+	
+	// Bind сокета
+	$this-&gt;bind();
+}</code></pre>
+        <h3>Прослушивание соединений</h3>
+        <p>Функция <code class="inline">listen</code> — главный бесконечный цикл сервера:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function listen( $callback )
+{
+	// Проверяем, что callback корректен; если нет — бросаем исключение
+	if ( !is_callable( $callback ) )
+	{
+		throw new Exception(&#x27;The given argument should be callable.&#x27;);
+	}
+	
+	// Именно это делает процесс долгим, бесконечным и бескрайним..
+	while ( 1 ) 
+	{
+		// Прослушивание соединений
+		socket_listen( $this-&gt;socket );
+		
+		// Пытаемся получить ресурс сокета клиента
+		// Если false — у нас ошибка; закрываем соединение и идём дальше
+		if ( !$client = socket_accept( $this-&gt;socket ) ) 
+		{
+			socket_close( $client ); continue;
+		}
+		
+		// Создаём новый экземпляр Request с заголовком клиента
+		// В реальном мире нельзя фиксировать максимальный размер на 1024..
+		$request = Request::withHeaderString( socket_read( $client, 1024 ) );
+		
+		// Выполняем callback
+		$response = call_user_func( $callback, $request );
+		
+		// Проверяем, что действительно получили объект Response
+		// Если нет — возвращаем объект Response с ошибкой 404
+		if ( !$response || !$response instanceof Response )
+		{
+			$response = Response::error( 404 );
+		}
+		
+		// Собираем из нашего ответа строку
+		$response = (string) $response;
+		
+		// Пишем ответ в сокет клиента
+		socket_write( $client, $response, strlen( $response ) );
+		
+		// Закрываем соединение, чтобы принимать новые
+		socket_close( $client );
+	}
+}</code></pre>
+      </section>
+      <section>
+      <h2>Объект Request</h2>
+        <p>Файл <code class="inline">src/Request.php</code> управляет входными данными. Request должен хранить <code class="inline">method</code>, <code class="inline">uri</code>, <code class="inline">parameters</code> и <code class="inline">headers</code>:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">&lt;?php namespace ClanCats\Station\PHPServer;
+
+class Request 
+{
+	protected $method = null;
+	protected $uri = null;
+	protected $parameters = [];
+	protected $headers = [];
+}</code></pre>
+        <h3>Разбор заголовка</h3>
+        <p>HTTP-заголовок выглядит так:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">GET / HTTP/1.1
+Host: 127.0.0.1:8008
+Connection: keep-alive
+Accept: text/html
+User-Agent: Chrome/41.0.2272.104
+Accept-Encoding: gzip, deflate, sdch
+Accept-Language: en-US,en;q=0.8,de;q=0.6</code></pre>
+        <p>Первая строка показывает метод запроса, uri и протокол, а после неё идут параметры заголовка в виде пар ключ/значение:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public static function withHeaderString( $header )
+{
+	// Разбиваем строку на строки
+	$lines = explode( &quot;\n&quot;, $header );
+	
+	// Извлекаем метод и uri
+	list( $method, $uri ) = explode( &#x27; &#x27;, array_shift( $lines ) );
+	
+	$headers = [];
+	
+	foreach( $lines as $line )
+	{
+		// Очистка строки
+		$line = trim( $line );
+		
+		if ( strpos( $line, &#x27;: &#x27; ) !== false )
+		{
+			list( $key, $value ) = explode( &#x27;: &#x27;, $line );
+			$headers[$key] = $value;
+		}
+	}	
+	
+	// Создание нового объекта запроса
+	return new static( $method, $uri, $headers );
+}</code></pre>
+        <p>Конструктор принимает <code class="inline">$method</code>, <code class="inline">$uri</code> и <code class="inline">$headers</code>. Для этого примера хотим также отделить и разобрать параметры запроса:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function __construct( $method, $uri, $headers = [] ) 
+{
+	$this-&gt;headers = $headers;
+	$this-&gt;method = strtoupper( $method );
+	
+	// Разделение uri и строки параметров
+	@list( $this-&gt;uri, $params ) = explode( &#x27;?&#x27;, $uri );
+
+	// Разбор параметров
+	parse_str( $params, $this-&gt;parameters );
+}</code></pre>
+        <p>Для доступа к данным запроса создаём несколько getter-ов; getter-ы <code class="inline">header</code> и <code class="inline">param</code> позволяют задавать значение по умолчанию:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function method()
+{
+	return $this-&gt;method;
+}
+
+public function uri()
+{
+	return $this-&gt;uri;
+}
+
+public function header( $key, $default = null )
+{
+	if ( !isset( $this-&gt;headers[$key] ) )
+	{
+		return $default;
+	}
+		
+	return $this-&gt;headers[$key];
+}
+
+public function param( $key, $default = null )
+{
+	if ( !isset( $this-&gt;parameters[$key] ) )
+	{
+		return $default;
+	}
+		
+	return $this-&gt;parameters[$key];
+}</code></pre>
+      </section>
+      <section>
+      <h2>Объект Response</h2>
+        <p>Как и запрос, ответ имеет заголовок и тело; оба записываем в сокет, чтобы ответить клиенту. Файл <code class="inline">src/Response.php</code>:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">&lt;?php namespace ClanCats\Station\PHPServer;
+
+class Response 
+{
+}</code></pre>
+        <h3>Коды состояния</h3>
+        <p>Чтобы собрать строку заголовка, нужно знать коды состояния HTTP. Этот массив покрывает большинство стандартных определений:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">protected static $statusCodes = [
+	// Информационные 1xx
+	100 =&gt; &#x27;Continue&#x27;,
+	101 =&gt; &#x27;Switching Protocols&#x27;,
+
+	// Успех 2xx
+	200 =&gt; &#x27;OK&#x27;,
+	201 =&gt; &#x27;Created&#x27;,
+	202 =&gt; &#x27;Accepted&#x27;,
+	203 =&gt; &#x27;Non-Authoritative Information&#x27;,
+	204 =&gt; &#x27;No Content&#x27;,
+	205 =&gt; &#x27;Reset Content&#x27;,
+	206 =&gt; &#x27;Partial Content&#x27;,
+
+	// Перенаправления 3xx
+	300 =&gt; &#x27;Multiple Choices&#x27;,
+	301 =&gt; &#x27;Moved Permanently&#x27;,
+	302 =&gt; &#x27;Found&#x27;, // 1.1
+	303 =&gt; &#x27;See Other&#x27;,
+	304 =&gt; &#x27;Not Modified&#x27;,
+	305 =&gt; &#x27;Use Proxy&#x27;,
+	// 306 устарел, но зарезервирован
+	307 =&gt; &#x27;Temporary Redirect&#x27;,
+
+	// Ошибки клиента 4xx
+	400 =&gt; &#x27;Bad Request&#x27;,
+	401 =&gt; &#x27;Unauthorized&#x27;,
+	402 =&gt; &#x27;Payment Required&#x27;,
+	403 =&gt; &#x27;Forbidden&#x27;,
+	404 =&gt; &#x27;Not Found&#x27;,
+	405 =&gt; &#x27;Method Not Allowed&#x27;,
+	406 =&gt; &#x27;Not Acceptable&#x27;,
+	407 =&gt; &#x27;Proxy Authentication Required&#x27;,
+	408 =&gt; &#x27;Request Timeout&#x27;,
+	409 =&gt; &#x27;Conflict&#x27;,
+	410 =&gt; &#x27;Gone&#x27;,
+	411 =&gt; &#x27;Length Required&#x27;,
+	412 =&gt; &#x27;Precondition Failed&#x27;,
+	413 =&gt; &#x27;Request Entity Too Large&#x27;,
+	414 =&gt; &#x27;Request-URI Too Long&#x27;,
+	415 =&gt; &#x27;Unsupported Media Type&#x27;,
+	416 =&gt; &#x27;Requested Range Not Satisfiable&#x27;,
+	417 =&gt; &#x27;Expectation Failed&#x27;,
+
+	// Ошибки сервера 5xx
+	500 =&gt; &#x27;Internal Server Error&#x27;,
+	501 =&gt; &#x27;Not Implemented&#x27;,
+	502 =&gt; &#x27;Bad Gateway&#x27;,
+	503 =&gt; &#x27;Service Unavailable&#x27;,
+	504 =&gt; &#x27;Gateway Timeout&#x27;,
+	505 =&gt; &#x27;HTTP Version Not Supported&#x27;,
+	509 =&gt; &#x27;Bandwidth Limit Exceeded&#x27;
+];</code></pre>
+        <h3>Конструктор Response</h3>
+        <p>Общие параметры, которые должен реализовывать объект Response, — это состояние <em>status</em>, тело <em>body</em> и остальные заголовки. Тело должно быть обязательным аргументом конструктора, а состояние и остальные заголовки — необязательными. Конструктор также должен задавать значения по умолчанию, такие как <em>Date</em> и <em>Server</em>:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">protected $status = 200;
+protected $body = &#x27;&#x27;;
+protected $headers = [];
+
+public function __construct( $body, $status = null )
+{
+	if ( !is_null( $status ) )
+	{
+		$this-&gt;status = $status;
+	}
+	
+	$this-&gt;body = $body;
+	
+	// Установка начальных заголовков
+	$this-&gt;header( &#x27;Date&#x27;, gmdate( &#x27;D, d M Y H:i:s T&#x27; ) );
+	$this-&gt;header( &#x27;Content-Type&#x27;, &#x27;text/html; charset=utf-8&#x27; );
+	$this-&gt;header( &#x27;Server&#x27;, &#x27;PHPServer/1.0.0 (Whateva)&#x27; );
+}</code></pre>
+        <h3>Установка заголовков</h3>
+        <p>Для добавления новых параметров заголовка создаём setter:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function header( $key, $value )
+{
+	$this-&gt;headers[ucfirst($key)] = $value;
+}</code></pre>
+        <h3>Сборка строки заголовка</h3>
+        <p>Нельзя передать объект Response напрямую в писатель сокета; нужно собрать из наших данных строку:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function buildHeaderString()
+{
+	$lines = [];
+		
+	// Состояние ответа
+	$lines[] = &quot;HTTP/1.1 &quot;.$this-&gt;status.&quot; &quot;.static::$statusCodes[$this-&gt;status];
+		
+	// Добавление заголовков
+	foreach( $this-&gt;headers as $key =&gt; $value )
+	{
+		$lines[] = $key.&quot;: &quot;.$value;
+	}
+		
+	return implode( &quot; \r\n&quot;, $lines ).&quot;\r\n\r\n&quot;;
+}</code></pre>
+        <h3>Магия!</h3>
+        <p>Магическим методом <code class="inline">__toString</code> возвращаем всю строку, записываемую в открытое соединение:</p>
+        <pre class="code"><span class="lang-tag">php</span><code style="direction:ltr;text-align:left">public function __toString()
+{
+	return $this-&gt;buildHeaderString().$this-&gt;body;
+}</code></pre>
+      </section>
+      <section>
+      <h2>Вот и всё!</h2>
+        <p>Теперь вы можете запустить свой сервер вот так:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">$ sudo php server 8008</code></pre>
+        <p>и зайти на него браузером:</p>
+        <pre class="code"><span class="lang-tag">URL</span><code style="direction:ltr;text-align:left">http://127.0.0.1:8008/everything/you/want/?cool=yes</code></pre>
+        <div class="callout tip">
+          <strong>Заключительное замечание:</strong> автор признаёт, что при написании статьи качество было неравномерным, но надеется, что учебник и особенно его исходники помогут людям, которые больше работают с PHP, лучше понять, как работает веб-сервер.
+        </div>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> материал «Writing a webserver in pure PHP» принадлежит Марио Делуне (Mario Deluna) и опубликован в ClanCats Station. Эта страница — лишь его перевод; все права на содержимое, изображения и код принадлежат оригинальному автору. С оригиналом можно ознакомиться на <a href="http://station.clancats.com/writing-a-webserver-in-pure-php/" target="_blank" rel="noopener">сайте ClanCats Station</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание веб-сервера на чистом PHP» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание веб-сервера на чистом PHP» принадлежит автору оригинала (Марио Делуна (Mario Deluna)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Марио Делуна (Mario Deluna)). Читайте оригинал на
         <a href="http://station.clancats.com/writing-a-webserver-in-pure-php/" target="_blank" rel="noopener">http://station.clancats.com/writing-a-webserver-in-pure-php/</a>.
       </div>
     </article>

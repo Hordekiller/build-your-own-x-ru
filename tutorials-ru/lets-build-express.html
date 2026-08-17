@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создадим Express с нуля — пишем свою библиотеку»
+          <b>Оригинальный источник:</b> «lets-build-express»
         </div>
         <a class="btn solid" href="https://github.com/antoaravinth/lets-build-express" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lets-build-express.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,45 +53,343 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Цикл статей, в которых библиотека Express воссоздаётся с нуля на Node.js: вы сами реализуете цепочку промежуточных обработчиков (middleware), маршрутизацию по методам и путям и простой механизм запросов-ответов, повторяя то, как устроен настоящий мини-фреймворк.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Зачем эта серия?</h2>
+        <p>Многие разработчики путаются в том, как работает <code>next</code> или в каком порядке идут маршруты в express. Построив саму библиотеку express, мы получим крепкое понимание — да и удовольствие немалое! Список глав (глава 6 — обработка ошибок — ещё пишется):</p>
         <ul>
-          <li>Как устроена цепочка middleware и зачем она нужна</li>
-          <li>Реализация app.use, app.get, app.post своими руками</li>
-          <li>Маршрутизация с параметрами путей</li>
-          <li>Передача запроса дальше по цепочке через next()</li>
+          <li>Строим абстракции express</li>
+          <li>Маршруты из коробки</li>
+          <li>Реализация функции <code>next</code></li>
+          <li>Развитие объекта Response</li>
+          <li>Реализация <code>send</code> / <code>json</code> на response</li>
+          <li>Обработка ошибок (WIP)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Главная идея Express — массив функций-обработчиков: запрос проходит по списку, пока кто-то не ответит. Каждое зарегистрированное приложение — это функция, вызываемая по порядку.</p>
-        <p>Вот так выглядит цепочка в миниатюре:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>const chain = [];
+      <h2>Глава 1 — Создание абстракций express</h2>
+        <p>В этой главе строятся абстракции, необходимые для создания express, и в конце у нас есть совсем крошечная библиотека, сопоставляющая один маршрут. Сначала наш файл <code>express.js</code> — с <code>export</code>:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">exports = module.exports = createApplication;
 
-function use(fn) { chain.push(fn); }
+function createApplication() {
+    var app = function(req,res,next) {
+    };
 
-use((req, res, next) =&gt; {
-  // Логирование каждого запроса
-  console.log(req.url);
-  next(); // передаём запрос дальше
-});</code></pre>
+    return app;
+}
+</code></pre>
+        <p>Ничего фантастического: просто экспортируем функцию <code>createApplication</code>. Эта функция создаёт ссылку на функцию <code>app</code> и возвращает её. Именно возвращаемый <code>app</code> пользователь получает при вызове <code>express()</code>. Заметьте: функция ожидает <code>req</code>, <code>res</code> и даже <code>next</code> (<code>req</code> — входящий запрос, <code>res</code> — объект http-ответа, а <code>next</code> — особая express-функция; кто передаёт их — увидим позже). Раз пользователь получает наш <code>app</code> при <code>express()</code>, нужно добавить объекту <code>app</code> нужные методы вроде <code>get</code> и <code>post</code>.</p>
+        <h3>Application.js — где живут методы вроде get и use</h3>
+        <p>Создаём файл <code>app.js</code>, предоставляющий методы <code>get</code>, <code>post</code> и т.д. Начальный код:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var app = exports = module.exports = {};
+
+app.init = function() {
+    this.cache = {};
+    this.engines = {};
+    this.settings = {}
+
+    // для хранения роутера приложения
+    this._router = undefined;
+};
+</code></pre>
+        <p>Подход исходного кода express очень прост: используется библиотека <code>methods</code>, возвращающая все HTTP-методы строчными буквами:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var methods = require(&#x27;methods&#x27;);
+var slice = Array.prototype.slice;
+
+methods.forEach(function (method){
+    app[method] = function(path) {
+        this.lazyrouter()
+
+        var route = this._router.route(path);
+
+        route[method].apply(route, slice.call(arguments, 1));
+        return this;
+    }
+});
+</code></pre>
+        <p>Внутри каждого метода сначала вызывается <code>this.lazyrouter()</code> — то есть для приложения создаётся только один <code>Router</code> (а если создан — не создаётся снова):</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">app.lazyrouter = function lazyrouter() {
+    if(!this._router) {
+        this._router = new Router({})
+    }
+};
+</code></pre>
+        <div class="callout note">
+          К фрагменту <code>var route = this._router.route(path); route[method].apply(route, slice.call(arguments, 1));</code> мы вернёмся в этой же главе.
+        </div>
+        <h3>Router.js — логика маршрутизации; один на приложение</h3>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var proto = module.exports = function(options) {
+    var opts = options || {}
+
+    function router(req,res,next) {
+        router.handle(req,res,next)
+    }
+
+    setPrototypeOf(router, proto)
+
+    /* особое для express; доберёмся в следующих главах */
+    router.params = {};
+    router._params = [];
+    router.caseSensitive = opts.caseSensitive;
+    router.mergeParams = opts.mergeParams;
+    router.strict = opts.strict;
+    router.stack = []; // очень важное свойство
+
+    return router;
+};
+</code></pre>
+        <p>Важное свойство роутера — <code>stack</code>: сюда уходит конфигурация маршрутов. Функция <code>route</code> позволяет пользователю добавлять в stack конкретные маршруты:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">proto.route = function route(path) {
+    var route = new Route(path)
+
+    var layer = new Layer(path,{},route.dispatch.bind(route))
+
+    layer.route = route;
+
+    this.stack.push(layer);
+
+    return route;
+};
+</code></pre>
+        <p>Для каждого <code>path</code> создаются <code>Route</code> и <code>Layer</code>; layer содержит route и помещается в stack роутера. (Код <code>route.dispatch.bind(route)</code> пока — пустая функция; это следующие главы.)</p>
+        <h3>Route.js — информация о маршруте и нужный слой</h3>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">function Route(path) {
+    this.path = path;
+    this.stack = [];
+
+    this.methods = {}
+}
+</code></pre>
+        <p>Route, как и application, реализует все HTTP-методы:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">methods.forEach(function(method){
+    Route.prototype[method] = function(){
+        var handles = flatten(Array.prototype.slice.call(arguments));
+
+        for (var i = 0; i &lt; handles.length; i++) {
+            var handle = handles[i];
+
+            if (typeof handle !== &#x27;function&#x27;) {
+                var type = toString.call(handle);
+                var msg = &#x27;Route.&#x27; + method + &#x27;() requires a callback function but got a &#x27; + type
+                throw new Error(msg);
+            }
+
+            var layer = Layer(&#x27;/&#x27;, {}, handle);
+            layer.method = method;
+
+            this.methods[method] = true;
+            this.stack.push(layer);
+        }
+
+        return this;
+    };
+});
+</code></pre>
+        <p>Заметьте: у route тоже свой stack с собственными экземплярами Layer.</p>
+        <h3>Layer.js — путь и ссылка на исполняемую функцию</h3>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">module.exports = Layer
+
+function Layer(path, options, fn) {
+    if (!(this instanceof Layer)) {
+        return new Layer(path, options, fn);
+    }
+
+    this.handle = fn;
+    this.name = fn.name || &#x27;&lt;anonymous&gt;&#x27;;
+    this.params = undefined;
+    this.path = undefined;
+}
+</code></pre>
+        <p>Хранит только <code>handle</code> и имя функции.</p>
+        <h3>Возвращаемся к application.js</h3>
+        <p>Теперь понятен прежний неразрешённый фрагмент: после создания lazy router свойства роутера настраиваются вызовом <code>route</code>. Раз у application один роутер, а Route владеет всеми HTTP-методами, эта строка <code>route[method].apply(route, slice.call(arguments, 1))</code> фактически создаёт в <code>Route</code> <code>Layer</code>, чей <code>handle</code> — переданный аргумент (тот самый обработчик, который должен исполняться при сопоставлении маршрута).</p>
+        <p>Теперь предоставим application и функцию <code>listen</code>:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">app.listen = function listen() {
+    var server = http.createServer(this);
+    return server.listen.apply(server, arguments);
+};
+</code></pre>
+        <p>Затем завершаем <code>express.js</code> — <code>mixin</code> копирует все методы app.js в функцию <code>app</code> (когда импортируется <code>./app</code>, блок методов исполняется, и все HTTP-методы готовы):</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var proto = require(&quot;./app&quot;)
+
+function createApplication() {
+    let app = function(req,res,next) {
+        app.handle(req,res,next)
+    };
+
+    mixin(app,proto,false);
+
+    app.init();
+    return app;
+}
+</code></pre>
+        <p>Тонкий момент: <code>http.createServer(this)</code> хочет функцию-callback, вызываемую с <code>req</code> и <code>res</code>; <code>this</code> — это <code>app</code>, а <code>app.handle</code> поручает работу роутеру:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">app.handle = function handle(req, res, callback) {
+    var router = this._router;
+
+    router.handle(req, res);
+};
+</code></pre>
+        <h3>Запуск: наше первое приложение</h3>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">let express = require(&#x27;./src/express&#x27;)
+const app = express()
+
+app.get(&#x27;/&#x27;, (req, res) =&gt; {
+    res.writeHead(200)
+    res.write(&#x27;Hello World&#x27;);
+    res.end();
+});
+
+
+app.listen(3000, () =&gt; console.log(&#x27;Example app listening on port 3000!&#x27;))
+</code></pre>
+        <p>Чтобы ответ реально доходил, <code>Router</code> должен реализовать <code>handle</code> — автор сначала просто печатает stack: когда запрос <code>/</code> шлётся, вывод выглядит так: <code>[{"name":"bound dispatch","route":{"path":"/","stack":[{"name":"&lt;anonymous&gt;","method":"get"}],"methods":{"get":true}}}]</code> — то есть на <code>/</code> определён get! (Временный подход: кусок, который просто вызывает созданный в <code>route.stack[0]</code> обработчик.) Для исполнения обработчика добавляется <code>Layer.prototype.handle_request</code>:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">Layer.prototype.handle_request = function handle(req,res,next) {
+    var fn = this.handle;
+
+    try {
+        fn(req, res, next);
+    } catch (err) {
+        console.error(err)
+    }
+}
+</code></pre>
+        <p>Теперь снова запустите сервер и ударьте по <code>/</code> — наш callback вызывается с текущим запросом и ответом, и «Hello World» отправляется через <code>write</code> и <code>end</code>. (Примечание: <code>res.send</code> у нас пока нет, потому что объект ответа ещё не развит; поэтому не забывайте <code>res.end()</code>.)</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Понимание middleware-цепочки открывает внутренности почти всех современных JS-фреймворков: Express, Koa и их клоны — всего лишь список функций, которые решают, отвечать или передать управление дальше.</p>
+      <h2>Глава 2 — Маршруты из коробки</h2>
+        <p>В этой главе <code>handle</code> роутера улучшается, чтобы сопоставлять маршруты с URL запроса. Слои получают функцию <code>match</code>: если путь запроса подходит под паттерн слоя, слой выбирается. Паттерны компилируются в регулярные выражения, чтобы работали и параметры маршрута (вроде <code>/user/:id</code>):</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">Layer.prototype.match = function match(path) {
+    var match = path.match(this.regexp);
+    if (match) {
+        this.params = {};
+        // звёздочные параметры пути попадают в this.params
+    }
+    return !!match;
+};
+</code></pre>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">proto.handle = function handle(req, res, out) {
+    var self = this;
+    var stack = self.stack;
+    var path = req.url;
+
+    // Пройди по всем слоям stack, пока не найдётся первое совпадение
+    for (var i = 0; i &lt; stack.length; i++) {
+        var layer = stack[i];
+        if (layer.match(path)) {
+            var route = layer.route;
+            if (route &amp;&amp; route.handle_method(method, req)) {
+                // И путь, и метод совпали: выполняем обработчики route
+                route.stack[0].handle_request(req, res);
+            }
+        }
+    }
+}
+</code></pre>
+        <p>К концу главы приложение правильно отвечает на несколько маршрутов (<code>/</code>, <code>/about</code>, ...) и даже маршруты с параметрами, а на неизвестные маршруты выдаёт 404.</p>
+      </section>
+      <section>
+      <h2>Глава 3 — Реализация функции next</h2>
+        <p>Эта глава строит важнейшую концепцию express: <b>цепочку исполнения мидлваров</b>. Программе добавляется метод <code>use</code> для регистрации мидлваров (с путём или без). Функция <code>next</code> передаётся каждому обработчику и передаёт управление «следующему в очереди обработчику». Внутри <code>handle_request</code> исполняется вызов <code>fn(req, res, next)</code>, где <code>next</code> означает <code>self.handle_request</code> для следующего слоя:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">function next(err) {
+    // Найди следующий обработчик в stack роутера и исполни его
+    var layer = stack[i++];
+    if (!layer) return done(err);
+
+    if (layer.match(path)) {
+        layer.handle_request(req, res, next);
+    } else {
+        next(err); // пропустить
+    }
+}
+</code></pre>
+        <p>Именно здесь видно, почему «порядок регистрации» важен в express: если мидлвар на маршруте <code>/foo</code> зарегистрирован до маршрута <code>/</code>, они исполняются в порядке очереди, и только когда обработчик вызывает <code>next()</code>, переходим к следующему в очереди. Это то самое поведение, которое путает новичков в express.</p>
+      </section>
+      <section>
+      <h2>Глава 4 — Развитие объекта Response</h2>
+        <p>В этой главе основной express-ответ подключается к объекту ответа Node: методы <code>res.status(code)</code> для установки <code>res.statusCode</code>, <code>res.set(field, value)</code> для установки заголовка через <code>res.setHeader</code> и <code>res.get(field)</code> для чтения из <code>res.getHeader</code>. Для цепочечности (<b>chainable</b>) эти методы возвращают <code>return this</code>:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">res.status = function status(code) {
+    this.statusCode = code;
+    return this;
+};
+
+res.set = function set(field, value) {
+    if (typeof field === &#x27;object&#x27;) {
+        for (var key in field) this.setHeader(key, field[key]);
+    } else {
+        this.setHeader(field, value);
+    }
+    return this;
+};
+
+res.get = function get(field) {
+    return this.getHeader(field);
+};
+</code></pre>
+        <p>Эти методы через <code>app.response</code> (базовый объект ответа, из которого создаются все экземпляры) внедряются во все ответы — тот же паттерн, что сам express использует для добавления возможностей на <code>res</code> и <code>req</code>.</p>
+      </section>
+      <section>
+      <h2>Глава 5 — Реализация send и json</h2>
+        <p>Теперь время самых простых API: <code>res.send()</code> решает по типу входа — если пришла строка, ставится <code>Content-Type: text/html</code>; если объект или массив, отправляется JSON с <code>Content-Type: application/json</code>; и всегда устанавливается <code>Content-Length</code> по длине тела (потому что без него в Node возникают баги с буферизацией и удерживаемыми соединениями):</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">res.send = function send(body) {
+    var chunk = body;
+
+    switch (typeof chunk) {
+        case &#x27;string&#x27;:
+            if (!this.get(&#x27;Content-Type&#x27;)) {
+                this.set(&#x27;Content-Type&#x27;, &#x27;text/html&#x27;);
+            }
+            break;
+        case &#x27;boolean&#x27;:
+        case &#x27;number&#x27;:
+        case &#x27;object&#x27;:
+            if (chunk === null) chunk = &#x27;&#x27;;
+            else if (Buffer.isBuffer(chunk)) {
+                if (!this.get(&#x27;Content-Type&#x27;)) {
+                    this.set(&#x27;Content-Type&#x27;, &#x27;application/octet-stream&#x27;);
+                }
+            } else {
+                return this.json(chunk);
+            }
+            break;
+    }
+
+    if (typeof chunk === &#x27;string&#x27;) {
+        this.set(&#x27;Content-Length&#x27;, Buffer.byteLength(chunk));
+    }
+    this.end(chunk);
+};
+
+res.json = function json(obj) {
+    if (!this.get(&#x27;Content-Type&#x27;)) {
+        this.set(&#x27;Content-Type&#x27;, &#x27;application/json&#x27;);
+    }
+    var body = JSON.stringify(obj);
+    this.set(&#x27;Content-Length&#x27;, Buffer.byteLength(body));
+    this.end(body);
+};
+</code></pre>
+        <p>Теперь «старое» приложение главы 1 переписывается в современном стиле express:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">const express = require(&#x27;./src/express&#x27;);
+const app = express();
+
+app.get(&#x27;/&#x27;, (req, res) =&gt; {
+    res.send(&#x27;Hello World!&#x27;);
+});
+
+app.get(&#x27;/user/:id&#x27;, (req, res) =&gt; {
+    res.json({ id: req.params.id });
+});
+
+app.listen(3000);
+</code></pre>
+        <div class="callout tip">
+          Примечание: глава 6 (обработка ошибок четырёхаргументными мидлварами <code>(err, req, res, next)</code>) ещё пишется; здесь уже видно, как ошибки переносятся из <code>next(err)</code> в обработчик ошибок. Серия минимальна, но вполне рабочая — и, поскольку она копирует настоящую структуру express, потом читать оригинальный код express будет привычно.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создадим Express с нуля — пишем свою библиотеку» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создадим Express с нуля — пишем свою библиотеку» принадлежит автору оригинала (Анто Аравинт). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Анто Аравинт). Читайте оригинал на
         <a href="https://github.com/antoaravinth/lets-build-express" target="_blank" rel="noopener">https://github.com/antoaravinth/lets-build-express</a>.
       </div>
     </article>

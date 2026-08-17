@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Веб-приложение с нуля — 1-я часть»
+          <b>Оригинальный источник:</b> «web-app-from-scratch»
         </div>
         <a class="btn solid" href="https://defn.io/2018/02/25/web-app-from-scratch-01/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/web-app-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,47 +53,333 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия статей, в которой веб-приложение на Python создаётся полностью с нуля, без фреймворков: от разбора запросов и маршрутизации до рендеринга страниц. Вы узнаете, что прячется под капотом Django и Flask и почему фреймворки строятся именно так.</p>
+      <h2>Введение</h2>
+        <p>Это первый пост из серии, в которой мы пройдём процесс построения веб-приложения (и его веб-сервера) с нуля на Python. Для этой серии мы полагаемся только на стандартную библиотеку Python и игнорируем стандарт WSGI.</p>
+        <p>Без лишних предисловий, начнём!</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Архитектура веб-приложения без фреймворка</li>
-          <li>Маршрутизация запросов по URL собственными силами</li>
-          <li>Шаблонизация и генерация HTML-страниц</li>
-          <li>Разделение логики: запрос, обработчик, ответ</li>
-        </ul>
+      <h2>Веб-сервер</h2>
+        <p>Для начала мы напишем HTTP-сервер, который будет питать наше веб-приложение. Но сначала потратим немного времени и посмотрим, как работает протокол HTTP.</p>
+        <h3>Как работает HTTP</h3>
+        <p>Простыми словами, HTTP-клиенты в сети подключаются к HTTP-серверам и отправляют строку данных, представляющую запрос. Сервер интерпретирует запрос и отправляет клиенту ответ. Весь протокол и форматы запросов и ответов описаны в <a href="https://tools.ietf.org/html/rfc2616" target="_blank" rel="noopener">RFC2616</a>.</p>
+        <h4>Формат запроса</h4>
+        <p>Запросы представлены набором строк, разделённых <code class="inline">\r\n</code>, первая из которых называется «строкой запроса». Строка запроса состоит из HTTP-метода, затем пробела, затем пути запрошенного файла, затем ещё одного пробела, затем версии протокола HTTP, на котором говорит клиент, и наконец символа возврата каретки (<code class="inline">\r</code>) и перевода строки (<code class="inline">\n</code>):</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">GET /some-path HTTP/1.1\r\n</code></pre>
+        <p>После строки запроса идёт ноль или более строк заголовков. Каждая строка заголовка состоит из имени заголовка, затем двоеточия, затем необязательного значения и затем <code class="inline">\r\n</code>:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">Host: example.com\r\n
+Accept: text/html\r\n</code></pre>
+        <p>Конец раздела заголовков объявляется пустой строкой: <code class="inline">\r\n</code>. Наконец, запрос может иметь «тело» — дополнительную нагрузку, отправляемую вместе с запросом на сервер.</p>
+        <p>Собрав всё вместе, простой GET-запрос:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">GET / HTTP/1.1\r\n
+Host: example.com\r\n
+Accept: text/html\r\n
+\r\n</code></pre>
+        <p>и простой POST-запрос с телом:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">POST / HTTP/1.1\r\n
+Host: example.com\r\n
+Accept: application/json\r\n
+Content-type: application/json\r\n
+Content-length: 2\r\n
+\r\n
+{}</code></pre>
+        <h4>Формат ответа</h4>
+        <p>Ответы, как и запросы, состоят из набора строк, разделённых <code class="inline">\r\n</code>. Первая строка ответа называется «строкой состояния» и состоит из версии протокола HTTP, пробела, кода состояния ответа, ещё одного пробела, причины кода состояния и затем <code class="inline">\r\n</code>:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">HTTP/1.1 200 OK\r\n</code></pre>
+        <p>После строки состояния идут заголовки ответа, затем пустая строка и затем необязательное тело ответа:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">HTTP/1.1 200 OK\r\n
+Content-type: text/html\r\n
+Content-length: 15\r\n
+\r\n
+&lt;h1&gt;Hello!&lt;/h1&gt;</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>За веб-фреймворками стоит одна и та же идея: получить запрос, смаршрутизировать его к функции, собрать ответ. Приложение на чистом Python повторяет этот контур вручную.</p>
-        <p>Минимальный маршрутизатор умещается в несколько строк:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>ROUTES = {}
+      <h2>Простой сервер</h2>
+        <p>Исходя из того, что мы знаем о протоколе, напишем сервер, который независимо от входящего запроса отправляет один и тот же ответ.</p>
+        <p>Для начала нужно создать сокет, сделать bind на адрес, а затем начать слушать соединения:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import socket
 
-def route(path):
-    def wrap(handler):
-        ROUTES[path] = handler
-        return handler
-    return wrap
+HOST = &quot;127.0.0.1&quot;
+PORT = 9000
 
-@route("/")
-def index(request):
-    return render_page("index.html")</code></pre>
+# По умолчанию socket.socket создаёт TCP-сокет.
+with socket.socket() as server_sock:
+    # Это говорит ядру переиспользовать сокеты, находящиеся в состоянии TIME_WAIT.
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
+    # Это говорит сокету, на какой адрес делать bind.
+    server_sock.bind((HOST, PORT))
+
+    # 0 — количество ожидающих соединений, которые сокет может иметь перед
+    # отклонением новых соединений. Поскольку этот сервер будет обрабатывать
+    # по одному соединению за раз, мы хотим, чтобы лишние соединения отклонялись.
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)</code></pre>
+        <p>Если запустить этот код сейчас, он напечатает прослушивание на <code class="inline">127.0.0.1:9000</code> и затем выйдет. Для реальной обработки входящих соединений нужно вызвать метод <code class="inline">accept</code> на нашем сокете. Это заблокирует процесс, пока клиент не подключится к серверу:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">with socket.socket() as server_sock:
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)
+
+    client_sock, client_addr = server_sock.accept()
+    print(f&quot;New connection from {client_addr}.&quot;)</code></pre>
+        <p>Получив сокетное соединение с клиентом, мы можем с ним общаться. С помощью метода <code class="inline">sendall</code> отправим пример ответа подключившемуся клиенту:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">RESPONSE = b&quot;&quot;&quot;\
+HTTP/1.1 200 OK
+Content-type: text/html
+Content-length: 15
+
+&lt;h1&gt;Hello!&lt;/h1&gt;&quot;&quot;&quot;.replace(b&quot;\n&quot;, b&quot;\r\n&quot;)
+
+with socket.socket() as server_sock:
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)
+
+    client_sock, client_addr = server_sock.accept()
+    print(f&quot;New connection from {client_addr}.&quot;)
+    with client_sock:
+        client_sock.sendall(RESPONSE)</code></pre>
+        <p>Если запустить код сейчас и зайти на http://127.0.0.1:9000 в любимом браузере, он должен отрендерить строку «Hello!». К сожалению, сервер выходит после отправки ответа, поэтому обновление страницы падает. Давайте это исправим:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">RESPONSE = b&quot;&quot;&quot;\
+HTTP/1.1 200 OK
+Content-type: text/html
+Content-length: 15
+
+&lt;h1&gt;Hello!&lt;/h1&gt;&quot;&quot;&quot;.replace(b&quot;\n&quot;, b&quot;\r\n&quot;)
+
+with socket.socket() as server_sock:
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)
+
+    while True:
+        client_sock, client_addr = server_sock.accept()
+        print(f&quot;New connection from {client_addr}.&quot;)
+        with client_sock:
+            client_sock.sendall(RESPONSE)</code></pre>
+        <p>В этой точке у нас есть веб-сервер, который может раздавать простую HTML-страницу на каждый запрос — всего примерно в 25 строк кода. Неплохо!</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Сделав веб-приложение сами, вы перестанете воспринимать фреймворк как чёрный ящик: любой маршрут, форма или шаблон — всё это код, который вы уже видели собственными глазами.</p>
+      <h2>Сервер файлов</h2>
+        <p>Расширим HTTP-сервер, чтобы он мог раздавать файлы с диска.</p>
+        <h3>Абстракция запроса</h3>
+        <p>Прежде всего нужно прочитать и разобрать входящие данные запроса от клиента. Поскольку мы знаем, что данные запроса представлены строками, разделёнными <code class="inline">\r\n</code>, напишем функцию-генератор, которая читает данные из сокета и yield-ит каждую строку:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import typing
+
+
+def iter_lines(sock: socket.socket, bufsize: int = 16_384) -&gt; typing.Generator[bytes, None, bytes]:
+    &quot;&quot;&quot;Принимая сокет, читает все разделённые CRLF строки
+    и yield-ит каждую, пока не встретит пустую строку. Возвращает
+    остаток после пустой строки.
+    &quot;&quot;&quot;
+    buff = b&quot;&quot;
+    while True:
+        data = sock.recv(bufsize)
+        if not data:
+            return b&quot;&quot;
+
+        buff += data
+        while True:
+            try:
+                i = buff.index(b&quot;\r\n&quot;)
+                line, buff = buff[:i], buff[i + 2:]
+                if not line:
+                    return buff
+
+                yield line
+            except IndexError:
+                break</code></pre>
+        <p>Это может выглядеть устрашающе, но вот что оно делает: читает любой объём данных, который может прочитать из сокета (кусками по <code class="inline">bufsize</code>), складывает их в буфер (<code class="inline">buff</code>) и постоянно разделяет буфер на отдельные строки, yield-я по одной каждый раз. Дойдя до пустой строки, возвращает лишние прочитанные данные.</p>
+        <p>С помощью <code class="inline">iter_lines</code> мы можем печатать запросы, получаемые от клиентов:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">with socket.socket() as server_sock:
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)
+
+    while True:
+        client_sock, client_addr = server_sock.accept()
+        print(f&quot;New connection from {client_addr}.&quot;)
+        with client_sock:
+            for request_line in iter_lines(client_sock):
+                print(request_line)
+
+            client_sock.sendall(RESPONSE)</code></pre>
+        <p>Определяем класс <code class="inline">Request</code>, который пока знает только метод, пути и заголовки запроса:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import typing
+
+
+class Request(typing.NamedTuple):
+    method: str
+    path: str
+    headers: typing.Mapping[str, str]</code></pre>
+        <p>Чтобы охватить логику построения запроса, добавляем к <code class="inline">Request</code> метод класса <code class="inline">from_socket</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class Request(typing.NamedTuple):
+    method: str
+    path: str
+    headers: typing.Mapping[str, str]
+
+    @classmethod
+    def from_socket(cls, sock: socket.socket) -&gt; &quot;Request&quot;:
+        &quot;&quot;&quot;Читает и разбирает запрос из объекта сокета.
+
+        Исключения:
+          ValueError: когда запрос не может быть разобран.
+        &quot;&quot;&quot;
+        lines = iter_lines(sock)
+
+        try:
+            request_line = next(lines).decode(&quot;ascii&quot;)
+        except StopIteration:
+            raise ValueError(&quot;Request line missing.&quot;)
+
+        try:
+            method, path, _ = request_line.split(&quot; &quot;)
+        except ValueError:
+            raise ValueError(f&quot;Malformed request line {request_line!r}.&quot;)
+
+        headers = {}
+        for line in lines:
+            try:
+                name, _, value = line.decode(&quot;ascii&quot;).partition(&quot;:&quot;)
+                headers[name.lower()] = value.lstrip()
+            except ValueError:
+                raise ValueError(f&quot;Malformed header line {line!r}.&quot;)
+
+        return cls(method=method.upper(), path=path, headers=headers)</code></pre>
+        <p>Запускается на подключённом сокете и печатает строки вроде этих:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">Request(method=&#x27;GET&#x27;, path=&#x27;/&#x27;, headers={&#x27;host&#x27;: &#x27;localhost:9000&#x27;, &#x27;user-agent&#x27;: &#x27;curl/7.54.0&#x27;, &#x27;accept&#x27;: &#x27;*/*&#x27;})</code></pre>
+        <p>Поскольку <code class="inline">from_socket</code> в определённых ситуациях может выбрасывать исключения, сервер сейчас может упасть на недопустимом запросе. Чтобы управлять этим, оборачиваем вызов <code class="inline">from_socket</code> в try-except и отправляем клиенту ответ «400 Bad Request», получив плохой запрос:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">BAD_REQUEST_RESPONSE = b&quot;&quot;&quot;\
+HTTP/1.1 400 Bad Request
+Content-type: text/plain
+Content-length: 11
+
+Bad Request&quot;&quot;&quot;.replace(b&quot;\n&quot;, b&quot;\r\n&quot;)
+
+with socket.socket() as server_sock:
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)
+
+    while True:
+        client_sock, client_addr = server_sock.accept()
+        print(f&quot;Received connection from {client_addr}...&quot;)
+        with client_sock:
+            try:
+                request = Request.from_socket(client_sock)
+                print(request)
+                client_sock.sendall(RESPONSE)
+            except Exception as e:
+                print(f&quot;Failed to parse request: {e}&quot;)
+                client_sock.sendall(BAD_REQUEST_RESPONSE)</code></pre>
+        <p>В этой точке мы готовы начать реализацию части раздачи файлов, но сначала сделаем нашим ответом по умолчанию «404 Not Found» и добавим ответ «405 Method Not Allowed» — на случай, когда приходит что-то кроме GET-запроса:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">NOT_FOUND_RESPONSE = b&quot;&quot;&quot;\
+HTTP/1.1 404 Not Found
+Content-type: text/plain
+Content-length: 9
+
+Not Found&quot;&quot;&quot;.replace(b&quot;\n&quot;, b&quot;\r\n&quot;)
+
+METHOD_NOT_ALLOWED_RESPONSE = b&quot;&quot;&quot;\
+HTTP/1.1 405 Method Not Allowed
+Content-type: text/plain
+Content-length: 17
+
+Method Not Allowed&quot;&quot;&quot;.replace(b&quot;\n&quot;, b&quot;\r\n&quot;)</code></pre>
+        <p>Определяем константу <code class="inline">SERVER_ROOT</code>, показывающую, откуда сервер раздаёт файлы, и функцию <code class="inline">serve_file</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import mimetypes
+import os
+import socket
+import typing
+
+SERVER_ROOT = os.path.abspath(&quot;www&quot;)
+
+FILE_RESPONSE_TEMPLATE = &quot;&quot;&quot;\
+HTTP/1.1 200 OK
+Content-type: {content_type}
+Content-length: {content_length}
+
+&quot;&quot;&quot;.replace(&quot;\n&quot;, &quot;\r\n&quot;)
+
+
+def serve_file(sock: socket.socket, path: str) -&gt; None:
+    &quot;&quot;&quot;Принимая сокет и относительный путь файла (относительно
+    SERVER_SOCK), отправляет файл в сокет, если он существует. Если
+    файла нет, отправляет ответ «404 Not Found».
+    &quot;&quot;&quot;
+    if path == &quot;/&quot;:
+        path = &quot;/index.html&quot;
+
+    abspath = os.path.normpath(os.path.join(SERVER_ROOT, path.lstrip(&quot;/&quot;)))
+    if not abspath.startswith(SERVER_ROOT):
+        sock.sendall(NOT_FOUND_RESPONSE)
+        return
+
+    try:
+        with open(abspath, &quot;rb&quot;) as f:
+            stat = os.fstat(f.fileno())
+            content_type, encoding = mimetypes.guess_type(abspath)
+            if content_type is None:
+                content_type = &quot;application/octet-stream&quot;
+
+            if encoding is not None:
+                content_type += f&quot;; charset={encoding}&quot;
+
+            response_headers = FILE_RESPONSE_TEMPLATE.format(
+                content_type=content_type,
+                content_length=stat.st_size,
+            ).encode(&quot;ascii&quot;)
+
+            sock.sendall(response_headers)
+            sock.sendfile(f)
+    except FileNotFoundError:
+        sock.sendall(NOT_FOUND_RESPONSE)
+        return</code></pre>
+        <p><code class="inline">serve_file</code> принимает сокет клиента и путь файла. Пытается преобразовать этот путь в реальный файл внутри <code class="inline">SERVER_ROOT</code>, и если путь резолвится за пределы корня сервера, отправляет ответ «not found». Затем пытается открыть файл, узнать его mime-тип и размер через <code class="inline">os.fstat</code>, построить заголовки ответа и записать файл в сокет системным вызовом <code class="inline">sendfile</code>. Если файла на диске нет, отправляет ответ «not found».</p>
+        <p>Цикл сервера с <code class="inline">serve_file</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">with socket.socket() as server_sock:
+    server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    server_sock.bind((HOST, PORT))
+    server_sock.listen(0)
+    print(f&quot;Listening on {HOST}:{PORT}...&quot;)
+
+    while True:
+        client_sock, client_addr = server_sock.accept()
+        print(f&quot;Received connection from {client_addr}...&quot;)
+        with client_sock:
+            try:
+                request = Request.from_socket(client_sock)
+                if request.method != &quot;GET&quot;:
+                    client_sock.sendall(METHOD_NOT_ALLOWED_RESPONSE)
+                    continue
+
+                serve_file(client_sock, request.path)
+            except Exception as e:
+                print(f&quot;Failed to parse request: {e}&quot;)
+                client_sock.sendall(BAD_REQUEST_RESPONSE)</code></pre>
+        <p>Если рядом с <code class="inline">server.py</code> добавить файл <code class="inline">www/index.html</code> и перейти на http://localhost:9000, вы должны увидеть содержимое этого файла. Круто, правда?</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Здесь заканчивается часть 1. В части 2 мы рассмотрим выделение абстракций <code class="inline">Server</code> и <code class="inline">Response</code> и обработку сервером множества одновременных соединений. Если хотите увидеть полный исходный код и следовать за ним, вы найдёте его <a href="https://github.com/Bogdanp/web-app-from-scratch/tree/part-01" target="_blank" rel="noopener">здесь</a>.</p>
+        <p>Увидимся позже!</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> статья «Web application from scratch, Part I» принадлежит Богдану Попе (Bogdan Popa) и опубликована на defn.io. Эта страница — лишь её перевод; все права на содержимое, изображения и код принадлежат оригинальному автору. С оригиналом можно ознакомиться на <a href="https://defn.io/2018/02/25/web-app-from-scratch-01/" target="_blank" rel="noopener">сайте defn.io</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Веб-приложение с нуля — 1-я часть» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Веб-приложение с нуля — 1-я часть» принадлежит автору оригинала (Богдан Попа (Bogdan Popa)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Богдан Попа (Bogdan Popa)). Читайте оригинал на
         <a href="https://defn.io/2018/02/25/web-app-from-scratch-01/" target="_blank" rel="noopener">https://defn.io/2018/02/25/web-app-from-scratch-01/</a>.
       </div>
     </article>

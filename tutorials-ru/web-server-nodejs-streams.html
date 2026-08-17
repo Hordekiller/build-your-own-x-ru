@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Напишем веб-сервер с нуля с помощью потоков NodeJS»
+          <b>Оригинальный источник:</b> «Let's code a web server from scratch with NodeJS Streams!»
         </div>
         <a class="btn solid" href="https://www.codementor.io/@ziad-saab/let-s-code-a-web-server-from-scratch-with-nodejs-streams-h4uc9utji" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/web-server-nodejs-streams.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,321 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок показывает, как собрать веб-сервер на Node.js, опираясь на потоки (streams): вы научитесь принимать подключения, корректно читать входящие данные порциями и отправлять ответы через pipe, не загружая всё в память целиком.</p>
+      <h2>Введение</h2>
+        <p>В этом посте мы обращаемся к основам и строим простой веб-сервер с нуля на NodeJS. По пути разберём структуру HTTP-запросов и ответов и познакомимся со <a href="https://nodejs.org/api/stream.html" target="_blank" rel="noopener">Stream API Node</a>.</p>
+        <p>Сначала быстро пройдёмся по встроенному модулю <code>http</code>. Затем рассмотрим общую структуру HTTP-запроса и ответа. Потом на встроенном модуле <code>net</code> построим низкоуровневый TCP-сервер и попробуем превратить его в пригодный веб-сервер.</p>
+        <p>Стоит отметить: весь код этой статьи никогда не следует использовать в продакшене; он только для обучения.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Краткий взгляд на встроенный модуль http</h2>
+        <p>NodeJS поставляется с простым HTTP-сервером. Он позволяет слушать любой порт и предоставлять функцию-callback, вызываемую на каждый входящий запрос.</p>
+        <p>Callback получает два аргумента: объект Request и объект Response. Объект Request заполнен полезными свойствами запроса, а объект Response используется для отправки ответа клиенту. Пример «Hello World» на http-сервере Node:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code style="direction:ltr;text-align:left">const http = require(&#x27;http&#x27;);
+const server = http.createServer();
+server.on(&#x27;request&#x27;, (req, res) =&gt; {
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  res.setHeader(&#x27;Content-Type&#x27;,&#x27;text/plain&#x27;);
+  res.end(&#x27;Hello World!&#x27;);
+});
+server.listen(3000);
+</code></pre>
+        <p>Это запускает веб-сервер, слушающий порт 3000. Когда приходит запрос, логируется сообщение с текущей датой, затем метод и URL запроса. Эти данные берутся из параметра <code>req</code> — объекта Request, созданного Node. У этого объекта есть и свойство <code>.socket</code> — нижележащий TCP-сокет.</p>
+        <p>В коде выше доступ к упорядоченному объекту через <code>req.method</code> и <code>req.url</code> означает: кто-то другой потрудился за нас разобрать текст запроса и превратить его в упорядоченный объект. В следующем разделе посмотрим на структуру HTTP-запроса, чтобы получить зацепки для его разбора.</p>
+      </section>
+      <section>
+      <h2>Разбор HTTP</h2>
+        <p>Вот пример HTTP-запроса:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">POST /posts/42/comments HTTP/1.1\r\n
+Host: www.my-api.com\r\n
+Accept: application/json\r\n
+Authorization: Bearer N2E5NTU2MzQ5MGQ4N2UzNjIxOTY2ZDU1M2YwNjA3OGFjYjgyMjU4NQ\r\n
+Accept-Encoding: gzip, deflate, br\r\n
+Content-Type: application/json\r\n
+Content-Length: 28\r\n
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.13; rv:58.0)\r\n
+\r\n
+{&quot;text&quot;:&quot;this is a comment&quot;}
+</code></pre>
         <ul>
-          <li>Что такое поток (stream) и чем он лучше работы со всей строкой сразу</li>
-          <li>Чтение тела запроса порциями через событие data</li>
-          <li>Отправка ответа с помощью pipe и обработка завершения</li>
-          <li>Борьба с переполнением памяти при больших передачах</li>
+          <li>Каждая строка разделяется <code>\r\n</code>.</li>
+          <li>Первая строка называется «строка запроса» (request line); она состоит из трёх разделённых пробелами токенов: метод запроса (POST), URI запроса (<code>/posts/42/comments</code>) и версия протокола (<code>HTTP/1.1</code>).</li>
+          <li>Каждая следующая строка — заголовок запроса; она состоит из поля и его значения, разделённых <code>:</code>.</li>
+          <li>Строка только с <code>\r\n</code> отмечает конец заголовков. Всё после неё — тело запроса.</li>
+          <li>В этом запросе тело — JSON-документ, согласованный с заголовком <code>Content-Type</code>, а его длина 28 байт соответствует заголовку <code>Content-Length</code>.</li>
+        </ul>
+        <p>А вот пример HTTP-ответа:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">HTTP/1.1 200 OK\r\n
+Server: nginx/1.9.4\r\n
+Date: Fri, 20 Apr 2017 16:19:42 GMT\r\n
+Content-Type: application/json\r\n
+Content-Length: 141\r\n
+\r\n
+{
+  &quot;id&quot;: &quot;8fh924b42o&quot;,
+  &quot;text&quot;: &quot;this is a comment&quot;,
+  &quot;createdAt&quot;: &quot;2017-04-20T16:19:42.840Z&quot;,
+  &quot;updatedAt&quot;: &quot;2017-04-20T16:19:42.840Z&quot;
+}
+</code></pre>
+        <ul>
+          <li>Как и в запросе, каждая строка разделяется <code>\r\n</code>.</li>
+          <li>Первая строка называется «строка статуса» (status line): версия HTTP, код статуса (200) и фраза-причина (OK).</li>
+          <li>Каждая следующая строка — заголовок ответа с той же структурой, что у заголовков запроса.</li>
+          <li>Пустая строка отмечает конец заголовков и начало тела.</li>
+          <li>Тело — JSON-документ на 141 байт, согласованный со значениями заголовков.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Node.js создавался вокруг асинхронной модели ввода-вывода. Вместо того чтобы ждать полный запрос, вы подписываетесь на фрагменты данных и обрабатываете их по мере поступления.</p>
-        <p>Базовый контур сервера на потоках:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>const http = require("http");
+      <h2>Приём и разбор HTTP-запроса</h2>
+        <p>NodeJS предоставляет встроенный модуль <code>net</code> для построения потокового TCP-сервера. «Потоковый» значит, что сервер может отправлять и получать данные во времени и использует Stream API Node.</p>
+        <p>Там, где http-сервер испускал событие <code>request</code> с объектами Request и Response, TCP-сервер испускает событие <code>connection</code> с объектом Socket. Объекты Socket — <a href="https://nodejs.org/api/stream.html#stream_class_stream_duplex" target="_blank" rel="noopener">Duplex Streams</a>: их можно и читать, и писать.</p>
+        <p>Если отправить HTTP-запрос нашему TCP-серверу, чтение из Socket вернёт текст запроса. Есть два способа читать из readable-потока: подписаться на событие <code>data</code> или вызвать метод <code>.read()</code>. Сначала посмотрим на первый:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code style="direction:ltr;text-align:left">const net = require(&#x27;net&#x27;);
+const server = net.createServer();
+server.on(&#x27;connection&#x27;, handleConnection);
+server.listen(3000);
 
-const server = http.createServer((req, res) =&gt; {
-  // Читаем входящие данные порциями
-  req.on("data", chunk =&gt; console.log(chunk.toString()));
-  req.on("end", () =&gt; res.end("done"));
-});</code></pre>
+function handleConnection(socket) {
+  socket.on(&#x27;data&#x27;, (chunk) =&gt; {
+    console.log(&#x27;Received chunk:\n&#x27;, chunk.toString());
+  });
+  socket.write(&#x27;HTTP/1.1 200 OK\r\nServer: my-web-server\r\nContent-Length: 0\r\n\r\n&#x27;);
+}
+</code></pre>
+        <p>Положите этот код в файл <code>server.js</code> и запустите из командной строки: <code>node server.js</code>. В другом терминале отправьте простой запрос через cURL:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">curl -v localhost:3000/some/url
+</code></pre>
+        <p>Подробный вывод cURL показывает заголовки запроса и ответа, а в терминале Node видно что-то вроде:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">Received chunk:
+GET /some/url HTTP/1.1
+Host: localhost:3000
+User-Agent: curl/7.54.0
+Accept: */*
+</code></pre>
+        <p>Отправим POST-запрос с данными:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">curl -v -XPOST -d&#x27;hello=world&#x27; localhost:3000/some/url
+</code></pre>
+        <p>Если бы тело запроса было длиннее, вы получали бы его несколькими кусками (chunks). Но <strong>веб-серверу не всегда нужно обрабатывать тело запроса</strong>. Часто заголовков достаточно, чтобы начать обработку. Поскольку мы пишем общий веб-сервер, нужно найти способ останавливать приём данных из сокета, как только во входе встретилась строка <code>\r\n\r\n</code>.</p>
+        <p>С методом <code>.read()</code> сокета это сделать проще, потому что мы сами решаем, когда прекратить вытягивать данные из потока. Код:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code style="direction:ltr;text-align:left">const net = require(&#x27;net&#x27;);
+const server = net.createServer();
+server.on(&#x27;connection&#x27;, handleConnection);
+server.listen(3000);
+
+function handleConnection(socket) {
+  // Один раз подпишемся на readable, чтобы можно было вызывать .read()
+  socket.once(&#x27;readable&#x27;, function() {
+    // Буфер для входящих данных
+    let reqBuffer = new Buffer(&#x27;&#x27;);
+    // Временный буфер для чтения кусков
+    let buf;
+    let reqHeader;
+    while(true) {
+      // Чтение данных из сокета
+      buf = socket.read();
+      // Нет данных — стоп
+      if (buf === null) break;
+
+      // Добавляем новые данные в буфер запроса
+      reqBuffer = Buffer.concat([reqBuffer, buf]);
+
+      // Дошли до \r\n\r\n? Это конец заголовка
+      let marker = reqBuffer.indexOf(&#x27;\r\n\r\n&#x27;)
+      if (marker !== -1) {
+        // Дошли — за маркером могут быть данные; запомни их
+        let remaining = reqBuffer.slice(marker + 4);
+        // Заголовок — всё прочитанное до \r\n\r\n
+        reqHeader = reqBuffer.slice(0, marker).toString();
+        // Возвращаем лишние данные в поток сокета
+        socket.unshift(remaining);
+        break;
+      }
+    }
+    console.log(`Request header:\n${reqHeader}`);
+
+    // Отправляем общий ответ
+    socket.end(&#x27;HTTP/1.1 200 OK\r\nServer: my-custom-server\r\nContent-Length: 0\r\n\r\n&#x27;);
+  });
+}
+</code></pre>
+        <p>Код стал длиннее, потому что нужна логика решения, когда прекращать читать из потока. Это позволяет отделить заголовок от тела. Ключевая строка — <code>socket.unshift</code>: она возвращает в readable-поток все лишние прочитанные данные, так что при необходимости тот же сокет можно отдать пользователю для чтения.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Потоки — ключ к эффективным серверам: они позволяют обслуживать тысячи соединений и огромные объёмы данных при скромном потреблении памяти — тот же приём, что стоит внутри nginx и Express.</p>
+      <h2>Полный код базового веб-сервера</h2>
+        <p>Вот полный код нашего базового веб-сервера, собирающий всё, что мы видели. Сервер предоставляет функцию <code>createWebServer(requestHandler)</code>, принимающую обработчик вида <code>(req, res) =&gt; void</code> — точь-в-точь как базовый веб-сервер Node. Комментарии в коде объясняют каждый шаг:</p>
+        <pre class="code"><span class="lang-tag">JavaScript</span><code style="direction:ltr;text-align:left">const net = require(&#x27;net&#x27;);
+
+function createWebServer(requestHandler) {
+  const server = net.createServer();
+  server.on(&#x27;connection&#x27;, handleConnection);
+
+  function handleConnection(socket) {
+    // Один раз подпишемся на readable, чтобы можно было вызывать .read()
+    socket.once(&#x27;readable&#x27;, function() {
+      // Буфер для входящих данных
+      let reqBuffer = new Buffer(&#x27;&#x27;);
+      // Временный буфер для чтения кусков
+      let buf;
+      let reqHeader;
+      while(true) {
+        // Чтение данных из сокета
+        buf = socket.read();
+        // Нет данных — стоп
+        if (buf === null) break;
+
+        // Добавляем новые данные в буфер запроса
+        reqBuffer = Buffer.concat([reqBuffer, buf]);
+
+        // Дошли до \r\n\r\n? Это конец заголовка
+        let marker = reqBuffer.indexOf(&#x27;\r\n\r\n&#x27;)
+        if (marker !== -1) {
+          // За маркером могут быть данные; запомни их
+          let remaining = reqBuffer.slice(marker + 4);
+          // Заголовок — всё прочитанное до \r\n\r\n
+          reqHeader = reqBuffer.slice(0, marker).toString();
+          // Возвращаем лишние данные в readable-поток сокета
+          socket.unshift(remaining);
+          break;
+        }
+      }
+
+      /* Работа с запросом */
+      // Начинаем разбор заголовка
+      const reqHeaders = reqHeader.split(&#x27;\r\n&#x27;);
+      // Первая строка особенная
+      const reqLine = reqHeaders.shift().split(&#x27; &#x27;);
+      // Остальные строки — заголовки; строим из них объект
+      const headers = reqHeaders.reduce((acc, currentHeader) =&gt; {
+        const [key, value] = currentHeader.split(&#x27;:&#x27;);
+        return {
+          ...acc,
+          [key.trim().toLowerCase()]: value.trim()
+        };
+      }, {});
+      // Этот объект отправляется в callback обработчика запроса
+      const request = {
+        method: reqLine[0],
+        url: reqLine[1],
+        httpVersion: reqLine[2].split(&#x27;/&#x27;)[1],
+        headers,
+        // Пользователь этого веб-сервера может читать тело запроса прямо из сокета
+        socket
+      };
+
+      /* Работа с ответом */
+      // Начальные значения
+      let status = 200, statusText = &#x27;OK&#x27;, headersSent = false, isChunked = false;
+      const responseHeaders = {
+        server: &#x27;my-custom-server&#x27;
+      };
+      function setHeader(key, value) {
+        responseHeaders[key.toLowerCase()] = value;
+      }
+      function sendHeaders() {
+        // Делаем это только один раз :)
+        if (!headersSent) {
+          headersSent = true;
+          // Добавляем заголовок даты
+          setHeader(&#x27;date&#x27;, new Date().toGMTString());
+          // Отправляем строку статуса
+          socket.write(`HTTP/1.1 ${status} ${statusText}\r\n`);
+          // Отправляем каждый из следующих заголовков
+          Object.keys(responseHeaders).forEach(headerKey =&gt; {
+            socket.write(`${headerKey}: ${responseHeaders[headerKey]}\r\n`);
+          });
+          // Финальный \r\n, отделяющий заголовки от тела
+          socket.write(&#x27;\r\n&#x27;);
+        }
+      }
+      const response = {
+        write(chunk) {
+          if (!headersSent) {
+            // Если content-length нет, указываем Transfer-Encoding chunked
+            if (!responseHeaders[&#x27;content-length&#x27;]) {
+              isChunked = true;
+              setHeader(&#x27;transfer-encoding&#x27;, &#x27;chunked&#x27;);
+            }
+            sendHeaders();
+          }
+          if (isChunked) {
+            const size = chunk.length.toString(16);
+            socket.write(`${size}\r\n`);
+            socket.write(chunk);
+            socket.write(&#x27;\r\n&#x27;);
+          }
+          else {
+            socket.write(chunk);
+          }
+        },
+        end(chunk) {
+          if (!headersSent) {
+            // Полную длину ответа мы знаем; установим её
+            if (!responseHeaders[&#x27;content-length&#x27;]) {
+              // Считаем, что chunk — буфер, а не строка!
+              setHeader(&#x27;content-length&#x27;, chunk ? chunk.length : 0);
+            }
+            sendHeaders();
+          }
+          if (isChunked) {
+            if (chunk) {
+              const size = (chunk.length).toString(16);
+              socket.write(`${size}\r\n`);
+              socket.write(chunk);
+              socket.write(&#x27;\r\n&#x27;);
+            }
+            socket.end(&#x27;0\r\n\r\n&#x27;);
+          }
+          else {
+            socket.end(chunk);
+          }
+        },
+        setHeader,
+        setStatus(newStatus, newStatusText) { status = newStatus, statusText = newStatusText },
+        // Удобный метод для отправки JSON через сервер
+        json(data) {
+          if (headersSent) {
+            throw new Error(&#x27;Headers sent, cannot proceed to send JSON&#x27;);
+          }
+          const json = new Buffer(JSON.stringify(data));
+          setHeader(&#x27;content-type&#x27;, &#x27;application/json; charset=utf-8&#x27;);
+          setHeader(&#x27;content-length&#x27;, json.length);
+          sendHeaders();
+          socket.end(json);
+        }
+      };
+
+      // Отправляем запрос обработчику!
+      requestHandler(request, response);
+    });
+  }
+
+  return {
+    listen: (port) =&gt; server.listen(port)
+  };
+}
+
+const webServer = createWebServer((req, res) =&gt; {
+  // Это наш исходный код на модуле http :)
+  console.log(`${new Date().toISOString()} - ${req.method} ${req.url}`);
+  res.setHeader(&#x27;Content-Type&#x27;,&#x27;text/plain&#x27;);
+  res.end(&#x27;Hello World!&#x27;);
+});
+
+webServer.listen(3000);
+</code></pre>
+        <p>Как сказано в начале поста, этому серверному коду не место в проде; он только для изучения потоков и буферов.</p>
+        <p>Большая часть кода самоочевидна: разбираем запрос по правилам предыдущего раздела и отправляем ответ. Единственная новинка — <code>Transfer-Encoding: chunked</code>, нужная, когда длину ответа заранее не знаешь. Подробнее о <a href="https://en.wikipedia.org/wiki/Chunked_transfer_encoding" target="_blank" rel="noopener">chunked transfer encoding в Википедии</a>.</p>
+      </section>
+      <section>
+      <h2>Заключение</h2>
+        <p>Используя низкоуровневые строительные блоки вроде <code>net</code>, <code>Stream</code> и <code>Buffer</code>, мы смогли собрать зачаточный HTTP-сервер на основе TCP-сервера и небольшой логики разбора. По пути немного узнали о том, как работают HTTP-запросы и ответы, а также об основах readable/writable-потоков и буферов.</p>
+        <p><em>Автор: Зиад Сааб — консультант по NodeJS, React, Postgres и Web3 из Монреаля, Канада.</em></p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Напишем веб-сервер с нуля с помощью потоков NodeJS» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Напишем веб-сервер с нуля с помощью потоков NodeJS» принадлежит автору оригинала (Зиад Сааб). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Зиад Сааб). Читайте оригинал на
         <a href="https://www.codementor.io/@ziad-saab/let-s-code-a-web-server-from-scratch-with-nodejs-streams-h4uc9utji" target="_blank" rel="noopener">https://www.codementor.io/@ziad-saab/let-s-code-a-web-server-from-scratch-with-nodejs-streams-h4uc9utji</a>.
       </div>
     </article>

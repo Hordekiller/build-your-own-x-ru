@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Система распознавания лиц на Python»
+          <b>Оригинальный источник:</b> «Building a Facial Recognition Pipeline with Deep Learning in TensorFlow»
         </div>
         <a class="btn solid" href="https://hackernoon.com/building-a-facial-recognition-pipeline-with-deep-learning-in-tensorflow-66e7645015b8" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/visual-recognition-facial.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,71 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Распознавание лиц: детекция, выравнивание, эмбеддинги и сравнение — с OpenCV, dlib или Face Recognition.</p>
+      <h2>Введение: как «представить» лицо?</h2>
+        <p>Распознавание лиц — биометрическое решение, которое измеряет уникальные черты лица. Главный вопрос: как представить лицо в численном, сопоставимом виде? Предыстория: в 1960-м Вудроу Бледсо (Woodrow Bledsoe) размечал координаты выдающихся черт лица (линия волос, глаза, нос). Затем, в 2015-м, исследователи Google опубликовали статью о <b>FaceNet</b>: свёрточная нейросеть (CNN), которая вместо ручного извлечения признаков напрямую работает с пикселями изображения и достигла рекордной точности 99,63% на датасете LFW.</p>
+        <p>Ключевой приём FaceNet: представление лица как <b>эмбеддинга</b> — вектора из 128 измерений. Поскольку эти векторы лежат в общем векторном пространстве, векторное расстояние становится мерой схожести двух лиц; эти эмбеддинги служат входом для задач классификации, кластеризации или регрессии. Функция потерь FaceNet — «triplet loss»: минимизация расстояния до положительных примеров (той же личности) и максимизация расстояния до отрицательных — то есть лица одного человека должны быть ближе друг к другу, чем лица разных людей.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Инструменты: Docker, TensorFlow, Dlib и OpenCV</h2>
+        <p>Установка TensorFlow, OpenCV и особенно Dlib (который даёт обнаружение и выравнивание лиц) доставляет хлопоты; поэтому автор ставит всё внутрь <b>Docker</b>, получая согласованную и кросс-платформенную среду. Структура проекта:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">├── Dockerfile
+├── etc/20170511-185253/20170511-185253.pb     # предобученные веса модели
+├── data/                                      # датасет LFW
+└── medium_facenet_tutorial/
+    ├── align_dlib.py                          # инструменты выравнивания Dlib
+    ├── preprocess.py                          # предобработка (детекция+кадрирование+выравнивание)
+    ├── download_and_extract_model.py
+    ├── lfw_input.py                           # параллельная загрузка изображений
+    ├── train_classifier.py                    # обучение SVM
+    └── shape_predictor_68_face_landmarks.dat  # модель ключевых точек лица
+</code></pre>
+        <p>Обучающий датасет: <b>LFW (Labeled Faces in the Wild)</b> — 177 МБ, для каждого человека своя папка с несколькими изображениями (например, Tyra_Banks_0001.jpg). Эту структуру папок можно заменить собственным датасетом.</p>
+      </section>
+      <section>
+      <h2>Предобработка: обнаружение, кадрирование и выравнивание с Dlib</h2>
+        <p>Предобработка решает две задачи: <b>сегментацию</b> и <b>выравнивание</b>. Сначала через <code>align_dlib.py</code> находится самое крупное лицо на изображении (поэтому данные не обязаны быть заранее обрезанными). Затем, поскольку лицо обычно не строго по центру кадра, изображение выравнивается по модели ключевых точек (<code>shape_predictor_68_face_landmarks.dat</code>) относительно положения <b>внутренних уголков глаз и нижней губы</b>, чтобы все входы стали стандартизированными (освещение, затенение и разница фона — частые проблемы, с которыми помогает эта стандартизация):</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">$ docker run -v $PWD:/medium-facenet-tutorial   -e PYTHONPATH=$PYTHONPATH:/medium-facenet-tutorial   -it colemurray/medium-facenet-tutorial   python3 medium_facenet_tutorial/preprocess.py   --input-dir data --output-dir output/intermediate --crop-dim 180
+</code></pre>
+        <p>Скрипт читает каждое изображение, находит самое крупное лицо, выравнивает его и пишет результат; если лицо не найдено, имя файла попадает в лог. Скрипт поддерживает параллелизацию, поэтому на нескольких ядрах работает быстрее.</p>
+      </section>
+      <section>
+      <h2>Создание эмбеддингов с TensorFlow</h2>
+        <p>Выбранная нейросеть — <b>Inception Resnet V1</b> (та же архитектура FaceNet). Скачиваются предобученные веса (модель <code>20170511-185253.pb</code>). Затем через <b>Queue API</b> TensorFlow предобработанные изображения загружаются <b>параллельно</b> (в несколько потоков) — на GPU это значит, что предобработка идёт на CPU, а перемножение матриц на GPU, без простоев. На выходе — вектор из 128 измерений для каждого лица.</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Параллельная загрузка изображений через очередь — предобработка на CPU, сеть на GPU
+img_placeholder = tf.placeholder(tf.float32, [None, 180, 180, 3])
+embeddings = facenet.embedding_model(img_placeholder, is_training=False)
+# ... запуск на батчах изображений; выход: массив 128-мерных векторов
+</code></pre>
+      </section>
+      <section>
+      <h2>Обучение классификатора SVM</h2>
+        <p>Теперь эмбеддинги используются как «признаки» для <b>машины опорных векторов (SVM)</b> из scikit-learn, которая обучается на каждую личность. Личности с меньше чем 10 изображениями отбрасываются (параметр, настраиваемый из командной строки):</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">$ docker run -v $PWD:/medium-facenet-tutorial   -e PYTHONPATH=$PYTHONPATH:/medium-facenet-tutorial   -it colemurray/medium-facenet-tutorial   python3 medium_facenet_tutorial/train_classifier.py   --input-dir output/intermediate   --model-path etc/20170511-185253/20170511-185253.pb   --classifier-path output/classifier.pkl   --num-threads 16 --num-epochs 25   --min-num-images-per-class 10 --is-train
+# ~16 минут на MacBook Pro
+</code></pre>
+        <p>Для оценки та же команда запускается без <code>--is-train</code>, чтобы делать предсказания на невиденных изображениях; автор с пятью эпохами достигает точности 85%.</p>
+      </section>
+      <section>
+      <h2>Итоги и уроки</h2>
         <ul>
-          <li>Детекция лиц</li>
-          <li>Ключевые точки и выравнивание</li>
-          <li>Эмбеддинги лиц</li>
-          <li>Сравнение и верификация</li>
+          <li><b>Современный пайплайн распознавания лиц</b>: детекция + выравнивание через Dlib → эмбеддинг глубокой сетью → классификация SVM. Каждый этап — отдельная задача со своим лучшим инструментом.</li>
+          <li><b>Эмбеддинги вместо прямой классификации</b>: 128-мерный вектор FaceNet пригоден для любой последующей задачи (классификация, кластеризация, регрессия, поиск по сходству).</li>
+          <li><b>Управление средой через Docker</b>: воспроизводимость в машинном обучении начинается с середины пути — контейнеризируйте капризные зависимости вроде dlib.</li>
+          <li><b>Предобработка важнее модели</b>: выравнивание лица до подачи в модель влияет сильнее, чем усложнение сети.</li>
         </ul>
+        <div class="callout tip">
+          <strong>Дополнительное замечание:</strong> уже в те годы эта архитектура (Dlib + FaceNet-подобные эмбеддинги + SVM) стала стандартом для таких инструментов, как face_recognition; в современных приложениях распознавание лиц в диком виде (переменные углы и свет) заменяется более сильными моделями, но логика пайплайна та же.
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Распознавание — это этапы: найти лицо, выровнять, превратить в вектор-эмбеддинг, сравнить. Урок показывает каждый.</p>
-        <p>Детекция лиц — функция библиотеки:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import face_recognition
-faces = face_recognition.face_locations(image)
-encodings = face_recognition.face_encodings(image, faces)</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Биометрия — будущее доступа: понимание пайплайна распознавания сделает вас грамотным и в продуктах, и в этике.</p>
+      <h2>Заключение</h2>
+        <p>Этот туториал собирает полный и запускаемый пайплайн распознавания лиц: от сырого датасета LFW до предсказания личности по новому изображению — с четырьмя открытыми инструментами (Dlib, TensorFlow, scikit-learn и Docker) и без единой сети, которую пришлось бы обучать самим.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Система распознавания лиц на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Система распознавания лиц на Python» принадлежит автору оригинала (Кол Мюррей). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Кол Мюррей). Читайте оригинал на
         <a href="https://hackernoon.com/building-a-facial-recognition-pipeline-with-deep-learning-in-tensorflow-66e7645015b8" target="_blank" rel="noopener">https://hackernoon.com/building-a-facial-recognition-pipeline-with-deep-learning-in-tensorflow-66e7645015b8</a>.
       </div>
     </article>

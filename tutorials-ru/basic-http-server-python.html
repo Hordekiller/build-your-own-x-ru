@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание базового HTTP-сервера с нуля на Python»
+          <b>Оригинальный источник:</b> «basic-http-server-python»
         </div>
         <a class="btn solid" href="http://joaoventura.net/blog/2017/python-webserver/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/basic-http-server-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,251 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Чёткое руководство по созданию простого HTTP-сервера на Python: вы откроете сокет, научитесь принимать запросы, разбирать их и возвращать корректные ответы, а затем добавите раздачу файлов и обработку простых ошибок.</p>
+      <h2>Введение</h2>
+        <p>По своей сути современный веб — это просто текст, перемещаемый между клиентами и серверами. Как разработчики, мы часто используем веб-фреймворки для построения строк, отправляемых клиентам. Веб-фреймворки отдаляют нас от лежащей в основе «текстовой реальности»: они разбирают входящие http-запросы (которые являются просто строкой), вызывают соответствующую функцию и строят строковый ответ (чаще всего с шаблонами). В конце концов, клиенты разбирают эти строки и делают с ними всё, что хотели.</p>
+        <p>Этот пост в блоге показывает, как построить с нуля совершенно простой HTTP-сервер, и основан на упражнении, которое автор давал своим студентам магистратуры. Единственное требование — базовое понимание Python 3. Если хотите реализовывать вместе с учебником, возьмите программу-стартёр по <a href="http://joaoventura.net/static/blog/2017/python-httpserver-base.zip" target="_blank" rel="noopener">этой ссылке</a>. Финальный исходник вы увидите в <a href="https://gist.github.com/joaoventura/824cbb501b8585f7c61bd54fec42f08f" target="_blank" rel="noopener">этом gist</a>.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Создание сокета и прослушивание порта</li>
-          <li>Чтение и разбор HTTP-запроса</li>
-          <li>Отправка ответов с правильными статус-кодами и заголовками</li>
-          <li>Раздача статических файлов с веб-интерфейса</li>
-        </ul>
+      <h2>HTTP — это просто текст</h2>
+        <p>HTTP — <a href="https://en.wikipedia.org/wiki/Hypertext_Transfer_Protocol" target="_blank" rel="noopener">протокол</a>, по которому браузеры получают информацию от серверов и отправляют её им. По своей сути HTTP — просто текст, следующий особому шаблону: в первой строке вы указываете, какой ресурс хотите, затем идут заголовки, а затем пустая строка, отделяющая заголовки от тела сообщения (если оно есть). Вот так можно получить страницу «about» веб-сайта:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">GET /about.html HTTP/1.0
+User-Agent: Mozilla/5.0</code></pre>
+        <p>а так с методом POST отправляются данные формы на веб-сервер:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">POST /form.php HTTP/1.0
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 21
+
+name=John&amp;surname=Doe</code></pre>
+        <p>Чтобы доказать, что это просто текст, можно скопировать и вставить текст выше и использовать что-нибудь, позволяющее отправить текст по сети. Давайте с telnet получим страницу about у Google:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">telnet google.com 80
+Trying 84.91.171.170...
+Connected to google.com.
+Escape character is &#x27;^]&#x27;.
+
+(1) GET /about/ HTTP/1.0
+
+(2) HTTP/1.0 200 OK
+Vary: Accept-Encoding
+Content-Type: text/html
+Date: Thu, 09 Feb 2017 16:41:37 GMT
+...
+&lt;!DOCTYPE html&gt;
+    &lt;html class=&quot;google mmfb&quot; lang=&quot;en&quot;&gt;
+        &lt;head&gt;
+        ...
+    &lt;/html&gt;
+Connection closed by foreign host.</code></pre>
+        <p>и отправим POST-сообщение на httpbin.org:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">telnet httpbin.org 80
+
+Trying 54.175.219.8...
+Connected to httpbin.org.
+Escape character is &#x27;^]&#x27;.
+
+(1) POST /post HTTP/1.0
+Content-Type: application/x-www-form-urlencoded
+Content-Length: 21
+
+name=John&amp;surname=Doe
+
+(2) HTTP/1.1 200 OK
+Server: nginx
+Date: Thu, 09 Feb 2017 16:38:26 GMT
+Content-Type: application/json
+Content-Length: 328
+...
+{
+  &quot;form&quot;: {
+    &quot;name&quot;: &quot;John&quot;,
+    &quot;surname&quot;: &quot;Doe&quot;
+  },
+  ...
+}
+Connection closed by foreign host.</code></pre>
+        <p>Вы видите HTTP-запросы <strong>(1)</strong>, а затем HTTP-ответы сервера в <strong>(2)</strong>. Тот же шаблон в запросах и ответах, и везде текст! Больше информации об HTTP читайте в отличной книге <a href="https://hpbn.co/brief-history-of-http/" target="_blank" rel="noopener">High Performance Browser Networking</a>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>HTTP-сервер — это цикл: принять соединение, прочитать текст запроса, отправить текст ответа. На чистом Python это делается просто и наглядно.</p>
-        <p>Чтение одного запроса выглядит так:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def read_request(conn):
-    data = b""
-    while b"\r\n\r\n" not in data:
-        data += conn.recv(4096)
-    return data.decode()</code></pre>
+      <h2>Отправка HTTP-ответов с помощью сокетов</h2>
+        <p>Если вы собираетесь реализовывать сетевые программы с нуля, вам, вероятно, придётся поработать с <a href="https://en.wikipedia.org/wiki/Network_socket" target="_blank" rel="noopener">сетевыми сокетами</a>. Сокет — абстракция, предоставленная вашей операционной системой, позволяющая отправлять и получать байты по сети. Вот простая базовая реализация HTTP-сервера:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">&quot;&quot;&quot;
+Реализация простого HTTP/1.0 сервера
+&quot;&quot;&quot;
+
+import socket
+
+# Определение хоста и порта сокета
+SERVER_HOST = &#x27;0.0.0.0&#x27;
+SERVER_PORT = 8000
+
+# Создание сокета
+server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+server_socket.bind((SERVER_HOST, SERVER_PORT))
+server_socket.listen(1)
+print(&#x27;Listening on port %s ...&#x27; % SERVER_PORT)
+
+while True:
+        # Ждём соединения клиента
+    client_connection, client_address = server_socket.accept()
+
+    # Получаем запрос клиента
+    request = client_connection.recv(1024).decode()
+    print(request)
+
+    # Отправляем HTTP-ответ
+    response = &#x27;HTTP/1.0 200 OK\n\nHello World&#x27;
+    client_connection.sendall(response.encode())
+    client_connection.close()
+
+# Закрываем сокет
+server_socket.close()</code></pre>
+        <p>Мы начинаем с определения хоста и порта сокета. Затем создаём переменную <em>server_socket</em> и устанавливаем её на <em>AF_INET</em> (семейство адресов IPv4) и <em>SOCK_STREAM</em> (по сути TCP). Остальной код нужен, чтобы подготовить сокет к прослушиванию запросов на заданных (host, port). Документация Python о сокетах содержит больше информации.</p>
+        <p>Остальной код самоочевиден: ждём соединения клиента, читаем строку запроса, отправляем строку в HTTP-формате с <em>Hello World</em> в теле ответа и закрываем соединение клиента. Делаем так вечно (или пока кто-нибудь не нажмёт Ctrl+C). Откройте в браузере <a href="http://localhost:8000/" target="_blank" rel="noopener">http://localhost:8000/</a> — и вы должны увидеть ответ сервера:</p>
+        <img src="https://joaoventura.net/static/blog/2017/python-webserver-1.png" alt="Вывод сервера Hello World в браузере" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+        <p>В качестве упражнения измените <em>Hello World</em> на <code class="inline">&lt;h1&gt;Hello World&lt;/h1&gt;</code> и посмотрите, что произойдёт. А видите <code class="inline">print(request)</code> в коде сервера? Вот его вывод в консоли:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">Listening on port 8000 ...
+
+GET / HTTP/1.1
+Host: localhost:8080
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.12; rv:51.0) Gecko/20100101 Firefox/51.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8
+Accept-Language: pt-PT,pt;q=0.8,en;q=0.5,en-US;q=0.3
+Accept-Encoding: gzip, deflate
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Cache-Control: max-age=0</code></pre>
+        <p>Да, браузер запрашивает корневую страницу («/») сервера.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Когда сервер собран своими руками, протокол HTTP теряет всю загадочность — вы сможете читать и отлаживать любой сетевой обмен, от curl до браузера.</p>
+      <h2>index.html</h2>
+        <p>По умолчанию, когда браузер запрашивает корень сервера (запросом вроде <strong>GET / HTTP/1.0</strong>), мы должны вернуть страницу <em>index.html</em>. Давайте изменим код внутри while, чтобы он всегда возвращал содержимое файла <em>htdocs/index.html</em>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">while True:
+    # Ждём соединения клиента
+    (...)
+
+    # Получаем запрос клиента
+    (...)
+
+    # Получаем содержимое htdocs/index.html
+    fin = open(&#x27;htdocs/index.html&#x27;)
+    content = fin.read()
+    fin.close()
+
+    # Отправляем HTTP-ответ
+    response = &#x27;HTTP/1.0 200 OK\n\n&#x27; + content
+    client_connection.sendall(response.encode())
+    (...)</code></pre>
+        <p>По сути, мы читаем содержимое файла и вместо прежнего <em>Hello World</em> добавляем его в строку <em>response</em> как тело сообщения. Файл <em>index.html</em> — просто текстовый файл (внутри каталога <em>htdocs</em>) с html-содержимым:</p>
+        <pre class="code"><span class="lang-tag">html</span><code style="direction:ltr;text-align:left">&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Hello World&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Hello World!&lt;/h1&gt;
+    &lt;p&gt;Welcome to the index.html web page..&lt;/p&gt;
+    &lt;p&gt;Here&#x27;s a link to &lt;a href=&quot;ipsum.html&quot;&gt;Ipsum&lt;/a&gt;&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        <img src="https://joaoventura.net/static/blog/2017/python-webserver-2.png" alt="Отображение страницы index.html со ссылкой на страницу Ipsum" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+        <p>Можете кликать по ссылке сколько угодно, но ваш сервер <strong>всегда</strong> возвращает содержимое <em>index.html</em>; так запрограммировано!</p>
+      </section>
+      <section>
+      <h2>Возврат других страниц</h2>
+        <p>До сих пор наш сервер возвращает страницу <em>index.html</em>, но нужно позволить ему возвращать и остальные страницы. Технически это значит разобрать первую строку HTTP-запроса (что-то вроде <em>GET /ipsum.html HTTP/1.0</em>), открыть запрошенный файл и вернуть его содержимое. Изменения:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">while True:
+    # Ждём соединения клиента
+    (...)
+
+    # Получаем запрос клиента
+    (...)
+
+    # Разбираем HTTP-заголовки
+    headers = request.split(&#x27;\n&#x27;)
+    filename = headers[0].split()[1]
+
+    # Получаем содержимое файла
+    if filename == &#x27;/&#x27;:
+        filename = &#x27;/index.html&#x27;
+
+    fin = open(&#x27;htdocs&#x27; + filename)
+    content = fin.read()
+    fin.close()
+
+    # Отправляем HTTP-ответ
+    response = &#x27;HTTP/1.0 200 OK\n\n&#x27; + content
+    client_connection.sendall(response.encode())
+    (...)</code></pre>
+        <p>По сути, мы вытаскиваем имя файла из строки запроса, открываем файл (предполагаем, что все html-файлы находятся в папке <strong>htdocs</strong>) и возвращаем его содержимое. Также видно, что когда клиенты запрашивают корневой ресурс ('/'), мы корректно возвращаем файл <em>index.html</em>.</p>
+        <p>Содержимое <em>htdocs/ipsum.html</em>:</p>
+        <pre class="code"><span class="lang-tag">html</span><code style="direction:ltr;text-align:left">&lt;html&gt;
+&lt;head&gt;
+    &lt;title&gt;Ipsum&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+    &lt;h1&gt;Ipsum!&lt;/h1&gt;
+    &lt;p&gt;Lorem ipsum dolor sit amet, consectetur adipiscing elit.
+        Pellentesque tincidunt libero diam, nec imperdiet libero
+        sodales quis. Nulla in pulvinar sem. Vivamus placerat
+        ullamcorper sagittis. Proin varius, erat sed egestas semper,
+        enim lectus viverra diam, id placerat est augue et turpis.
+    &lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        <p>Попробуйте на своём коде и посмотрите, сможете ли вы открыть файлы <strong>index.html</strong> и <strong>ipsum.html</strong>.</p>
+      </section>
+      <section>
+      <h2>404 — не найдено</h2>
+        <p>Ещё не всё! Вот что произойдёт, если запросить файл, которого нет, — например http://localhost:8000/hello.html:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">GET /hello.html HTTP/1.1
+
+Traceback (most recent call last):
+  File &quot;httpserver.py&quot;, line 36, in &lt;module&gt;
+    fin = open(&#x27;htdocs&#x27; + filename)
+FileNotFoundError: [Errno 2] No such file or directory: &#x27;htdocs/hello.html&#x27;</code></pre>
+        <p>Сервер падает и завершается!</p>
+        <p>Нужно перехватить исключение и отправить ответ 404:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">while True:
+    # Ждём соединения клиента
+    (...)
+
+    # Получаем запрос клиента
+    (...)
+
+    # Разбираем HTTP-заголовки
+    headers = request.split(&#x27;\n&#x27;)
+    filename = headers[0].split()[1]
+
+    # Получаем содержимое файла
+    if filename == &#x27;/&#x27;:
+        filename = &#x27;/index.html&#x27;
+
+    try:
+        fin = open(&#x27;htdocs&#x27; + filename)
+        content = fin.read()
+        fin.close()
+
+        response = &#x27;HTTP/1.0 200 OK\n\n&#x27; + content
+    except FileNotFoundError:
+        response = &#x27;HTTP/1.0 404 NOT FOUND\n\nFile Not Found&#x27;
+
+    # Отправляем HTTP-ответ
+    client_connection.sendall(response.encode())
+    client_connection.close()</code></pre>
+        <p>Если хотите, можете изменить тело HTTP-ответа 404 так, чтобы получить персонализированные сообщения об ошибках:</p>
+        <img src="https://joaoventura.net/static/blog/2017/python-webserver-3.png" alt="Отображение сообщения File Not Found в браузере" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+        <p>Весь исходник этого примера вы найдёте в <a href="https://gist.github.com/joaoventura/824cbb501b8585f7c61bd54fec42f08f" target="_blank" rel="noopener">этом gist</a>.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> статья «Building a basic HTTP Server from scratch in Python» принадлежит Жуану Вентуре (João Ventura) и опубликована на joaoventura.net. Эта страница — лишь её перевод; все права на содержимое, изображения и код принадлежат оригинальному автору. С оригиналом можно ознакомиться на <a href="http://joaoventura.net/blog/2017/python-webserver/" target="_blank" rel="noopener">сайте joaoventura.net</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание базового HTTP-сервера с нуля на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание базового HTTP-сервера с нуля на Python» принадлежит автору оригинала (Жуан Вентура (João Ventura)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Жуан Вентура (João Ventura)). Читайте оригинал на
         <a href="http://joaoventura.net/blog/2017/python-webserver/" target="_blank" rel="noopener">http://joaoventura.net/blog/2017/python-webserver/</a>.
       </div>
     </article>

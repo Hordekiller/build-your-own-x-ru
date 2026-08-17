@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание простого websockets-сервера с нуля на Ruby»
+          <b>Оригинальный источник:</b> «websockets-server-ruby»
         </div>
         <a class="btn solid" href="http://blog.honeybadger.io/building-a-simple-websockets-server-from-scratch-in-ruby/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/websockets-server-ruby.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,331 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство объясняет протокол WebSocket изнутри: рукопожатие, фреймы, маскирование и пинг-понг. Вы построите рабочий WebSocket-сервер на Ruby, который можно использовать для чатов и отправки уведомлений в реальном времени.</p>
+      <h2>Введение</h2>
+        <p>В наши дни вокруг WebSockets много шума. Мы слышим, что они «за будущим» и что «благодаря ActionCable в Rails 5 они проще, чем когда-либо». Но что такое WebSocket на самом деле и как он работает?</p>
+        <p>В этом посте мы ответим на эти вопросы, построив с нуля простой WebSocket-сервер на Ruby. Когда всё будет готово, у нас будет двусторонняя связь между браузером и нашим сервером.</p>
+        <blockquote>Код этого поста — учебное упражнение. Если вы хотите реализовать WebSocket в реальном продакшн-приложении, посмотрите отличный gem <a href="https://github.com/imanel/websocket-ruby" target="_blank" rel="noopener">websocket-ruby</a>. Также можете заглянуть в <a href="https://tools.ietf.org/html/rfc6455" target="_blank" rel="noopener">спецификации WebSocket</a>.</blockquote>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Может, вы и не слышали о WebSocket</h2>
+        <p>WebSocket был изобретён для решения проблем, присущих обычным HTTP-соединениям. Когда вы запрашиваете страницу обычным HTTP-соединением, сервер отправляет содержимое и закрывает соединение. Если вы хотите запросить другую страницу, вы должны установить новое соединение. Обычно это работает хорошо, но для некоторых приложений это не лучший подход:</p>
         <ul>
-          <li>Рукопожатие WebSocket поверх HTTP: заголовок Upgrade</li>
-          <li>Формат фрейма: опкоды, длина и маскирование</li>
-          <li>Отправка и приём сообщений в обе стороны</li>
-          <li>Пинги, понги и закрытие соединения</li>
+          <li>Для приложений вроде чата фронтенд должен обновляться, как только приходит новое сообщение. Если у вас только обычные HTTP-запросы, это значит, что вам приходится постоянно опрашивать (poll) сервер, нет ли нового содержимого.</li>
+          <li>Если вашему фронтенд-приложению нужно много маленьких запросов к серверу, накладные расходы на создание нового соединения для каждого запроса могут стать проблемой производительности.</li>
+        </ul>
+        <p>С WebSocket вы создаёте соединение с сервером, которое остаётся открытым и используется для двусторонней связи.</p>
+      </section>
+      <section>
+      <h2>Клиентская сторона</h2>
+        <p>WebSocket обычно используется для связи между браузером и веб-сервером. Клиентская сторона реализуется на JavaScript. В примере ниже написан простой JavaScript, открывающий WebSocket к локальному серверу и отправляющий ему сообщение:</p>
+        <pre class="code"><span class="lang-tag">html</span><code style="direction:ltr;text-align:left">&lt;!doctype html&gt;
+&lt;html lang=&quot;en&quot;&gt;
+&lt;head&gt;
+  &lt;title&gt;Websocket Client&lt;/title&gt;
+&lt;/head&gt;
+&lt;body&gt;
+  &lt;script&gt;
+    var exampleSocket = new WebSocket(&quot;ws://localhost:2345&quot;);
+    exampleSocket.onopen = function (event) {
+      exampleSocket.send(&quot;Can you hear me?&quot;);
+    };
+    exampleSocket.onmessage = function (event) {
+      console.log(event.data);
+    }
+  &lt;/script&gt;
+&lt;/body&gt;
+&lt;/html&gt;</code></pre>
+        <p>Если вы запустите маленький статический сервер и откроете этот файл в браузере, вы получите ошибку. Это логично, ведь сервера пока нет. Мы должны его построить! :-)</p>
+        <img src="https://www.honeybadger.io/images/2015/12/websocket_client_error.png" alt="Ошибка соединения клиента WebSocket, когда сервера нет" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+      </section>
+      <section>
+      <h2>Запуск сервера</h2>
+        <p>WebSocket начинает свою жизнь как обычный HTTP-запрос. У него странный жизненный цикл:</p>
+        <ul>
+          <li>Браузер отправляет обычный HTTP-запрос с несколькими особыми заголовками, говорящими «пожалуйста, вебсокетьте меня».</li>
+          <li>Сервер отвечает особым HTTP-ответом, но <strong>не закрывает соединение</strong>.</li>
+          <li>Затем браузер и сервер обмениваются фреймами данных по специальному протоколу WebSocket по открытому соединению.</li>
+        </ul>
+        <p>Значит, наш первый шаг — построить веб-сервер. В коде ниже я создаю простейший из возможных веб-серверов. Он ничего не раздаёт; просто ждёт запрос и печатает его в STDERR:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">require &#x27;socket&#x27;
+
+server = TCPServer.new(&#x27;localhost&#x27;, 2345)
+
+loop do
+
+  # Ждём соединения
+  socket = server.accept
+  STDERR.puts &quot;Incoming Request&quot;
+
+  # Читаем HTTP-запрос. Мы знаем, что он заканчивается, когда видим строку только с \r\n
+  http_request = &quot;&quot;
+  while (line = socket.gets) &amp;&amp; (line != &quot;\r\n&quot;)
+    http_request += line
+  end
+  STDERR.puts http_request
+  socket.close
+end</code></pre>
+        <p>Если я запущу сервер и обновлю нашу тестовую websocket-страницу, я получу это:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">$ ruby server1.rb
+Incoming Request
+GET / HTTP/1.1
+Host: localhost:2345
+Connection: Upgrade
+Upgrade: websocket
+Sec-WebSocket-Version: 13
+Sec-WebSocket-Key: cG8zEwcrcLnEftn2qohdKQ==
+</code></pre>
+        <p>Если присмотреться, у этого HTTP-запроса есть кучка заголовков, связанных с WebSocket. Это на самом деле первый шаг рукопожатия (handshake) WebSocket.</p>
+      </section>
+      <section>
+      <h2>Рукопожатие (Handshake)</h2>
+        <p>Все WebSocket-запросы начинаются с рукопожатия, чтобы убедиться, что и клиент, и сервер понимают, что грядёт WebSocket, и что оба согласны на версию протокола. Работает это так:</p>
+        <h3>Клиент отправляет HTTP-запрос вроде этого</h3>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">GET / HTTP/1.1
+Host: localhost:2345
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Key: E4i4gDQc1XTIQcQxvf+ODA==
+Sec-WebSocket-Version: 13</code></pre>
+        <p>Самый важный фрагмент этого запроса — <code class="inline">Sec-WebSocket-Key</code>. Клиент ожидает, что сервер вернёт изменённую версию этого значения, которое служит защитой от XSS-атак и кэширующих прокси.</p>
+        <h3>Сервер отвечает</h3>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: d9WHst60HtB4IvjOVevrexl0oLA=
+</code></pre>
+        <p>Ответ сервера предопределён, кроме заголовка <code class="inline">Sec-WebSocket-Accept</code>. Этот заголовок генерируется так:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Возьми значение, данное клиентом, добавь к нему магическую строку,
+# сделай SHA1-хеш, затем закодируй в base64.
+Digest::SHA1.base64digest([sec_websocket_accept, &quot;258EAFA5-E914-47DA-95CA-C5AB0DC85B11&quot;].join)</code></pre>
+        <p>Ваши глаза вас не обманывают. Тут замешана магическая константа.</p>
+        <h3>Реализация рукопожатия</h3>
+        <p>Обновим наш сервер, чтобы он завершал рукопожатие. Сначала вытащим ключ безопасности из заголовков запроса:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Возьми ключ безопасности из заголовков.
+# Если его нет, закрой соединение.
+if matches = http_request.match(/^Sec-WebSocket-Key: (\S+)/)
+  websocket_key = matches[1]
+  STDERR.puts &quot;Websocket handshake detected with key: #{ websocket_key }&quot;
+else
+  STDERR.puts &quot;Aborting non-websocket connection&quot;
+  socket.close
+  next
+end</code></pre>
+        <p>Теперь используем ключ безопасности для генерации корректного ответа:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">response_key = Digest::SHA1.base64digest([websocket_key, &quot;258EAFA5-E914-47DA-95CA-C5AB0DC85B11&quot;].join)
+STDERR.puts &quot;Responding to handshake with key: #{ response_key }&quot;
+
+socket.write &lt;&lt;-eos
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: #{ response_key }
+
+eos
+
+STDERR.puts &quot;Handshake completed.&quot;</code></pre>
+        <p>Когда я обновляю тестовую websocket-страницу, ошибки соединения больше нет. Соединение установлено!</p>
+        <img src="https://www.honeybadger.io/images/2015/12/websocket_client_handshake_complete.png" alt="Рукопожатие завершено; соединение WebSocket установлено" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+      </section>
+      <section>
+      <h2>Протокол WebSocket-фреймов</h2>
+        <p>Когда соединение WebSocket установлено, HTTP больше не используется. Вместо этого данные обмениваются по протоколу WebSocket.</p>
+        <p>Фреймы — базовые единицы протокола WebSocket. Протокол WebSocket фреймо-ориентирован, но что это значит?</p>
+        <p>Каждый раз, когда вы просите браузер отправить данные через WebSocket или просите сервер ответить, данные делятся на набор кусков, и каждый кусок оборачивается в метаданные для построения фрейма.</p>
+        <p>Структура фрейма такова (числа сверху — биты, а некоторые поля, такие как расширенная длина нагрузки, могут присутствовать не всегда):</p>
+        <pre class="code"><span class="lang-tag">Text</span><code style="direction:ltr;text-align:left"> 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-------+-+-------------+-------------------------------+
+|F|R|R|R| opcode|M| Payload len |    Extended payload length    |
+|I|S|S|S|  (4)  |A|     (7)     |             (16/64)           |
+|N|V|V|V|       |S|             |   (if payload len==126/127)   |
+| |1|2|3|       |K|             |                               |
++-+-+-+-+-------+-+-------------+ - - - - - - - - - - - - - - - +
+|     Extended payload length continued, if payload len == 127  |
++ - - - - - - - - - - - - - - - +-------------------------------+
+|                               |Masking-key, if MASK set to 1  |
++-------------------------------+-------------------------------+
+| Masking-key (continued)       |          Payload Data         |
++-------------------------------- - - - - - - - - - - - - - - - +
+:                     Payload Data continued ...                :
++ - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - - +
+|                     Payload Data continued ...                |
++---------------------------------------------------------------+</code></pre>
+        <p>Первое, что бросается в глаза, — это бинарный протокол. Придётся немного повозиться с битами, но не волнуйтесь — это не так уж сложно. Числа сверху на схеме — биты, и некоторых полей может не быть; например, расширенная длина нагрузки присутствует, когда нагрузка ниже 127 байт.</p>
+      </section>
+      <section>
+      <h2>Получение данных</h2>
+        <p>Теперь, когда рукопожатие завершено, можем начать разбор бинарного фрейма. Для простоты сначала посмотрим на входящий фрейм байт за байтом, а потом соберём всё вместе, чтобы реально увидеть его.</p>
+        <h3>Байт 1: FIN и Opcode</h3>
+        <p>Первый байт (первые восемь битов) содержит несколько кусков данных:</p>
+        <ul>
+          <li><strong>FIN: 1 бит</strong> — если false, сообщение разделено на несколько фреймов.</li>
+          <li><strong>opcode: 4 бита</strong> — говорит, является ли нагрузка текстом, бинарными данными или просто «ping» для поддержания соединения живым.</li>
+          <li><strong>RSV: 3 бита</strong> — не используются в текущей версии спецификации WebSockets.</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">first_byte = socket.getbyte
+fin = first_byte &amp; 0b10000000
+opcode = first_byte &amp; 0b00001111
+
+# Наш сервер поддерживает только однофреймовые текстовые сообщения.
+# Если клиент шлёт что-то другое, бросаем исключение
+raise &quot;We don&#x27;t support continuations&quot; unless fin
+raise &quot;We only support opcode 1&quot; unless opcode == 1</code></pre>
+        <h3>Байт 2: MASK и длина нагрузки</h3>
+        <p>Второй байт фрейма содержит больше информации о нагрузке:</p>
+        <ul>
+          <li><strong>MASK: 1 бит</strong> — булев флаг, показывающий, маскирована ли нагрузка. Если true, нагрузку нужно «размаскировать» перед использованием. Для входящих фреймов от клиента это всегда должно быть true; так говорит спецификация.</li>
+          <li><strong>Длина нагрузки: 7 бит</strong> — если наша нагрузка меньше 126 байт, длина хранится здесь. Если это значение больше 126, значит, дальше следуют ещё байты, дающие длину.</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">second_byte = socket.getbyte
+is_masked = second_byte &amp; 0b10000000
+payload_size = second_byte &amp; 0b01111111
+
+raise &quot;All frames sent to a server should be masked according to the websocket spec&quot; unless is_masked
+raise &quot;We only support payloads &lt; 126 bytes in length&quot; unless payload_size &lt; 126
+
+STDERR.puts &quot;Payload size: #{ payload_size } bytes&quot;</code></pre>
+        <h3>Байты 3–7: ключ маски</h3>
+        <p>Мы ожидаем, что нагрузки всех входящих фреймов маскированы. Чтобы размаскировать содержимое, нужно применить XOR с ключом маски. Этот ключ маски образуют следующие четыре байта. Обрабатывать его не нужно; просто читаем байты в массив:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">mask = 4.times.map { socket.getbyte }
+STDERR.puts &quot;Got mask: #{ mask.inspect }&quot;</code></pre>
+        <h3>Байт 8 и далее: нагрузка</h3>
+        <p>Итак, с метаданными покончено. Теперь можем получить реальную нагрузку:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">data = payload_size.times.map { socket.getbyte }
+STDERR.puts &quot;Got masked data: #{ data.inspect }&quot;</code></pre>
+        <p>Помните, что эта нагрузка маскирована. Если её напечатать, она будет выглядеть как мусор. Для размаскирования применяем XOR каждого байта с соответствующим байтом маски. Поскольку маска — всего четыре байта, повторяем её, чтобы соответствовать длине нагрузки:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">unmasked_data = data.each_with_index.map { |byte, i| byte ^ mask[i % 4] }
+STDERR.puts &quot;Unmasked the data: #{ unmasked_data.inspect }&quot;</code></pre>
+        <p>Теперь у нас массив байтов. Нужно преобразовать его в юникодную строку. Все тексты WebSocket — юникод:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">STDERR.puts &quot;Converted to a string: #{ unmasked_data.pack(&#x27;C*&#x27;).force_encoding(&#x27;utf-8&#x27;).inspect }&quot;</code></pre>
+        <h3>Собираем всё вместе</h3>
+        <p>Сложив весь этот код, вы получите скрипт вроде этого:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">require &#x27;socket&#x27; # предоставляет классы TCPServer и TCPSocket
+require &#x27;digest/sha1&#x27;
+
+server = TCPServer.new(&#x27;localhost&#x27;, 2345)
+
+loop do
+
+  # Ждём соединения
+  socket = server.accept
+  STDERR.puts &quot;Incoming Request&quot;
+
+  # Читаем HTTP-запрос. Мы знаем, что он заканчивается, когда видим строку только с \r\n
+  http_request = &quot;&quot;
+  while (line = socket.gets) &amp;&amp; (line != &quot;\r\n&quot;)
+    http_request += line
+  end
+
+  # Возьми ключ безопасности из заголовков. Если его нет, закрой соединение.
+  if matches = http_request.match(/^Sec-WebSocket-Key: (\S+)/)
+    websocket_key = matches[1]
+    STDERR.puts &quot;Websocket handshake detected with key: #{ websocket_key }&quot;
+  else
+    STDERR.puts &quot;Aborting non-websocket connection&quot;
+    socket.close
+    next
+  end
+
+
+  response_key = Digest::SHA1.base64digest([websocket_key, &quot;258EAFA5-E914-47DA-95CA-C5AB0DC85B11&quot;].join)
+  STDERR.puts &quot;Responding to handshake with key: #{ response_key }&quot;
+
+  socket.write &lt;&lt;-eos
+HTTP/1.1 101 Switching Protocols
+Upgrade: websocket
+Connection: Upgrade
+Sec-WebSocket-Accept: #{ response_key }
+
+  eos
+
+  STDERR.puts &quot;Handshake completed. Starting to parse the websocket frame.&quot;
+
+  first_byte = socket.getbyte
+  fin = first_byte &amp; 0b10000000
+  opcode = first_byte &amp; 0b00001111
+
+  raise &quot;We don&#x27;t support continuations&quot; unless fin
+  raise &quot;We only support opcode 1&quot; unless opcode == 1
+
+  second_byte = socket.getbyte
+  is_masked = second_byte &amp; 0b10000000
+  payload_size = second_byte &amp; 0b01111111
+
+  raise &quot;All incoming frames should be masked according to the websocket spec&quot; unless is_masked
+  raise &quot;We only support payloads &lt; 126 bytes in length&quot; unless payload_size &lt; 126
+
+  STDERR.puts &quot;Payload size: #{ payload_size } bytes&quot;
+
+  mask = 4.times.map { socket.getbyte }
+  STDERR.puts &quot;Got mask: #{ mask.inspect }&quot;
+
+  data = payload_size.times.map { socket.getbyte }
+  STDERR.puts &quot;Got masked data: #{ data.inspect }&quot;
+
+  unmasked_data = data.each_with_index.map { |byte, i| byte ^ mask[i % 4] }
+  STDERR.puts &quot;Unmasked the data: #{ unmasked_data.inspect }&quot;
+
+  STDERR.puts &quot;Converted to a string: #{ unmasked_data.pack(&#x27;C*&#x27;).force_encoding(&#x27;utf-8&#x27;).inspect }&quot;
+
+  socket.close
+end</code></pre>
+        <p>Когда я обновляю тестовую WebSocket-страницу, я вижу этот вывод:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">$ ruby websocket_server.rb
+Incoming Request
+Websocket handshake detected with key: E4i4gDQc1XTIQcQxvf+ODA==
+Responding to handshake with key: d9WHst60HtB4IvjOVevrexl0oLA=
+Handshake completed. Starting to parse the websocket frame.
+Payload size: 16 bytes
+Got mask: [80, 191, 161, 254]
+Got masked data: [19, 222, 207, 222, 41, 208, 212, 222, 56, 218, 192, 140, 112, 210, 196, 193]
+Unmasked the data: [67, 97, 110, 32, 121, 111, 117, 32, 104, 101, 97, 114, 32, 109, 101, 63]
+Converted to a string: &quot;Can you hear me?&quot;</code></pre>
+      </section>
+      <section>
+      <h2>Отправка данных клиенту</h2>
+        <p>Мы отправили тестовое сообщение с клиента нашему игрушечному серверу. Теперь неплохо бы вернуть сообщение с сервера клиенту. Это проще, потому что нам не нужно иметь дело с маскированием. Фреймы, отправляемые с сервера клиенту, всегда размаскированы.</p>
+        <p>Точно так же, как мы потребляли фрейм байт за байтом, мы строим фрейм байт за байтом.</p>
+        <h3>Байт 1: FIN и opcode</h3>
+        <p>Наша нагрузка помещается в один фрейм и является текстом; то есть FIN равен 1 и opcode тоже единице. Когда я комбинирую их в том же битовом формате, что использовал раньше, я получаю число:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">output = [0b10000001]</code></pre>
+        <h3>Байт 2: MASKED и длина нагрузки</h3>
+        <p>Поскольку этот фрейм идёт с сервера клиенту, MASKED равен нулю; значит, можем его игнорировать. Длина нагрузки — просто длина строки:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">output = [0b10000001, response.size]</code></pre>
+        <h3>Байт 3 и далее: нагрузка</h3>
+        <p>Нагрузка не маскирована; это просто строка:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">response = &quot;Loud and clear!&quot;
+STDERR.puts &quot;Sending response: #{ response.inspect }&quot;
+
+output = [0b10000001, response.size, response]</code></pre>
+        <h3>Бомбы прочь!</h3>
+        <p>В этой точке у нас есть массив с данными для отправки. Нужно преобразовать его в строку байтов, которую можно отправить по сети. Для этого используем сверхуниверсальный метод <code class="inline">Array#pack</code>:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">socket.write output.pack(&quot;CCA#{ response.size }&quot;)</code></pre>
+        <p>Та странная строка <code class="inline">"CCA#{ response.size }"</code> говорит <code class="inline">Array#pack</code>, что массив содержит два беззнаковых 8-битных целых числа и затем строку символов заданного размера.</p>
+        <p>Если открыть сетевой инспектор в Chrome, я увижу, что сообщение пришло: «Loud and clear!»</p>
+        <img src="https://www.honeybadger.io/images/2015/12/websocket_client_done.png" alt="Клиент WebSocket получил ответ сервера" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+      </section>
+      <section>
+      <h2>Дополнительное задание (Extra Credit)</h2>
+        <p>Вот и всё! Надеюсь, вы узнали что-то о WebSocket. Многого нашему серверу не хватает. Если хотите продолжить упражнение, можете рассмотреть:</p>
+        <ul>
+          <li>поддержку многофреймовых нагрузок;</li>
+          <li>поддержку бинарных нагрузок;</li>
+          <li>поддержку Ping / Pong;</li>
+          <li>поддержку длинных нагрузок;</li>
+          <li>Closing handshake (рукопожатие закрытия).</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>WebSocket — это надстройка над HTTP: браузер отправляет запрос с заголовком Upgrade, после чего соединение переключается в двунаправленный режим. Дальше всё, что нужно, — собирать и разбирать фреймы.</p>
-        <p>Ответ на рукопожатие — несколько строк:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code># Подтверждаем переключение протокола
-key = request["Sec-WebSocket-Key"] + "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-accept = Base64.strict_encode64(Digest::SHA1.digest(key))
-response = "HTTP/1.1 101 Switching Protocols\r\nUpgrade: websocket\r\nConnection: Upgrade\r\nSec-WebSocket-Accept: #{accept}"</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Реализовав WebSocket сами, вы поймёте, как работают чаты, финансовые тикеры и онлайн-игры, и сможете отлаживать любой протокол поверх TCP.</p>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> статья «Building a simple websockets server from scratch in Ruby» принадлежит Старру Хорну (Starr Horne) и опубликована в Honeybadger Developer Blog. Эта страница — лишь её перевод; все права на содержимое, изображения и код принадлежат оригинальному автору. С оригиналом можно ознакомиться на <a href="http://blog.honeybadger.io/building-a-simple-websockets-server-from-scratch-in-ruby/" target="_blank" rel="noopener">сайте Honeybadger</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание простого websockets-сервера с нуля на Ruby» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание простого websockets-сервера с нуля на Ruby» принадлежит автору оригинала (Старр Хорн (Starr Horne)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Старр Хорн (Starr Horne)). Читайте оригинал на
         <a href="http://blog.honeybadger.io/building-a-simple-websockets-server-from-scratch-in-ruby/" target="_blank" rel="noopener">http://blog.honeybadger.io/building-a-simple-websockets-server-from-scratch-in-ruby/</a>.
       </div>
     </article>

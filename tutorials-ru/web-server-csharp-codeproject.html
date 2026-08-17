@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание веб-сервера с нуля — меньше чем в 650 строк кода»
+          <b>Оригинальный источник:</b> «Writing a Web Server from Scratch»
         </div>
         <a class="btn solid" href="https://www.codeproject.com/Articles/859108/Writing-a-Web-Server-from-Scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/web-server-csharp-codeproject.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,681 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Статья пошагово описывает создание веб-сервера на C#, чтобы вы почувствовали, как он собирается с чистого листа: все дизайнерские и технические решения — удачные или нет — и весь процесс. Сначала заставляем заработать класс HttpListener, затем добавляем логирование, строим каркас веб-приложения, вводим простой механизм маршрутизации, разбираемся с авторизацией и истечением сессий и выполняем несколько AJAX-запросов.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Введение</h2>
+        <p>В этой статье по шагам задокументировано создание веб-сервера, чтобы вы почувствовали, как он строится с чистого листа: проектные и реализационные решения (хорошие и плохие) и весь процесс. Первый шаг процесса — заставить работать класс <code>HttpListener</code>. Дальше добавим немного логирования. Затем построим базовую структуру для нашего веб-приложения. Дальше реализуем простой механизм маршрутизации глаголов (verbs) и путей к обработчикам, займёмся аутентификацией и истечением сессий и выполним пару AJAX-запросов.</p>
+        <p>Текущая конфигурация поддерживает:</p>
         <ul>
-          <li>Как устроен HttpListener и зачем он удобнее низкоуровневых сокетов</li>
-          <li>Разделение сервера на модули: Listener, Router и SessionManager</li>
-          <li>Простые стратегии маршрутизации HTTP-методов и путей на обработчики</li>
-          <li>Жизненный цикл сессии: создание, использование, истечение</li>
+          <li>Маршрутизацию (Routing)</li>
+          <li>Менеджер сессий (Session Manager)</li>
+          <li>Авторизацию (Authorization)</li>
+          <li>Истёкшие сессии (Expired Sessions)</li>
+        </ul>
+        <p>Поскольку веб-сервер очень лёгкий, автор посчитал совершенно излишним такое сложное дело, как реализация плагинов. Есть три основных файла:</p>
+        <ul>
+          <li><code>Listener.cs</code> — слушает через HttpListener и отвечает на соединения</li>
+          <li><code>Router.cs</code> — управляет маршрутизацией</li>
+          <li><code>SessionManager.cs</code> — управляет состоянием сессий соединений</li>
+        </ul>
+        <p>Исходный код размещён на GitHub:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">git clone https://github.com/cliftonm/BasicWebServer.git
+</code></pre>
+      </section>
+      <section>
+      <h2>Шаг 1 — HttpListener</h2>
+        <p>Первый шаг — настройка класса <code>HttpListener</code>. Автор выбрал этот путь вместо низкоуровневых сокетов, потому что <code>HttpListener</code> предоставляет много полезных сервисов, например декодирование HTML-запроса. Веб-сервер реализуется как библиотека. На первом шаге веб-серверу нужно это:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">using System.Net;
+using System.Net.Sockets;
+using System.Threading;
+</code></pre>
+        <p>Поскольку веб-сервер по сути не имеет состояния (кроме объектов сессий), большую часть поведения можно реализовать в виде статических синглтонов:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">namespace Clifton.WebServer
+{
+  /// &lt;summary&gt;
+  /// Вёрткий и безжалостный веб-сервер.
+  /// &lt;/summary&gt;
+  public static class Server
+  {
+    private static HttpListener listener;
+    // ...
+</code></pre>
+        <p>Исходное предположение — подключение к серверу во внутренней сети (intranet), поэтому берём IP-адреса локального хоста:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Возвращает список IP-адресов, назначенных устройствам локальной сети,
+/// например проводному Ethernet, беспроводной сети и т.д.
+/// &lt;/summary&gt;
+private static List&lt;IPAddress&gt; GetLocalHostIPs()
+{
+  IPHostEntry host;
+  host = Dns.GetHostEntry(Dns.GetHostName());
+  List&lt;IPAddress&gt; ret = host.AddressList.Where(ip =&gt; ip.AddressFamily == AddressFamily.InterNetwork).ToList();
+
+  return ret;
+}
+</code></pre>
+        <p>Затем создаём экземпляр <code>HttpListener</code> и добавляем префиксы localhost:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">private static HttpListener InitializeListener(List&lt;IPAddress&gt; localhostIPs)
+{
+  HttpListener listener = new HttpListener();
+  listener.Prefixes.Add(&quot;http://localhost/&quot;);
+
+  // Слушай и IP-адреса
+  localhostIPs.ForEach(ip =&gt;
+  {
+    Console.WriteLine(&quot;Listening on IP &quot; + &quot;http://&quot; + ip.ToString() + &quot;/&quot;);
+    listener.Prefixes.Add(&quot;http://&quot; + ip.ToString() + &quot;/&quot;);
+  });
+
+  return listener;
+}
+</code></pre>
+        <p>Позаимствовав идею из статьи «REST — A Simple REST framework», создаём семафор, ожидающий разрешённое число одновременных соединений:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public static int maxSimultaneousConnections = 20;
+private static Semaphore sem = new Semaphore(maxSimultaneousConnections, maxSimultaneousConnections);
+</code></pre>
+        <p>Это реализуется в рабочем потоке, вызываемом через <code>Task.Run</code>:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Начало прослушивания соединений в отдельном рабочем потоке.
+/// &lt;/summary&gt;
+private static void Start(HttpListener listener)
+{
+  listener.Start();
+  Task.Run(() =&gt; RunServer(listener));
+}
+
+/// &lt;summary&gt;
+/// Начало ожидания соединений вплоть до &quot;maxSimultaneousConnections&quot;.
+/// Этот код выполняется в отдельном потоке.
+/// &lt;/summary&gt;
+private static void RunServer(HttpListener listener)
+{
+  while (true)
+  {
+    sem.WaitOne();
+    StartConnectionListener(listener);
+  }
+}
+</code></pre>
+        <p>Наконец, реализуем слушатель соединений как ожидаемый (awaitable) async-процесс:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Ожидание соединений.
+/// &lt;/summary&gt;
+private static async void StartConnectionListener(HttpListener listener)
+{
+  // Жди соединение. Пока ждём, верни управление вызывающему.
+  HttpListenerContext context = await listener.GetContextAsync();
+
+  // Освободи семафор, чтобы другой слушатель стартовал немедленно.
+  sem.Release();
+
+  // У нас есть соединение — сделаем что-нибудь...
+}
+</code></pre>
+        <p>Так и сделаем:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">string response = &quot;Hello Browser!&quot;;
+byte[] encoded = Encoding.UTF8.GetBytes(response);
+context.Response.ContentLength64 = encoded.Length;
+context.Response.OutputStream.Write(encoded, 0, encoded.Length);
+context.Response.OutputStream.Close();
+</code></pre>
+        <p>Нужен и общий метод <code>Start</code>:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Запускает веб-сервер.
+/// &lt;/summary&gt;
+public static void Start()
+{
+  List&lt;IPAddress&gt; localHostIPs = GetLocalHostIPs();
+  HttpListener listener = InitializeListener(localHostIPs);
+  Start(listener);
+}
+</code></pre>
+        <p>Теперь в консольном приложении можно запустить сервер:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">using System;
+
+using Clifton.WebServer;
+
+namespace ConsoleWebServer
+{
+  class Program
+  {
+    static void Main(string[] args)
+    {
+      Server.Start();
+      Console.ReadLine();
+    }
+  }
+}
+</code></pre>
+        <div class="callout tip">
+          <strong>Совет автора:</strong> всегда инспектируйте консоль браузера — это ваш друг, и он расскажет вам обо всех ошибках! Например, в этом тесте мы замечаем, что нужно следить за кодировкой, выполняемой в HTML: <code>response = "&lt;html&gt;&lt;head&gt;&lt;meta http-equiv='content-type' content='text/html; charset=utf-8'/&gt;&lt;/head&gt;Hello Browser!&lt;/html&gt;"</code>
+        </div>
+      </section>
+      <section>
+      <h2>Шаг 2 — Логирование</h2>
+        <p>Сначала добавим немного логирования — оно очень полезно, чтобы видеть, какие запросы приходят к нашему веб-серверу:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">Log(context.Request);
+
+/// &lt;summary&gt;
+/// Логирование запросов.
+/// &lt;/summary&gt;
+public static void Log(HttpListenerRequest request)
+{
+  Console.WriteLine(request.RemoteEndPoint + &quot; &quot; + request.HttpMethod + &quot; /&quot; + request.Url.AbsoluteUri.RightOf(&#x27;/&#x27;, 3));
+}
+</code></pre>
+        <p>Вызов <code>Log</code> добавляем сразу после освобождения семафора. После добавления логгера сразу замечаем: браузер запрашивает не только страницу по умолчанию, но и <code>favicon.ico</code>! Надо что-то делать!</p>
+      </section>
+      <section>
+      <h2>Шаг 3 — Раздача контента: маршрутизация по умолчанию</h2>
+        <p>Очевидно, мы не хотим зашивать веб-страницы строками в C#. Поэтому строим базовую структуру для нашего веб-приложения — целиком на свой вкус: всё выводится из папки «Website», которая содержит такие подпапки:</p>
+        <ul>
+          <li><strong>Pages:</strong> корень всех страниц</li>
+          <li><strong>CSS:</strong> все файлы .css и связанные</li>
+          <li><strong>Scripts:</strong> все файлы .js</li>
+          <li><strong>Images:</strong> все файлы изображений</li>
+        </ul>
+        <p>Для базового поведения нужен начальный маршрутизатор. Первая версия отвечает только файлами из папки «Website» и подпапок — по пути URL и расширению запроса. Сначала извлечём кое-какую информацию из URL запроса:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">HttpListenerRequest request = context.Request;
+string path = request.RawUrl.LeftOf(&quot;?&quot;); // только путь, без параметров
+string verb = request.HttpMethod; // get, post, delete и т.д.
+string parms = request.RawUrl.RightOf(&quot;?&quot;); // параметры URL идут после ?
+Dictionary&lt;string, string&gt; kvParams = GetKeyValues(parms); // преобразуй в пары ключ-значение
+</code></pre>
+        <p>Теперь можно отдать эту информацию маршрутизатору: <code>router.Route(verb, path, kvParams);</code></p>
+        <p>Вместо switch-выражений (которые автор не любит) инициализируем словарь известных расширений и их загрузчиков. Учтите, как разные функции могут загружать контент, например из базы данных:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public class Router
+{
+  public string WebsitePath { get; set; }
+
+  private Dictionary&lt;string, ExtensionInfo&gt; extFolderMap;
+
+  public Router()
+  {
+    extFolderMap = new Dictionary&lt;string, ExtensionInfo&gt;()
+    {
+      {&quot;ico&quot;, new ExtensionInfo() {Loader=ImageLoader, ContentType=&quot;image/ico&quot;}},
+      {&quot;png&quot;, new ExtensionInfo() {Loader=ImageLoader, ContentType=&quot;image/png&quot;}},
+      {&quot;jpg&quot;, new ExtensionInfo() {Loader=ImageLoader, ContentType=&quot;image/jpg&quot;}},
+      {&quot;gif&quot;, new ExtensionInfo() {Loader=ImageLoader, ContentType=&quot;image/gif&quot;}},
+      {&quot;bmp&quot;, new ExtensionInfo() {Loader=ImageLoader, ContentType=&quot;image/bmp&quot;}},
+      {&quot;html&quot;, new ExtensionInfo() {Loader=PageLoader, ContentType=&quot;text/html&quot;}},
+      {&quot;css&quot;, new ExtensionInfo() {Loader=FileLoader, ContentType=&quot;text/css&quot;}},
+      {&quot;js&quot;, new ExtensionInfo() {Loader=FileLoader, ContentType=&quot;text/javascript&quot;}},
+      {&quot;&quot;, new ExtensionInfo() {Loader=PageLoader, ContentType=&quot;text/html&quot;}},
+    };
+  }
+  // ...
+</code></pre>
+        <p>Заметим, что обрабатывается и случай «без расширения», где предполагается HTML-страница. Также задаётся content type — иначе в консоли браузера мы получим предупреждение «контент считается определённого типа». Наконец, показана функция, выполняющая собственно загрузку.</p>
+        <h3>Загрузчик изображений</h3>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Читает файл изображения и возвращает ResponsePacket с сырыми данными.
+/// &lt;/summary&gt;
+private ResponsePacket ImageLoader(string fullPath, string ext, ExtensionInfo extInfo)
+{
+  FileStream fStream = new FileStream(fullPath, FileMode.Open, FileAccess.Read);
+  BinaryReader br = new BinaryReader(fStream);
+  ResponsePacket ret = new ResponsePacket() { Data = br.ReadBytes((int)fStream.Length), ContentType = extInfo.ContentType };
+  br.Close();
+  fStream.Close();
+
+  return ret;
+}
+</code></pre>
+        <h3>Загрузчик файлов</h3>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Читает по сути текстовый файл и возвращает ResponsePacket с текстом в кодировке UTF8.
+/// &lt;/summary&gt;
+private ResponsePacket FileLoader(string fullPath, string ext, ExtensionInfo extInfo)
+{
+  string text = File.ReadAllText(fullPath);
+  ResponsePacket ret = new ResponsePacket() { Data = Encoding.UTF8.GetBytes(text), ContentType = extInfo.ContentType, Encoding = Encoding.UTF8 };
+
+  return ret;
+}
+</code></pre>
+        <h3>Загрузчик страниц</h3>
+        <p>Загрузчику страниц нужно больше работы для обработки таких вариантов:</p>
+        <ul>
+          <li>foo.com</li>
+          <li>foo.com\index</li>
+          <li>foo.com\index.html</li>
+        </ul>
+        <p>Во всех сочетаниях лоад завершается файлом Pages\index.html:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">/// &lt;summary&gt;
+/// Загружает HTML-файл; учитывает пропущенные расширения и IP/домен без файла,
+/// которые должны возвращаться к index.html по умолчанию.
+/// &lt;/summary&gt;
+private ResponsePacket PageLoader(string fullPath, string ext, ExtensionInfo extInfo)
+{
+  ResponsePacket ret = new ResponsePacket();
+
+  if (fullPath == WebsitePath) // если после имени домена или IP ничего нет — загрузи index.html по умолчанию
+  {
+    ret = Route(GET, &quot;/index.html&quot;, null);
+  }
+  else
+  {
+    if (String.IsNullOrEmpty(ext))
+    {
+      // расширения нет — добавляем &quot;.html&quot;
+      fullPath = fullPath + &quot;.html&quot;;
+    }
+
+    // вставляем папку &quot;Pages&quot; в путь
+    fullPath = WebsitePath + &quot;\Pages&quot; + fullPath.RightOf(WebsitePath);
+    ret = FileLoader(fullPath, ext, extInfo);
+  }
+
+  return ret;
+}
+</code></pre>
+        <p>У нас есть два вспомогательных класса, и после сборки всего вместе получается начальный маршрутизатор, возвращающий контент из файлов:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public ResponsePacket Route(string verb, string path, Dictionary&lt;string, string&gt; kvParams)
+{
+  string ext = path.RightOf(&#x27;.&#x27;);
+  ExtensionInfo extInfo;
+  ResponsePacket ret = null;
+
+  if (extFolderMap.TryGetValue(ext, out extInfo))
+  {
+    // Убираем ведущий &#x27;/&#x27; и форматируем разделителем пути Windows
+    string fullPath = Path.Combine(WebsitePath, path);
+    ret = extInfo.Loader(fullPath, ext, extInfo);
+  }
+
+  return ret;
+}
+</code></pre>
+        <p>Нужен и финальный рефакторинг — убрать тестовый ответ и заменить его контентом, возвращаемым маршрутизатором:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">private static void Respond(HttpListenerResponse response, ResponsePacket resp)
+{
+  response.ContentType = resp.ContentType;
+  response.ContentLength64 = resp.Data.Length;
+  response.OutputStream.Write(resp.Data, 0, resp.Data.Length);
+  response.ContentEncoding = resp.Encoding;
+  response.StatusCode = (int)HttpStatusCode.OK;
+  response.OutputStream.Close();
+}
+</code></pre>
+        <div class="callout tip">
+          <strong>Примечание:</strong> здесь становится ясно, что фактическое расположение файла «контента» сервер может полностью подделывать. Автор положил весь HTML-контент в папку Pages и таким образом подделывает корневое расположение. Можно делать и другое — загружать данные из базы данных, связываться с другим сервером, динамически генерировать страницу из данных... Все это возможности, которые исследуются по мере развития базовой раздачи контента.
+        </div>
+      </section>
+      <section>
+      <h2>Шаг 4 — Дьявол в деталях</h2>
+        <h3>Страницы ошибок</h3>
+        <p>Добавим несколько страниц ошибок (даже если сейчас используем не все):</p>
+        <ul>
+          <li>Истёкшая сессия</li>
+          <li>Нет авторизации</li>
+          <li>Страница не найдена</li>
+          <li>Ошибка сервера</li>
+          <li>Неизвестный тип</li>
+        </ul>
+        <p>Чтобы программа могла определить, где находятся страницы для каждой ошибки, добавим серверу enum:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public enum ServerError
+{
+  OK,
+  ExpiredSession,
+  NotAuthorized,
+  FileNotFound,
+  PageNotFound,
+  ServerError,
+  UnknownType,
+}
+</code></pre>
+        <p>Теперь начнём обрабатывать ошибки (без бросания исключений). Сначала — неизвестное расширение:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">if (extFolderMap.TryGetValue(ext, out extInfo))
+{
+ // ...
+}
+else
+{
+  ret = new ResponsePacket() { Error = Server.ServerError.UnknownType };
+}
+</code></pre>
+        <p>И так далее. Для обработки ошибок используем callback, который может предоставить веб-приложение, — в виде страницы, на которую нужно направить пользователя:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">ResponsePacket resp = router.Route(verb, path, kvParams);
+
+if (resp.Error != ServerError.OK)
+{
+  resp = router.Route(&quot;get&quot;, onError(resp.Error), null);
+}
+
+Respond(context.Response, resp);
+</code></pre>
+        <p>И прямой обработчик ошибок в веб-приложении:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public static string ErrorHandler(Server.ServerError error)
+{
+  string ret = null;
+
+  switch (error)
+  {
+    case Server.ServerError.ExpiredSession:
+      ret= &quot;/ErrorPages/expiredSession.html&quot;;
+      break;
+    case Server.ServerError.FileNotFound:
+      ret = &quot;/ErrorPages/fileNotFound.html&quot;;
+      break;
+    case Server.ServerError.NotAuthorized:
+      ret = &quot;/ErrorPages/notAuthorized.html&quot;;
+      break;
+    case Server.ServerError.PageNotFound:
+      ret = &quot;/ErrorPages/pageNotFound.html&quot;;
+      break;
+    case Server.ServerError.ServerError:
+      ret = &quot;/ErrorPages/serverError.html&quot;;
+      break;
+    case Server.ServerError.UnknownType:
+      ret = &quot;/ErrorPages/unknownType.html&quot;;
+      break;
+  }
+
+  return ret;
+}
+</code></pre>
+        <p>Разумеется, нужно инициализировать обработчик ошибок: <code>Server.onError = ErrorHandler;</code></p>
+        <h3>Редиректы</h3>
+        <p>Вы замечаете: URL в сообщениях об ошибках выше не меняется при показе страницы. Это потому, что редиректа в ответе нет. Время исправить это: будем считать, что обработчик ошибок всегда ведёт нас на другую страницу, поэтому меняем способ управления ответом. Вместо получения нового <code>ResponsePacket</code> и отправки этого контента браузеру ставим свойство <code>Redirect</code> на страницу, на которую хочет перейти веб-приложение. В целом это становится универсальным механизмом редиректа:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">if (resp.Error != ServerError.OK)
+{
+  resp.Redirect = onError(resp.Error);
+}
+</code></pre>
+        <p>И небольшой рефакторинг метода <code>Respond</code>:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">private static void Respond(HttpListenerRequest request, HttpListenerResponse response, ResponsePacket resp)
+{
+  if (String.IsNullOrEmpty(resp.Redirect))
+  {
+    response.ContentType = resp.ContentType;
+    response.ContentLength64 = resp.Data.Length;
+    response.OutputStream.Write(resp.Data, 0, resp.Data.Length);
+    response.ContentEncoding = resp.Encoding;
+    response.StatusCode = (int)HttpStatusCode.OK;
+  }
+  else
+  {
+    response.StatusCode = (int)HttpStatusCode.Redirect;
+    response.Redirect(&quot;http://&quot; + request.UserHostAddress + resp.Redirect);
+  }
+
+  response.OutputStream.Close();
+}
+</code></pre>
+        <div class="callout tip">
+          <strong>Примечание:</strong> закрытие потока вывода очень важно. Если не закрыть его, браузер может ждать данных. И заметьте: поскольку ошибки обрабатываются редиректом, единственные два кода статуса, которые наш веб-сервер вообще может выдать, — это OK и Redirect.
+        </div>
+        <h3>Обработка исключений</h3>
+        <p>Тот же механизм редиректа используем для перехвата настоящих исключений — оборачивая продолжение <code>GetContextAsync</code> в блок try-catch:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">catch(Exception ex)
+{
+  Console.WriteLine(ex.Message);
+  Console.WriteLine(ex.StackTrace);
+  resp = new ResponsePacket() { Redirect = onError(ServerError.ServerError) };
+}
+</code></pre>
+      </section>
+      <section>
+      <h2>Шаг 5 — Обзор и решение новых задач</h2>
+        <p>Теперь имеем дело с глаголами, особенно с POST. Это позволит решить три следующих пункта списка.</p>
+        <h3>Глаголы (Verbs)</h3>
+        <p>С HTTP-запросом может приходить множество глаголов: OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, CONNECT. По сути, веб-серверу нет дела до глагола — глагол лишь даёт дополнительную информацию о том, какой обработчик вызвать для ответа. Наконец мы добрались до того, чего автор до сих пор избегал, — контроллеров. Вместо того чтобы знать о паттерне Model-View-Controller или навязывать его разработчику веб-приложения, реализованный веб-сервер предоставляет простой механизм маршрутизации глаголов и путей к обработчикам. Только и всего. Обработчик в свою очередь решает, направить ли браузер на другую страницу или остаться на текущей.</p>
+        <h3>Маршруты (Routes)</h3>
+        <p>Начинаем с базового маршрутизатора, состоящего из класса <code>Route</code>:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public class Route
+{
+  public string Verb { get; set; }
+  public string Path { get; set; }
+  public Func&lt;Dictionary&lt;string,string&gt;, string&gt; Action { get; set; }
+}
+</code></pre>
+        <p>Заметьте: свойство Action — это функция-callback, принимающая параметры URL (с post-параметрами разберёмся позже) и ожидающая необязательный «URL редиректа».</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public void AddRoute(Route route)
+{
+  routes.Add(route);
+}
+</code></pre>
+        <p>Теперь реализуем вызов специфичных обработчиков приложения — рефакторинг метода Route:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">public ResponsePacket Route(string verb, string path, Dictionary&lt;string, string&gt; kvParams)
+{
+  string ext = path.RightOfRightmostOf(&#x27;.&#x27;);
+  ExtensionInfo extInfo;
+  ResponsePacket ret = null;
+  verb = verb.ToLower();
+
+  if (extFolderMap.TryGetValue(ext, out extInfo))
+  {
+    string wpath = path.Substring(1).Replace(&#x27;/&#x27;, &#x27;\&#x27;); // убираем ведущий &#x27;/&#x27; и форматируем разделителем пути Windows
+    string fullPath = Path.Combine(WebsitePath, wpath);
+
+    Route route = routes.SingleOrDefault(r =&gt; verb == r.Verb.ToLower() &amp;&amp; path == r.Path);
+
+    if (route != null)
+    {
+      // у приложения есть обработчик для этого маршрута
+      string redirect = route.Action(kvParams);
+
+      if (String.IsNullOrEmpty(redirect))
+      {
+        // отвечай загрузчиком контента по умолчанию
+        ret = extInfo.Loader(fullPath, ext, extInfo);
+      }
+      else
+      {
+        // отвечай редиректом
+        ret = new ResponsePacket() { Redirect = redirect };
+      }
+    }
+    else
+    {
+      // пробуем поведение по умолчанию
+      ret = extInfo.Loader(fullPath, ext, extInfo);
+    }
+  }
+  else
+  {
+    ret = new ResponsePacket() { Error = Server.ServerError.UnknownType };
+  }
+
+  return ret;
+}
+</code></pre>
+        <p>Теперь изменим демо-страницу: по клику кнопки она делает POST-запрос к серверу, и в нашем обработчике мы перенаправляемся на другую страницу. Да, это можно было сделать целиком на JavaScript, но здесь мы показываем обработчики глагол-путь, поэтому реализуем поведение на стороне сервера.</p>
+        <p>Также добавляем разбор входного потока запроса в пары ключ-значение и логирование параметров (и URL, и параметров входного потока):</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">private static async void StartConnectionListener(HttpListener listener)
+{
+  // ...
+  Dictionary&lt;string, string&gt; kvParams = GetKeyValues(parms); // преобразуй в пары ключ-значение
+  string data = new StreamReader(context.Request.InputStream, context.Request.ContentEncoding).ReadToEnd();
+  GetKeyValues(data, kvParams);
+  Log(kvParams);
+  // ...
+}
+
+private static Dictionary&lt;string, string&gt; GetKeyValues(string data, Dictionary&lt;string, string&gt; kv = null)
+{
+  kv.IfNull(() =&gt; kv = new Dictionary&lt;string, string&gt;());
+  data.If(d =&gt; d.Length &gt; 0, (d) =&gt; d.Split(&#x27;&amp;&#x27;).ForEach(keyValue =&gt; kv[keyValue.LeftOf(&#x27;=&#x27;)] = keyValue.RightOf(&#x27;=&#x27;)));
+
+  return kv;
+}
+
+private static void Log(Dictionary&lt;string, string&gt; kv)
+{
+  kv.ForEach(kvp=&gt;Console.WriteLine(kvp.Key+&quot; : &quot;+kvp.Value));
+}
+</code></pre>
+        <p>Смешивать URL-параметры и postback-параметры в одном наборе пар ключ-значение, может, и дурная привычка, но пока довольствуемся этой «более простой» реализацией.</p>
+        <p>Создаём новую HTML-страницу <code>/demo/redirect</code> с формой, идущей на <code>/demo/redirect</code> методом post, и кнопкой «Redirect Me» с именем <code>redirectButton</code>. Если присмотреться, в логе сначала виден GET при загрузке страницы, затем по клику на кнопку — POST с параметрами. Интересное в написании собственного веб-сервера — то, что действительно получаешь более глубокое ощущение того, что происходит за кулисами.</p>
+        <p>Теперь регистрируем обработчик для этого глагола и маршрута:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">static void Main(string[] args)
+{
+  string websitePath = GetWebsitePath();
+  Server.onError = ErrorHandler;
+
+  // регистрация обработчика маршрута:
+  Server.AddRoute(new Route() { Verb = Router.POST, Path = &quot;/demo/redirect&quot;, Action = RedirectMe });
+
+  Server.Start(websitePath);
+  Console.ReadLine();
+}
+
+public static string RedirectMe(Dictionary&lt;string, string&gt; parms)
+{
+  return &quot;/demo/clicked&quot;;
+}
+</code></pre>
+        <p>Теперь по клику на кнопку нас перенаправляет. Это было легко. Минимальным рефакторингом решены три пункта:</p>
+        <ul>
+          <li>Глагол всегда считался «get»</li>
+          <li>У приложения не было возможности манипулировать контентом (особенно HTML) после загрузки</li>
+          <li>Маршрутизацию нельзя было переопределить</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Сервер реализован как небольшая библиотека: Listener.cs принимает соединения через HttpListener и отвечает на подключения, Router.cs управляет маршрутизацией, а SessionManager.cs хранит состояние сессий подключения. Так как сервер почти не хранит состояния, большинство поведения можно сделать статическими синглтонами.</p>
-        <p>Начальный эскиз сервера выглядит так:</p>
-        <pre class="code"><span class="lang-tag">csharp</span><code>// Класс Server — статический хост веб-службы
-public static class Server
+      <h2>Шаг 6 — Аутентификация и истечение сессии</h2>
+        <p>На шаге 5 мы реализовали совсем базовый обработчик маршрута. Хочется чего-то более продвинутого, что обрабатывает вполне обычные вещи:</p>
+        <ul>
+          <li>Убедиться, что пользователь имеет право видеть страницу</li>
+          <li>Проверить, не истекла ли сессия</li>
+        </ul>
+        <p>Рефакторим callback-обработчики выше, чтобы они использовали класс Routing, который предоставляет встроенное поведение и позволяет разработчику веб-приложения заменять или дополнять своё (например, ролевую аутентификацию).</p>
+        <h3>Управление сессиями</h3>
+        <p>Сначала добавим базовые классы <code>Session</code> и <code>SessionManager</code>:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+
+using Clifton.ExtensionMethods;
+
+namespace Clifton.WebServer
 {
-  private static HttpListener listener;
-  // ... инициализация и цикл приёма соединений
-}</code></pre>
-      </section>
+  /// &lt;summary&gt;
+  /// Сессии связываются с IP-адресом клиента.
+  /// &lt;/summary&gt;
+  public class Session
+  {
+    public DateTime LastConnection { get; set; }
+    public bool Authorized { get; set; }
 
+    /// &lt;summary&gt;
+    /// Может использоваться контроллерами для добавления дополнительной информации,
+    /// которую нужно хранить в сессии.
+    /// &lt;/summary&gt;
+    public Dictionary&lt;string, string&gt; Objects { get; set; }
+
+    public Session()
+    {
+      Objects = new Dictionary&lt;string, string&gt;();
+      UpdateLastConnectionTime();
+    }
+
+    public void UpdateLastConnectionTime()
+    {
+      LastConnection = DateTime.Now;
+    }
+
+    /// &lt;summary&gt;
+    /// Возвращает true, если с последнего запроса прошло больше указанного
+    /// времени истечения (в секундах).
+    /// &lt;/summary&gt;
+    public bool IsExpired(int expirationInSeconds)
+    {
+      return (DateTime.Now - LastConnection).TotalSeconds &gt; expirationInSeconds;
+    }
+  }
+
+  public class SessionManager
+  {
+    /// &lt;summary&gt;
+    /// Отслеживает все сессии.
+    /// &lt;/summary&gt;
+    protected Dictionary&lt;IPAddress, Session&gt; sessionMap = new Dictionary&lt;IPAddress, Session&gt;();
+
+    public SessionManager()
+    {
+      sessionMap = new Dictionary&lt;IPAddress, Session&gt;();
+    }
+
+    /// &lt;summary&gt;
+    /// Создаёт или возвращает существующую сессию для этого remote endpoint.
+    /// &lt;/summary&gt;
+    public Session GetSession(IPEndPoint remoteEndPoint)
+    {
+      // Порт на remote endpoint всегда меняется, поэтому используем только IP-часть.
+      // ...
+    }
+  }
+}
+</code></pre>
+        <p>Добавим три класса, которые может использовать приложение:</p>
+        <ul>
+          <li><code>AnonymousRouteHandler</code></li>
+          <li><code>AuthenticatedRouteHandler</code></li>
+          <li><code>AuthenticatedExpirableRouteHandler</code></li>
+        </ul>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">namespace Clifton.WebServer
+{
+  /// &lt;summary&gt;
+  /// Базовый класс обработчиков маршрутов.
+  /// &lt;/summary&gt;
+  public abstract class RouteHandler
+  {
+    protected Func&lt;Session, Dictionary&lt;string, string&gt;, string&gt; handler;
+
+    public RouteHandler(Func&lt;Session, Dictionary&lt;string, string&gt;, string&gt; handler)
+    {
+      this.handler = handler;
+    }
+
+    public abstract string Handle(Session session, Dictionary&lt;string, string&gt; parms);
+  }
+
+  // AuthenticatedRouteHandler и AuthenticatedExpirableRouteHandler
+  // наследуют RouteHandler и реализуют управление состоянием Authorized
+  // и истечением сессии в своём методе Handle.
+}
+</code></pre>
+        <p>И пример регистрации аутентифицированного обработчика:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">static void Main(string[] args)
+{
+  string websitePath = GetWebsitePath();
+  Server.onError = ErrorHandler;
+
+  // зарегистрируй аутентифицированный обработчик маршрута:
+  Server.AddRoute(new Route() { Verb = Router.POST, Path = &quot;/demo/redirect&quot;,
+                                Handler = new AuthenticatedRouteHandler(RedirectMe) });
+
+  Server.Start(websitePath);
+  Console.ReadLine();
+}
+</code></pre>
+        <div class="callout tip">
+          <strong>Почему класс, а не attribute?</strong> Автор ещё с первых дней работы с C# говорит: attribute хороши, чтобы подсказывать сериализатору, как сериализовать поля; в остальном они чаще поощряют плохой дизайн. Например, маршруты, написанные с базовым классом <code>Route</code> и дочерним классом <code>AuthenticatedRoute</code>, реализуются классами. Если нужна ролевая аутентификация, создаёте производный класс, а не вешаете attribute на часто пустые функции контроллеров.
+        </div>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Вы разберёте типичную серверную архитектуру на живом примере: прослушивание, маршрутизация, обработка состояния — и поймёте, что современные веб-фреймворки лишь автоматизируют те же четыре-пять модулей.</p>
+      <h2>Следующие шаги в оригинальной статье</h2>
+        <ul>
+          <li><strong>Шаг 7 — AJAX-запросы:</strong> поддержка глагола GET для AJAX, анти-«underscore»-токен против кэширования и обработка возвращаемых данных как JSON.</li>
+          <li><strong>Шаг 8 — Интернет против интранета:</strong> управление локальными и публичными IP-адресами и доменными именами для прослушивания.</li>
+          <li><strong>Шаг 9 — Динамическое изменение HTML:</strong> замена кусков HTML в потоке ответа и борьба с Cross-Site Request Forgery (CSRF).</li>
+        </ul>
+        <p><strong>Задачи на другой день:</strong> CSRF и AJAX, HTTPS, декодирование значений параметров, цепочки обработки после ответа и другое.</p>
+      </section>
+      <section>
+      <h2>Заключение</h2>
+        <p>Идея в том, чтобы веб-сервер оставался совсем маленьким. Всего у автора четыре класса (не считая extension-методов), и всё вместе чуть меньше 650 строк кода, если считать с комментариями и всем прочим.</p>
+        <p>Забавный момент (и последняя мысль автора с трибуны) — что, реализовав собственный веб-сервер, он понял, как сильно такие технологии, как MVC Razor и Ruby on Rails, мешают раздавать веб-страницы и давать программисту контроль над рендером нестатичного контента. С простым веб-сервером он гораздо больше сосредоточен на клиентском JavaScript, HTML и компонентах — там, где единственное внимание к серверному процессу — это PUT-обработчики и редкие AJAX-запросы.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание веб-сервера с нуля — меньше чем в 650 строк кода» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание веб-сервера с нуля — меньше чем в 650 строк кода» принадлежит автору оригинала (Марк Клифтон). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Марк Клифтон). Читайте оригинал на
         <a href="https://www.codeproject.com/Articles/859108/Writing-a-Web-Server-from-Scratch" target="_blank" rel="noopener">https://www.codeproject.com/Articles/859108/Writing-a-Web-Server-from-Scratch</a>.
       </div>
     </article>

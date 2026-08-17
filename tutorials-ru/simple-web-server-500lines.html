@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Простой веб-сервер — глава из книги «500 строк и меньше»»
+          <b>Оригинальный источник:</b> «simple-web-server-500lines»
         </div>
         <a class="btn solid" href="http://aosabook.org/en/500L/a-simple-web-server.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/simple-web-server-500lines.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,46 +53,468 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Глава классической книги «500 Lines or Less» строит веб-сервер на Python почти без чужого кода. Вы увидите, как обрабатываются соединения, разбираются запросы, истекают таймауты и планируются задачи, — на примере, который можно прочитать целиком за вечер.</p>
+      <h2>Введение</h2>
+        <p>Сеть за два последних десятилетия изменила общество бесчисленными способами, но её ядро изменилось очень мало. Большинство систем до сих пор следуют правилам, которые Тим Бернерс-Ли установил четверть века назад. В частности, большинство веб-серверов до сих пор обрабатывают те же виды сообщений, что и тогда, теми же способами.</p>
+        <p>В этой главе рассматривается, как они это делают. Заодно рассматривается, как разработчики могут строить программные системы, которым не требуется переписывание для добавления новых возможностей.</p>
+        <p><em>Грег Уилсон — основатель Software Carpentry, тридцать лет проработал в промышленности и университетах; автор нескольких компьютерных книг, включая удостоенную премии Jolt 2008 года Beautiful Code и два первых тома The Architecture of Open Source Applications.</em></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Предыстория</h2>
+        <p>Почти каждая программа в вебе работает поверх семейства коммуникационных стандартов, называемого Internet Protocol (IP). Член этого семейства, который важен нам, — это Transmission Control Protocol (TCP/IP), делающий общение между компьютерами похожим на чтение и запись файлов.</p>
+        <p>IP-программы общаются через сокеты. Каждый сокет — один конец канала связи точка-точка, примерно как телефон — один конец телефонного разговора. Сокет включает IP-адрес, идентифицирующий конкретную машину, и номер порта на этой машине. IP-адрес состоит из четырёх 8-битных чисел, например <code class="inline">174.136.14.108</code>; система доменных имён (DNS) сопоставляет эти числа со знакомыми людям именами вроде <code class="inline">aosabook.org</code>.</p>
+        <p>Номер порта — число в диапазоне 0-65535, однозначно идентифицирующее сокет на машине-хосте. (Если IP-адрес — номер телефона компании, то номер порта — внутренний добавочный.) Порты 0-1023 зарезервированы для использования операционной системой; все остальные могут использовать оставшиеся порты.</p>
+        <p>Протокол передачи гипертекста (HTTP) описывает один из способов, которым программы могут обмениваться данными по IP. HTTP намеренно прост: клиент отправляет по сокетному соединению запрос, в котором указано, что он хочет, а сервер в ответ отправляет данные. Данные могут копироваться из файла на диске, динамически генерироваться программой или быть комбинацией того и другого.</p>
+        <img src="https://aosabook.org/en/500L/web-server-images/http-cycle.png" alt="Рисунок 22.1 — цикл HTTP: клиент отправляет запрос, сервер отвечает" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+        <p>Самое главное о HTTP-запросе: это просто текст. Любая программа, которая захочет, может его создать или разобрать. Но чтобы он был понятен, этот текст должен содержать части, показанные на рисунке ниже.</p>
+        <img src="https://aosabook.org/en/500L/web-server-images/http-request.png" alt="Рисунок 22.2 — составные части HTTP-запроса: метод, URL, версия, заголовки и тело" style="max-width:100%;border-radius:12px;border:1px solid var(--line)" />
+        <p>Метод HTTP почти всегда «GET» (получить информацию) или «POST» (отправить данные формы или загрузить файл). URL указывает, чего хочет клиент; часто это путь к файлу на диске, например <code class="inline">/research/experiments.html</code>, но (и это ключевой момент) решать, что с ним делать, — полностью дело сервера. Версия HTTP обычно «HTTP/1.0» или «HTTP/1.1».</p>
+        <p>HTTP-заголовки — пары ключ/значение, как эти три примера:</p>
+        <pre class="code"><span class="lang-tag">HTTP</span><code style="direction:ltr;text-align:left">Accept: text/html
+Accept-Language: en, fr
+If-Modified-Since: 16-May-2005</code></pre>
+        <p>В отличие от ключей хеш-таблиц, ключи в HTTP-заголовках могут появляться несколько раз. Это позволяет запросу указать, например, несколько типов принимаемого содержимого. Наконец, тело запроса — любые дополнительные данные, связанные с запросом; оно используется при отправке данных веб-форм, загрузке файлов и т.п. Между последним заголовком и началом тела должна быть пустая строка, показывающая конец заголовков. Заголовок с именем <code class="inline">Content-Length</code> говорит серверу, сколько байт читать в теле запроса.</p>
+        <p>HTTP-ответы форматируются так же, как HTTP-запросы: версия, заголовки и тело имеют ту же форму и смысл. Код состояния — число, показывающее, что произошло при обработке запроса: 200 означает «всё было хорошо», 404 — «не найдено», другие коды имеют другие значения. Фраза состояния повторяет ту же информацию в читаемом человеком виде, например «OK» или «not found».</p>
+        <p>Для этой главы об HTTP надо знать ещё только две вещи.</p>
+        <p>Во-первых, HTTP <em>не сохраняет состояние (stateless)</em>: каждый запрос обрабатывается сам по себе, и сервер ничего не запоминает между двумя запросами. Если программе нужно отслеживать что-то вроде личности пользователя, она должна делать это сама. Обычный способ — файлы cookie: короткая строка, которую сервер отправляет клиенту, а клиент позже возвращает серверу. Когда пользователь делает что-то, требующее сохранения состояния в нескольких запросах, сервер создаёт новый cookie, сохраняет его в базе данных и отправляет браузеру. Каждый раз, когда браузер возвращает cookie, сервер использует его для поиска информации о действиях пользователя.</p>
+        <p>Во-вторых, URL может дополняться параметрами для передачи дополнительной информации. Это делается добавлением '?' к URL и затем пар 'key=value', разделённых '&amp;'. Например, URL <code class="inline">http://www.google.ca?q=Python</code> просит Google найти страницы, связанные с Python. Стандарт кодирования URL показывает специальные символы через '%' и двухзначный код, а пробелы заменяет знаком '+'.</p>
+        <p>Открывать сокеты, составлять HTTP-запросы и разбирать ответы — нудно, поэтому большинство людей делает большую часть работы с библиотеками. У Python есть библиотека <code class="inline">urllib2</code>, но она выставляет на обозрение много деталей, до которых большинству людей нет дела. Библиотека <a href="https://pypi.python.org/pypi/requests" target="_blank" rel="noopener">Requests</a> — более простая замена:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import requests
+response = requests.get(&#x27;http://aosabook.org/en/500L/web-server/testpage.html&#x27;)
+print &#x27;status code:&#x27;, response.status_code
+print &#x27;content length:&#x27;, response.headers[&#x27;content-length&#x27;]
+print response.text</code></pre>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">status code: 200
+content length: 61
+&lt;html&gt;
+  &lt;body&gt;
+    &lt;p&gt;Test page.&lt;/p&gt;
+  &lt;/body&gt;
+&lt;/html&gt;</code></pre>
+      </section>
+      <section>
+      <h2>Привет, веб!</h2>
+        <p>Теперь мы готовы написать наш первый простой веб-сервер. Основная идея проста:</p>
         <ul>
-          <li>Полный цикл обработки HTTP-запроса за несколько сотен строк</li>
-          <li>Параллельная обработка соединений и неблокирующий ввод-вывод</li>
-          <li>Таймауты и планирование работы сервера</li>
-          <li>Дисциплина простоты: почему лимит в 500 строк полезен</li>
+          <li>дождаться, пока кто-то подключится к серверу и отправит HTTP-запрос;</li>
+          <li>разобрать этот запрос;</li>
+          <li>понять, чего он хочет;</li>
+          <li>получить эти данные (или сгенерировать динамически);</li>
+          <li>отформатировать данные как HTML; и</li>
+          <li>отправить их обратно.</li>
         </ul>
+        <p>Шаги 1, 2 и 6 одинаковы от программы к программе, поэтому стандартная библиотека Python содержит модуль <code class="inline">BaseHTTPServer</code>, делающий их за нас. Нам остаётся сделать шаги 3-5:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import BaseHTTPServer
+
+class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    &#x27;&#x27;&#x27;Обработка HTTP-запросов возвратом фиксированной «страницы».&#x27;&#x27;&#x27;
+
+    # Страница, которую мы возвращаем
+    Page = &#x27;&#x27;&#x27;\
+&lt;html&gt;
+&lt;body&gt;
+&lt;p&gt;Hello, web!&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+&#x27;&#x27;&#x27;
+
+    # Обработка GET-запроса
+    def do_GET(self):
+        self.send_response(200)
+        self.send_header(&quot;Content-Type&quot;, &quot;text/html&quot;)
+        self.send_header(&quot;Content-Length&quot;, str(len(self.Page)))
+        self.end_headers()
+        self.wfile.write(self.Page)
+
+#----------------------------------------------------------------------
+
+if __name__ == &#x27;__main__&#x27;:
+    serverAddress = (&#x27;&#x27;, 8080)
+    server = BaseHTTPServer.HTTPServer(serverAddress, RequestHandler)
+    server.serve_forever()</code></pre>
+        <p>Класс библиотеки <code class="inline">BaseHTTPRequestHandler</code> занимается разбором входящего HTTP-запроса и определением его метода. Если метод GET, класс вызывает метод <code class="inline">do_GET</code>. Наш класс <code class="inline">RequestHandler</code> переопределяет этот метод, чтобы создать простую страницу: текст хранится в переменной уровня класса <code class="inline">Page</code>, затем, после отправки кода ответа 200, заголовка <code class="inline">Content-Type</code> (говорящего клиенту интерпретировать данные как HTML) и длины страницы, возвращается клиенту.</p>
+        <p>Но <code class="inline">RequestHandler</code> — не вся история; для реального запуска сервера нужны последние три строки. Первая строка определяет адрес сервера как кортеж: пустая строка означает «запускайся на этой машине», а 8080 — порт. Затем создаётся экземпляр <code class="inline">BaseHTTPServer.HTTPServer</code> с этим адресом и именем класса обработчика запросов в качестве параметра, и его просят работать вечно (пока мы не убьём его Control-C).</p>
+        <p>Если запустить программу из командной строки, она ничего не показывает:</p>
+        <pre class="code"><span class="lang-tag">Bash</span><code style="direction:ltr;text-align:left">$ python server.py</code></pre>
+        <p>Если в браузере перейти на <code class="inline">http://localhost:8080</code>, мы увидим «Hello, web!», а в оболочке напечатается вот такой журнал:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">127.0.0.1 - - [24/Feb/2014 10:26:28] &quot;GET / HTTP/1.1&quot; 200 -
+127.0.0.1 - - [24/Feb/2014 10:26:28] &quot;GET /favicon.ico HTTP/1.1&quot; 200 -</code></pre>
+        <p>Первая строка проста: поскольку конкретный файл не запрашивался, браузер запросил «/». Вторая строка — потому что браузер автоматически отправляет второй запрос за файлом картинки <code class="inline">/favicon.ico</code>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Книга культивирует ограничение: если решение умещается в 500 строк, его можно понять целиком. Сервер начинается с сокета и функции-обработчика, а расширяется постепенно — соединением, парсером запроса и пулом клиентов.</p>
-        <p>Начало сервера выглядит привычно:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import socket
+      <h2>Отображение значений</h2>
+        <p>Изменяем наш веб-сервер так, чтобы он показывал некоторые значения HTTP-запроса. Чтобы код оставался чистым, отделяем создание страницы от её отправки:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
 
-server = socket.socket()
-server.bind(("localhost", 8080))
-server.listen(1)
+    # ... шаблон страницы ...
 
-while True:
-    conn, addr = server.accept()
-    # Обращаемся с клиентом
-    conn.close()</code></pre>
+    def do_GET(self):
+        page = self.create_page()
+        self.send_page(page)
+
+    def create_page(self):
+        # ... заполнение ...
+
+    def send_page(self, page):
+        # ... заполнение ...</code></pre>
+        <p><code class="inline">send_page</code> — почти то же, что у нас было:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def send_page(self, page):
+        self.send_response(200)
+        self.send_header(&quot;Content-type&quot;, &quot;text/html&quot;)
+        self.send_header(&quot;Content-Length&quot;, str(len(page)))
+        self.end_headers()
+        self.wfile.write(page)</code></pre>
+        <p>Шаблон страницы, которую мы хотим показать, — просто строка с HTML-таблицей и несколькими местами для вставки:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    Page = &#x27;&#x27;&#x27;\
+&lt;html&gt;
+&lt;body&gt;
+&lt;table&gt;
+&lt;tr&gt;  &lt;td&gt;Header&lt;/td&gt;         &lt;td&gt;Value&lt;/td&gt;          &lt;/tr&gt;
+&lt;tr&gt;  &lt;td&gt;Date and time&lt;/td&gt;  &lt;td&gt;{date_time}&lt;/td&gt;    &lt;/tr&gt;
+&lt;tr&gt;  &lt;td&gt;Client host&lt;/td&gt;    &lt;td&gt;{client_host}&lt;/td&gt;  &lt;/tr&gt;
+&lt;tr&gt;  &lt;td&gt;Client port&lt;/td&gt;    &lt;td&gt;{client_port}s&lt;/td&gt; &lt;/tr&gt;
+&lt;tr&gt;  &lt;td&gt;Command&lt;/td&gt;        &lt;td&gt;{command}&lt;/td&gt;      &lt;/tr&gt;
+&lt;tr&gt;  &lt;td&gt;Path&lt;/td&gt;           &lt;td&gt;{path}&lt;/td&gt;         &lt;/tr&gt;
+&lt;/table&gt;
+&lt;/body&gt;
+&lt;/html&gt;
+&#x27;&#x27;&#x27;</code></pre>
+        <p>и метод, который это заполняет:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def create_page(self):
+        values = {
+            &#x27;date_time&#x27;   : self.date_time_string(),
+            &#x27;client_host&#x27; : self.client_address[0],
+            &#x27;client_port&#x27; : self.client_address[1],
+            &#x27;command&#x27;     : self.command,
+            &#x27;path&#x27;        : self.path
+        }
+        page = self.Page.format(**values)
+        return page</code></pre>
+        <p>Основная часть программы не изменилась. Если запустить её и отправить из браузера запрос на <code class="inline">http://localhost:8080/something.html</code>, увидим:</p>
+        <pre class="code"><span class="lang-tag">Console</span><code style="direction:ltr;text-align:left">  Date and time  Mon, 24 Feb 2014 17:17:12 GMT
+  Client host    127.0.0.1
+  Client port    54548
+  Command        GET
+  Path           /something.html</code></pre>
+        <div class="callout tip">
+          <strong>Примечание:</strong> хотя файла <code class="inline">something.html</code> на диске нет, ошибки 404 мы не получаем; потому что веб-сервер — просто программа и делает с запросом всё, что мы его запрограммировали делать: вернуть прежний запрошенный файл, случайно отдать страницу Википедии или что угодно ещё.
+        </div>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Книжный сервер — образец ясности: минимум абстракций, максимум понимания. Прочитав его, вы без труда разберёте код gunicorn или uWSGI.</p>
+      <h2>Раздача статических страниц</h2>
+        <p>Очевидный следующий шаг — раздавать страницы с диска, а не генерировать их при запросе. Начинаем с переписывания <code class="inline">do_GET</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def do_GET(self):
+        try:
+
+            # Понять, что именно запрошено
+            full_path = os.getcwd() + self.path
+
+            # ...не существует...
+            if not os.path.exists(full_path):
+                raise ServerException(&quot;&#x27;{0}&#x27; not found&quot;.format(self.path))
+
+            # ...это файл...
+            elif os.path.isfile(full_path):
+                self.handle_file(full_path)
+
+            # ...что-то, чем мы не управляем.
+            else:
+                raise ServerException(&quot;Unknown object &#x27;{0}&#x27;&quot;.format(self.path))
+
+        # Обработка ошибок
+        except Exception as msg:
+            self.handle_error(msg)</code></pre>
+        <p>Этот метод предполагает, что может раздавать любой файл в текущем каталоге или его подкаталогах (которые получает через <code class="inline">os.getcwd</code>). Он объединяет его с путём из URL (который библиотека автоматически кладёт в <code class="inline">self.path</code> и который всегда начинается с '/'), получая путь к файлу, который хочет пользователь. Если файла нет или это не файл, ошибка сообщается через выбрасывание и перехват исключения. Если путь ведёт к файлу, вызывается вспомогательный метод <code class="inline">handle_file</code>, который читает файл и возвращает его через <code class="inline">send_content</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def handle_file(self, full_path):
+        try:
+            with open(full_path, &#x27;rb&#x27;) as reader:
+                content = reader.read()
+            self.send_content(content)
+        except IOError as msg:
+            msg = &quot;&#x27;{0}&#x27; cannot be read: {1}&quot;.format(self.path, msg)
+            self.handle_error(msg)</code></pre>
+        <p>Обратите внимание: файл мы открываем в бинарном режиме, чтобы Python не пытался менять байтовые последовательности, похожие на окончания строк Windows. Также, чтение всего файла в память — плохая идея для многогигабайтных видеофайлов; управление этим выходит за рамки этой главы.</p>
+        <p>Для завершения класса пишем метод обработки ошибок и шаблон страницы с сообщением об ошибке:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    Error_Page = &quot;&quot;&quot;\
+        &lt;html&gt;
+        &lt;body&gt;
+        &lt;h1&gt;Error accessing {path}&lt;/h1&gt;
+        &lt;p&gt;{msg}&lt;/p&gt;
+        &lt;/body&gt;
+        &lt;/html&gt;
+        &quot;&quot;&quot;
+
+    def handle_error(self, msg):
+        content = self.Error_Page.format(path=self.path, msg=msg)
+        self.send_content(content)</code></pre>
+        <p>Эта программа работает, но только если не присматриваться. Проблема в том, что она всегда возвращает код состояния 200, даже когда запрошенной страницы не существует. Возвращаемая страница в этом случае содержит сообщение об ошибке, но браузер не понимает, что запрос на самом деле провалился. Чтобы это прояснить, надо изменить <code class="inline">handle_error</code> и <code class="inline">send_content</code> вот так:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    # Обработка неизвестных объектов
+    def handle_error(self, msg):
+        content = self.Error_Page.format(path=self.path, msg=msg)
+        self.send_content(content, 404)
+
+    # Отправка реального содержимого
+    def send_content(self, content, status=200):
+        self.send_response(status)
+        self.send_header(&quot;Content-type&quot;, &quot;text/html&quot;)
+        self.send_header(&quot;Content-Length&quot;, str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)</code></pre>
+        <div class="callout tip">
+          <strong>Примечание:</strong> когда файл не найден, мы не выбрасываем <code class="inline">ServerException</code>, а строим страницу ошибки. <code class="inline">ServerException</code> предназначена для внутренней ошибки кода сервера — того, что неправильно сделали <em>мы</em>. Страница ошибки, создаваемая <code class="inline">handle_error</code>, появляется, когда <em>пользователь</em> попросил что-то неправильное, например URL файла, которого нет.
+        </div>
+      </section>
+      <section>
+      <h2>Списки каталогов</h2>
+        <p>Следующий шаг: научиться показывать содержимое каталога, когда путь URL — это каталог. Можно пойти ещё на шаг дальше: искать в этом каталоге файл <code class="inline">index.html</code> и показывать список только если его нет.</p>
+        <p>Но встраивать эти правила в <code class="inline">do_GET</code> неправильно, потому что получившийся метод превратится в запутанный клубок операторов <code class="inline">if</code>, управляющих частными случаями. Правильное решение — отступить назад и решить общую задачу: понять, что делать с URL. Вот переписанный <code class="inline">do_GET</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def do_GET(self):
+        try:
+
+            # Понять, что именно запрошено
+            self.full_path = os.getcwd() + self.path
+
+            # Понять, как это обрабатывать
+            for case in self.Cases:
+                handler = case()
+                if handler.test(self):
+                    handler.act(self)
+                    break
+
+        # Обработка ошибок
+        except Exception as msg:
+            self.handle_error(msg)</code></pre>
+        <p>Первый шаг тот же: понять полный путь запрошенного объекта. Но после этого код сильно отличается. Вместо внутренних проверок эта версия проходит по набору case-ов в списке. Каждый case — объект с двумя методами: <code class="inline">test</code>, который сообщает, может ли он обработать запрос, и <code class="inline">act</code>, который реально что-то делает. Как только найден подходящий case, мы позволяем ему обработать запрос и выходим из цикла.</p>
+        <p>Вот три класса case, повторяющие поведение нашего прежнего сервера:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class case_no_file(object):
+    &#x27;&#x27;&#x27;Файл или каталог не существует.&#x27;&#x27;&#x27;
+
+    def test(self, handler):
+        return not os.path.exists(handler.full_path)
+
+    def act(self, handler):
+        raise ServerException(&quot;&#x27;{0}&#x27; not found&quot;.format(handler.path))
+
+
+class case_existing_file(object):
+    &#x27;&#x27;&#x27;Файл существует.&#x27;&#x27;&#x27;
+
+    def test(self, handler):
+        return os.path.isfile(handler.full_path)
+
+    def act(self, handler):
+        handler.handle_file(handler.full_path)
+
+
+class case_always_fail(object):
+    &#x27;&#x27;&#x27;Базовый case, если ничего другое не сработало.&#x27;&#x27;&#x27;
+
+    def test(self, handler):
+        return True
+
+    def act(self, handler):
+        raise ServerException(&quot;Unknown object &#x27;{0}&#x27;&quot;.format(handler.path))</code></pre>
+        <p>и так строим список case-ов обработчика — над классом <code class="inline">RequestHandler</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+    &#x27;&#x27;&#x27;
+    Если запрошенный путь ведёт к файлу, раздаётся этот файл.
+    Если что-то идёт не так, создаётся страница ошибки.
+    &#x27;&#x27;&#x27;
+
+    Cases = [case_no_file(),
+             case_existing_file(),
+             case_always_fail()]
+
+    # ... остальное как раньше ...</code></pre>
+        <p>Внешне это сделало сервер сложнее, а не проще: файл вырос с 74 строк до 99, добавился уровень косвенности без новой возможности. Польза проявляется, когда мы возвращаемся к задаче из начала главы: научить сервер раздавать страницу <code class="inline">index.html</code> для каталогов и показывать список каталога, если её нет. Вот обработчик первого случая:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class case_directory_index_file(object):
+    &#x27;&#x27;&#x27;Раздача страницы index.html для каталога.&#x27;&#x27;&#x27;
+
+    def index_path(self, handler):
+        return os.path.join(handler.full_path, &#x27;index.html&#x27;)
+
+    def test(self, handler):
+        return os.path.isdir(handler.full_path) and \
+               os.path.isfile(self.index_path(handler))
+
+    def act(self, handler):
+        handler.handle_file(self.index_path(handler))</code></pre>
+        <p>Единственное необходимое изменение в <code class="inline">RequestHandler</code> — добавить объект <code class="inline">case_directory_index_file</code> в список <code class="inline">Cases</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    Cases = [case_no_file(),
+             case_existing_file(),
+             case_directory_index_file(),
+             case_always_fail()]</code></pre>
+        <p>А как насчёт каталогов без страницы <code class="inline">index.html</code>? Проверка та же с уместным <code class="inline">not</code>, но что должен делать метод <code class="inline">act</code>? Логически он должен построить и вернуть список каталога, но наш текущий код этого не позволяет: <code class="inline">RequestHandler.do_GET</code> вызывает <code class="inline">act</code>, но не получает и не обрабатывает возвращаемое значение. Пока добавим в <code class="inline">RequestHandler</code> метод, строящий список каталога:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class case_directory_no_index_file(object):
+    &#x27;&#x27;&#x27;Раздача списка для каталога без страницы index.html.&#x27;&#x27;&#x27;
+
+    # ... index_path и test как выше ...
+
+    def act(self, handler):
+        handler.list_dir(handler.full_path)
+
+
+class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    # ... остальной код ...
+
+    # Как показывать список каталога
+    Listing_Page = &#x27;&#x27;&#x27;\
+        &lt;html&gt;
+        &lt;body&gt;
+        &lt;ul&gt;
+        {0}
+        &lt;/ul&gt;
+        &lt;/body&gt;
+        &lt;/html&gt;
+        &#x27;&#x27;&#x27;
+
+    def list_dir(self, full_path):
+        try:
+            entries = os.listdir(full_path)
+            bullets = [&#x27;&lt;li&gt;{0}&lt;/li&gt;&#x27;.format(e) 
+                for e in entries if not e.startswith(&#x27;.&#x27;)]
+            page = self.Listing_Page.format(&#x27;\n&#x27;.join(bullets))
+            self.send_content(page)
+        except OSError as msg:
+            msg = &quot;&#x27;{0}&#x27; cannot be listed: {1}&quot;.format(self.path, msg)
+            self.handle_error(msg)</code></pre>
+      </section>
+      <section>
+      <h2>Протокол CGI</h2>
+        <p>Разумеется, большинство людей не хочет править исходники веб-сервера ради добавления возможностей. Поэтому серверы с самого начала поддерживали механизм под названием Common Gateway Interface (CGI), который даёт стандартный способ запускать внешнюю программу для удовлетворения запроса.</p>
+        <p>Например, предположим, мы хотим, чтобы сервер показывал локальное время на HTML-странице. Сделаем это в отдельной программе в несколько строк:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from datetime import datetime
+print &#x27;&#x27;&#x27;\
+&lt;html&gt;
+&lt;body&gt;
+&lt;p&gt;Generated {0}&lt;/p&gt;
+&lt;/body&gt;
+&lt;/html&gt;&#x27;&#x27;&#x27;.format(datetime.now())</code></pre>
+        <p>Чтобы веб-сервер запускал эту программу для нас, добавим такой case-обработчик:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class case_cgi_file(object):
+    &#x27;&#x27;&#x27;Что-то исполняемое.&#x27;&#x27;&#x27;
+
+    def test(self, handler):
+        return os.path.isfile(handler.full_path) and \
+               handler.full_path.endswith(&#x27;.py&#x27;)
+
+    def act(self, handler):
+        handler.run_cgi(handler.full_path)</code></pre>
+        <p>Проверка проста: заканчивается ли путь файла на <code class="inline">.py</code>? Если да, <code class="inline">RequestHandler</code> запускает эту программу:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def run_cgi(self, full_path):
+        cmd = &quot;python &quot; + full_path
+        child_stdin, child_stdout = os.popen2(cmd)
+        child_stdin.close()
+        data = child_stdout.read()
+        child_stdout.close()
+        self.send_content(data)</code></pre>
+        <div class="callout warn">
+          <strong>Предупреждение:</strong> это сверхнебезопасно: если кто-то узнает путь к файлу Python на вашем сервере, вы просто позволите ему запустить его, не беспокоясь о том, к каким данным он получит доступ или о возможном бесконечном цикле. (Кстати, <code class="inline">popen2</code> в новых версиях устарел в пользу модуля <code class="inline">subprocess</code>.)
+        </div>
+        <p>Отложив это в сторону, основная идея проста:</p>
+        <ul>
+          <li>запустить программу в подпроцессе;</li>
+          <li>забрать всё, что подпроцесс отправляет в стандартный вывод;</li>
+          <li>вернуть это запросившему клиенту.</li>
+        </ul>
+        <p>Полный протокол CGI гораздо богаче — в частности, он позволяет параметры в URL, которые сервер передаёт запускаемой программе, — но эти детали не влияют на общую архитектуру системы... которая, опять же, начинает запутываться. У <code class="inline">RequestHandler</code> сначала был метод <code class="inline">handle_file</code> для содержимого. Теперь добавились два особых случая: <code class="inline">list_dir</code> и <code class="inline">run_cgi</code>. Этим трём методам здесь не место, поскольку в основном их используют другие.</p>
+        <p>Решение простое: создать родительский класс для всех case-обработчиков и перемещать в него методы только тогда, когда их используют два или более обработчика. Когда всё закончено, класс <code class="inline">RequestHandler</code> выглядит так:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class RequestHandler(BaseHTTPServer.BaseHTTPRequestHandler):
+
+    Cases = [case_no_file(),
+             case_cgi_file(),
+             case_existing_file(),
+             case_directory_index_file(),
+             case_directory_no_index_file(),
+             case_always_fail()]
+
+    # Как показывать ошибку
+    Error_Page = &quot;&quot;&quot;\
+        &lt;html&gt;
+        &lt;body&gt;
+        &lt;h1&gt;Error accessing {path}&lt;/h1&gt;
+        &lt;p&gt;{msg}&lt;/p&gt;
+        &lt;/body&gt;
+        &lt;/html&gt;
+        &quot;&quot;&quot;
+
+    # Классификация и обработка запроса
+    def do_GET(self):
+        try:
+
+            # Понять, что именно запрошено
+            self.full_path = os.getcwd() + self.path
+
+            # Понять, как это обрабатывать
+            for case in self.Cases:
+                if case.test(self):
+                    case.act(self)
+                    break
+
+        # Обработка ошибок
+        except Exception as msg:
+            self.handle_error(msg)
+
+    # Обработка неизвестных объектов
+    def handle_error(self, msg):
+        content = self.Error_Page.format(path=self.path, msg=msg)
+        self.send_content(content, 404)
+
+    # Отправка реального содержимого
+    def send_content(self, content, status=200):
+        self.send_response(status)
+        self.send_header(&quot;Content-type&quot;, &quot;text/html&quot;)
+        self.send_header(&quot;Content-Length&quot;, str(len(content)))
+        self.end_headers()
+        self.wfile.write(content)</code></pre>
+        <p>а родительский класс для case-обработчиков — такой:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class base_case(object):
+    &#x27;&#x27;&#x27;Родитель case-обработчиков.&#x27;&#x27;&#x27;
+
+    def handle_file(self, handler, full_path):
+        try:
+            with open(full_path, &#x27;rb&#x27;) as reader:
+                content = reader.read()
+            handler.send_content(content)
+        except IOError as msg:
+            msg = &quot;&#x27;{0}&#x27; cannot be read: {1}&quot;.format(full_path, msg)
+            handler.handle_error(msg)
+
+    def index_path(self, handler):
+        return os.path.join(handler.full_path, &#x27;index.html&#x27;)
+
+    def test(self, handler):
+        assert False, &#x27;Not implemented.&#x27;
+
+    def act(self, handler):
+        assert False, &#x27;Not implemented.&#x27;</code></pre>
+        <p>и обработчик существующего файла (просто как пример):</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class case_existing_file(base_case):
+    &#x27;&#x27;&#x27;Файл существует.&#x27;&#x27;&#x27;
+
+    def test(self, handler):
+        return os.path.isfile(handler.full_path)
+
+    def act(self, handler):
+        self.handle_file(handler, handler.full_path)</code></pre>
+      </section>
+      <section>
+      <h2>Обсуждение</h2>
+        <p>Различия между нашим исходным кодом и перестроенной версией отражают две важные идеи. Первая — смотреть на класс как на набор связанных служб. <code class="inline">RequestHandler</code> и <code class="inline">base_case</code> не принимают решений и не действуют; они предоставляют инструменты, которыми другие классы пользуются для выполнения этих действий.</p>
+        <p>Вторая — расширяемость: люди могут добавить новую возможность веб-серверу либо написав внешнюю CGI-программу, либо добавив класс case-обработчика. Второй способ требует однострочного изменения в <code class="inline">RequestHandler</code> (вставка case-обработчика в список <code class="inline">Cases</code>), но от него можно избавиться, читая файл конфигурации и загружая классы обработчиков из него. В обоих случаях они могут игнорировать большинство низкоуровневых деталей, точно так же, как авторы класса <code class="inline">BaseHTTPRequestHandler</code> позволили нам игнорировать детали управления сокетными соединениями и разбора HTTP-запросов.</p>
+        <p>Эти идеи полезны в целом; посмотрите, не найдёте ли вы способы применить их в собственных проектах.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> глава «A Simple Web Server» принадлежит Грегу Уилсону (Greg Wilson) и опубликована в книге «500 Lines or Less» (aosabook.org). Эта страница — лишь её перевод; все права на содержимое, изображения и код принадлежат оригинальному автору. С оригиналом можно ознакомиться на <a href="http://aosabook.org/en/500L/a-simple-web-server.html" target="_blank" rel="noopener">сайте aosabook</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Простой веб-сервер — глава из книги «500 строк и меньше»» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Простой веб-сервер — глава из книги «500 строк и меньше»» принадлежит автору оригинала (Грег Уилсон (Greg Wilson)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Грег Уилсон (Greg Wilson)). Читайте оригинал на
         <a href="http://aosabook.org/en/500L/a-simple-web-server.html" target="_blank" rel="noopener">http://aosabook.org/en/500L/a-simple-web-server.html</a>.
       </div>
     </article>
