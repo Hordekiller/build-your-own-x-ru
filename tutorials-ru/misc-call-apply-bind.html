@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Реализуй сам методы call(), apply() и bind() в JavaScript»
+          <b>Оригинальный источник:</b> «Implement your own call(), apply() and bind() methods in JavaScript»
         </div>
         <a class="btn solid" href="https://blog.usejournal.com/implement-your-own-call-apply-and-bind-method-in-javascript-42cc85dba1b" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-call-apply-bind.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,75 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует с нуля три важнейших метода функций: call, apply и bind. Вы разберёте, как this подменяется в вызове и как замыкания сохраняют контекст, — всё без встроенных методов.</p>
+      <h2>Что делают эти три метода?</h2>
+        <p>Все три меняют <code>this</code> функции: <b>call</b> — с отдельными аргументами, <b>apply</b> — с массивом, а <b>bind</b> возвращает новую функцию, к которой this привязывается навсегда. Глубокое понимание этих методов показывает, как работает this в JavaScript.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Как работает this в функциях и зачем его подменять</li>
-          <li>call: вызов с явным контекстом</li>
-          <li>apply: передача аргументов массивом</li>
-          <li>bind: каррирование контекста через замыкание</li>
-        </ul>
-      </section>
+      <h2>Реализация myCall</h2>
+        <p>Основная идея проста: вызвать функцию как метод <code>context</code>. Хотя это можно сделать и через <code>Reflect</code>, простая схема с временным свойством нагляднее:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// myCall: вызов функции с нужным this и отдельными аргументами
+Function.prototype.myCall = function (context = globalThis, ...args) {
+  // Уникальный ключ против коллизий
+  const fnKey = Symbol(&#x27;fn&#x27;);
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>call и apply — это просто вызов функции с подменой контекста: JavaScript на уровне языка даёт нам эту силу. bind возвращает новую функцию, навсегда помнящую контекст, — с помощью замыкания.</p>
-        <p>Собственный call не сложнее нескольких строк:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>Function.prototype.myCall = function (context, ...args) {
-  context = context || globalThis;
-  const key = Symbol();
-  context[key] = this;   // временно кладём функцию в объект
-  const result = context[key](...args);
-  delete context[key];   // и убираем следы
+  context[fnKey] = this;        // привязываем функцию к context
+  const result = context[fnKey](...args);  // вызываем с аргументами
+  delete context[fnKey];        // убираем следы
   return result;
-};</code></pre>
-      </section>
+};
 
+// Использование
+const person = { name: &#x27;Сара&#x27; };
+function greet(greeting) {
+  return `${greeting}, ${this.name}`;
+}
+console.log(greet.myCall(person, &#x27;Привет&#x27;)); // Привет, Сара</code></pre>
+        <p>Заметки: если context равен null, берём <code>globalThis</code>; для уникального ключа используем <code>Symbol</code>, чтобы избежать коллизий.</p>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Эти методы — рабочие лошадки JS-кода: поняв их устройство, вы научитесь читать сложные библиотеки и писать код, не зависящий от случайного контекста вызова.</p>
+      <h2>myApply и myBind</h2>
+        <p>myApply работает с массивом аргументов (или <code>arguments</code>), а myBind должен вернуть новую функцию, объединяющую начальные аргументы:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// myApply: как call, но с массивом аргументов
+Function.prototype.myApply = function (context = globalThis, argsArray = []) {
+  const fnKey = Symbol(&#x27;fn&#x27;);
+  context[fnKey] = this;
+  const result = context[fnKey](...argsArray);
+  delete context[fnKey];
+  return result;
+};
+
+// myBind: возвращает функцию, привязанную к this
+Function.prototype.myBind = function (context = globalThis, ...initialArgs) {
+  const original = this;
+  return function (...laterArgs) {
+    return original.myCall(context, ...initialArgs, ...laterArgs);
+  };
+};
+
+// Использование bind
+const boundGreet = greet.myBind(person);
+console.log(boundGreet(&#x27;Привет&#x27;));  // Привет, Сара</code></pre>
+        <p><code>myBind</code> создаёт замыкание (closure): original, context и initialArgs сохраняются и комбинируются при каждом вызове.</p>
+      </section>
+      <section>
+      <h2>Зачем их реализовывать?</h2>
+        <p>Пересоздание этих методов превращает механику this и замыканий из «магии» в «концепцию». Обсуждаются и альтернативные подходы — <code>Reflect.apply</code> и <code>WeakMap</code> для context; в конце вы поймёте, как bind устроен внутри движка V8.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>С этими тремя функциями вы поняли и сами методы, и важные концепции JavaScript: вызов функций (function invocation), spread-оператор и замыкания. Это отличный шаг к глубокому пониманию JavaScript.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> автор статьи на blog.usejournal.com. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://blog.usejournal.com/implement-your-own-call-apply-and-bind-method-in-javascript-42cc85dba1b" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Реализуй сам методы call(), apply() и bind() в JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Реализуй сам методы call(), apply() и bind() в JavaScript» принадлежит автору оригинала (автор статьи на blog.usejournal.com). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор статьи на blog.usejournal.com). Читайте оригинал на
         <a href="https://blog.usejournal.com/implement-your-own-call-apply-and-bind-method-in-javascript-42cc85dba1b" target="_blank" rel="noopener">https://blog.usejournal.com/implement-your-own-call-apply-and-bind-method-in-javascript-42cc85dba1b</a>.
       </div>
     </article>

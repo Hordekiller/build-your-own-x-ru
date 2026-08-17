@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай свой блокировщик рекламы за (буквально) 10 минут»
+          <b>Оригинальный источник:</b> «Building your own AdBlocker in (literally) 10 minutes»
         </div>
         <a class="btn solid" href="https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-adblocker.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,46 +53,78 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Весёлый и практичный урок: блокировщик рекламы как расширение браузера всего за 10 минут. Вы поймёте, как работают uBlock и AdBlock: блокировка запросов к известным рекламным доменам.</p>
+      <h2>Как работает расширение для блокировки рекламы?</h2>
+        <p>Реклама обычно загружается со специальных доменов (например, adserver.com). AdBlocker перехватывает запросы браузера к этим доменам и блокирует их. В Chrome это делается через API <code>webRequest</code> и событие <code>onBeforeRequest</code>.</p>
+        <p>Преимущество этого метода: блокировка происходит на уровне сети, поэтому реклама даже не загружается — это быстрее, чем скрытие через CSS.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Структура расширения для браузера: manifest и скрипты</li>
-          <li>Перехват сетевых запросов и фильтрация доменов</li>
-          <li>Список блокируемых ресурсов и его обновление</li>
-          <li>Как блокировки влияют на скорость и приватность</li>
-        </ul>
+      <h2>manifest.json</h2>
+        <p>Первый шаг любого расширения — файл manifest, объявляющий разрешения. Для AdBlocker нужны <code>webRequest</code> и <code>webRequestBlocking</code>:</p>
+        <pre class="code"><span class="lang-tag">json</span><code style="direction:ltr;text-align:left">{
+  &quot;manifest_version&quot;: 2,
+  &quot;name&quot;: &quot;Простой AdBlocker&quot;,
+  &quot;version&quot;: &quot;1.0&quot;,
+  &quot;description&quot;: &quot;Простой блокировщик рекламы&quot;,
+  &quot;permissions&quot;: [
+    &quot;webRequest&quot;,
+    &quot;webRequestBlocking&quot;,
+    &quot;&lt;all_urls&gt;&quot;
+  ],
+  &quot;background&quot;: {
+    &quot;scripts&quot;: [&quot;blocker.js&quot;],
+    &quot;persistent&quot;: true
+  }
+}</code></pre>
+        <p>У третьей версии расширений (MV3) есть другой способ (declarativeNetRequest), но эта простая структура отлично подходит для обучения.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Блокировщик рекламы — это фильтр на уровне браузера: расширение перехватывает запросы и блокирует те, что идут на домены рекламных сетей. Список доменов — это и есть вся «база данных» фильтра.</p>
-        <p>Фильтрация одного запроса — несколько строк:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>// Перехватываем сетевые запросы
-browser.webRequest.onBeforeRequest.addListener(
-  (details) =&gt; {
-    if (blockedDomains.includes(new URL(details.url).host)) {
-      return { cancel: true }; // реклама заблокирована
+      <h2>Логика блокировки</h2>
+        <p>Сердце расширения — background-скрипт, который перед каждым запросом сравнивает URL со списком рекламных доменов:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Простой список рекламных доменов
+const AD_DOMAINS = [
+  &#x27;doubleclick.net&#x27;,
+  &#x27;googleadservices.com&#x27;,
+  &#x27;adservice.google.com&#x27;,
+  &#x27;adsense.com&#x27;,
+  &#x27;googlesyndication.com&#x27;
+];
+
+// Блокировка запросов к рекламным доменам
+chrome.webRequest.onBeforeRequest.addListener(
+  function (details) {
+    const url = new URL(details.url);
+    const host = url.hostname;
+
+    if (AD_DOMAINS.some(domain =&gt; host === domain || host.endsWith(&#x27;.&#x27; + domain))) {
+      console.log(&#x27;Заблокировано:&#x27;, details.url);
+      return { cancel: true };   // прерываем запрос
     }
+    return {};                   // разрешаем продолжение
   },
-  { urls: ["&lt;all_urls&gt;"] },
-  ["blocking"]
+  { urls: [&#x27;&lt;all_urls&gt;&#x27;] },
+  [&#x27;blocking&#x27;]
 );</code></pre>
+        <p>Точное сравнение hostname (равенство или суффикс) блокирует и поддомены, не задевая похожие домены по ошибке.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждый день ваши данные собираются рекламными сетями: свой блокировщик — это и отличный способ изучить API браузеров, и шаг к приватности.</p>
+      <h2>Продвинутые опции</h2>
+        <p>Для настоящего AdBlocker нужно больше: огромные списки фильтров (EasyList), блокировка по URL-паттернам, а не только по доменам, и UI для управления исключениями. Но этих 20 строк уже достаточно для базового поведения — и разница заметна на «тяжёлых» сайтах.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Создание AdBlocker — отличный первый шаг к пониманию экосистемы расширений браузера: manifest, background-скрипт и мощные API. С этими знаниями можно делать и другие полезные расширения.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> автор статьи на levelup.gitconnected.com. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай свой блокировщик рекламы за (буквально) 10 минут» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай свой блокировщик рекламы за (буквально) 10 минут» принадлежит автору оригинала (автор статьи на levelup.gitconnected.com). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор статьи на levelup.gitconnected.com). Читайте оригинал на
         <a href="https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd" target="_blank" rel="noopener">https://levelup.gitconnected.com/building-your-own-adblocker-in-literally-10-minutes-1eec093b04cd</a>.
       </div>
     </article>

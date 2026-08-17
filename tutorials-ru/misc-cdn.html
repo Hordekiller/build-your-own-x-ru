@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание CDN с нуля, чтобы понять, как работают CDN»
+          <b>Оригинальный источник:</b> «CDN Up and Running»
         </div>
         <a class="btn solid" href="https://github.com/leandromoreira/cdn-up-and-running" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-cdn.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,45 +53,74 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство строит учебную CDN на Lua и OpenResty: кеширующие узлы, распределение запросов и ускорение доставки контента. Вы поймёте, как Cloudflare и Akamai делают сайты быстрыми.</p>
+      <h2>Что такое CDN и как он работает?</h2>
+        <p>Сеть доставки контента (CDN) копирует ваш контент (изображения, видео, страницы) на edge-серверы по всему миру. Когда пользователь запрашивает что-то у ближайшего edge, ответ приходит быстрее, а нагрузка на исходный сервер снижается. Основные компоненты: <b>edge node</b>, <b>кеш</b>, <b>проксирование к origin</b> и <b>умное обновление</b>.</p>
+        <p>Этот урок с OpenResty (Nginx вместе с Lua) строит настоящий работающий CDN, дающий и теоретическое понимание, и практические навыки.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что такое CDN: распределённая сеть кеширующих узлов</li>
-          <li>Кеширование ответов на пограничных узлах</li>
-          <li>Выбор ближайшего узла и маршрутизация</li>
-          <li>Инвалидация кеша и обновление контента</li>
-        </ul>
+      <h2>Разница кеша и предварительного кеша</h2>
+        <p>Есть два основных типа кеширования: <b>pull caching</b> — edge берёт контент, только когда приходит запрос, и <b>push caching</b> — контент заранее рассылается по всем edge-узлам. Для начала pull достаточно. HTTP-заголовки вроде <code>Cache-Control: max-age</code> определяют, что и как долго можно кешировать:</p>
+        <pre class="code"><span class="lang-tag">lua</span><code style="direction:ltr;text-align:left">-- Проверка кешируемости запроса и настройка заголовков
+local cache_ttl = 3600   -- один час
+
+function handle_request(ngx)
+    local status, headers, body = ngx.location.capture(&#x27;/proxy_upstream&#x27;)
+
+    if status == ngx.HTTP_OK then
+        -- Кеширование ответа с временем жизни
+        ngx.shared.cache:set(ngx.var.uri, body, cache_ttl)
+        ngx.header[&#x27;Cache-Control&#x27;] = &#x27;public, max-age=&#x27; .. cache_ttl
+    end
+    ngx.status = status
+    ngx.say(body or &#x27;error&#x27;)
+end</code></pre>
+        <p>Вся логика пишется на Lua, а Nginx делает остальное: TLS, HTTP/2, gzip.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>CDN приближает контент к пользователю: запрос уходит не на далёкий origin-сервер, а на ближайший узел сети, который отдаёт кешированную копию. Близость и кеш — вот и весь секрет скорости.</p>
-        <p>Простейший кеширующий ответ на Lua:</p>
-        <pre class="code"><span class="lang-tag">Lua</span><code>-- Если копия уже в кеше — отдаём её
-local cached = cache.get(path)
-if cached then
-  return cached
-end
--- Иначе идём к origin и сохраняем ответ
-local body = fetch_origin(path)
-cache.set(path, body)
-return body</code></pre>
+      <h2>Конфигурация Nginx</h2>
+        <p>Файл nginx.conf, связывающий edge с origin:</p>
+        <pre class="code"><span class="lang-tag">nginx</span><code style="direction:ltr;text-align:left"># edge node: кеш + прокси к origin
+server {
+    listen 8080;
+
+    location / {
+        # Имя этого edge node в заголовке для отладки
+        add_header X-CDN-Node &quot;edge-ru-1&quot;;
+
+        # Отправка к backend с выборкой из кеша
+        content_by_lua_block {
+            local res = ngx.location.capture(&quot;/internal_origin&quot;)
+            ngx.status = res.status
+            ngx.say(res.body)
+        }
+    }
+
+    location /internal_origin {
+        proxy_pass http://origin-backend:3000;
+        proxy_set_header Host $host;
+    }
+}</code></pre>
+        <p>С такой структурой каждый запрос может обслуживаться из общего кеша (shared dict) или уходить к origin.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>CDN — невидимая инфраструктура, ускоряющая каждый клик в интернете: собрав учебную CDN, вы поймёте, почему ваш сайт быстр у одного пользователя и медлен у другого.</p>
+      <h2>Теория за кулисами</h2>
+        <p>В ходе урока рассматриваются и реальные проблемы CDN: инвалидация кеша (очистка запросом PURGE), настройка TTL по типу контента, география edge-узлов и тёплое хранение (prefetch). Каждая решается примерами на Lua.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>С этим уроком тёмные стороны CDN становятся понятными, и вы можете развернуть личный CDN — например, для внутренних проектов. Навыки Lua/OpenResty также ценны в реальном мире, скажем, в API-шлюзах.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Леандро Морейра (Leandro Moreira). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/leandromoreira/cdn-up-and-running" target="_blank" rel="noopener">GitHub-странице автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание CDN с нуля, чтобы понять, как работают CDN» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание CDN с нуля, чтобы понять, как работают CDN» принадлежит автору оригинала (Леандро Морейра (Leandro Moreira)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Леандро Морейра (Leandro Moreira)). Читайте оригинал на
         <a href="https://github.com/leandromoreira/cdn-up-and-running" target="_blank" rel="noopener">https://github.com/leandromoreira/cdn-up-and-running</a>.
       </div>
     </article>

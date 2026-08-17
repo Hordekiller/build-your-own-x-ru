@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Как создать Android-приложение Reddit»
+          <b>Оригинальный источник:</b> «Reddit Android app (YouTube playlist)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLgCYzUzKIBE9HUJU-upNvl3TRVAo9W47y" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-reddit-app.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,83 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство создаёт приложение Reddit для Android: интерфейс со списками постов, загрузка данных из API Reddit, работа с картинками и базовое управление состоянием на Java.</p>
+      <h2>О плейлисте</h2>
+        <p>Этот видеокурс шаг за шагом создаёт приложение Reddit: от показа списка постов через REST API и JSON до деталей поста и изображений. Основные темы Android, которые охватываются: <b>RecyclerView</b> (эффективные списки), <b>Retrofit</b> (HTTP-связь), <b>Picasso</b> (загрузка изображений) и управление состоянием.</p>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/videoseries?list=PLgCYzUzKIBE9HUJU-upNvl3TRVAo9W47y" title="Как создать Android-приложение Reddit (YouTube)" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p><a href="https://www.youtube.com/playlist?list=PLgCYzUzKIBE9HUJU-upNvl3TRVAo9W47y" target="_blank" rel="noopener">Открыть плейлист на YouTube</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Структура Android-приложения: Activity, Adapter, View</li>
-          <li>Загрузка данных из JSON API и их разбор</li>
-          <li>Списки RecyclerView с изображениями</li>
-          <li>Сетевые запросы вне главного потока</li>
-        </ul>
+      <h2>Архитектура: Activity + Adapter</h2>
+        <p>В Android каждая страница — это Activity со списком ListView/RecyclerView и Adapter. Adapter превращает каждый элемент данных в View. Этот паттерн — основа всех списочных приложений:</p>
+        <pre class="code"><span class="lang-tag">java</span><code style="direction:ltr;text-align:left">// Адаптер показа постов в RecyclerView
+public class PostAdapter extends RecyclerView.Adapter&lt;PostAdapter.ViewHolder&gt; {
+
+    private List&lt;Post&gt; posts = new ArrayList&lt;&gt;();
+
+    public void setPosts(List&lt;Post&gt; posts) { this.posts = posts; notifyDataSetChanged(); }
+
+    @NonNull @Override
+    public ViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int v) {
+        View view = LayoutInflater.from(parent.getContext())
+                  .inflate(R.layout.item_post, parent, false);
+        return new ViewHolder(view);
+    }
+
+    @Override
+    public void onBindViewHolder(@NonNull ViewHolder h, int pos) {
+        Post p = posts.get(pos);
+        h.title.setText(p.getTitle());          // заголовок поста
+        Picasso.get().load(p.getThumbnail()).into(h.image);  // изображение
+    }
+
+    static class ViewHolder extends RecyclerView.ViewHolder {
+        TextView title; ImageView image;
+        ViewHolder(View v) { super(v); title = v.findViewById(R.id.title); image = v.findViewById(R.id.image); }
+    }
+}</code></pre>
+        <p><code>onBindViewHolder</code> — сердце вывода: для каждой позиции берёт данные из списка и заполняет View.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Приложение — это экраны, список постов и данные: интерфейс строит RecyclerView, а данные приходят из API Reddit в виде JSON. Ключевая задача — не блокировать интерфейс сетевой работой.</p>
-        <p>Простейший запрос к API выглядит так:</p>
-        <pre class="code"><span class="lang-tag">Java</span><code>URL url = new URL("https://www.reddit.com/r/pics/hot.json");
-HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-// читаем JSON и парсим посты</code></pre>
+      <h2>Получение данных с Retrofit</h2>
+        <p>Сетевая часть упрощается с Retrofit: вы определяете interface, где каждый метод — endpoint; а JSON автоматически превращается в модель:</p>
+        <pre class="code"><span class="lang-tag">java</span><code style="direction:ltr;text-align:left">public interface RedditApi {
+    @GET(&quot;r/{subreddit}/hot.json&quot;)
+    Call&lt;RedditResponse&gt; getHot(@Path(&quot;subreddit&quot;) String sub);
+}
+
+// Вызов в Activity
+Retrofit retrofit = new Retrofit.Builder()
+    .baseUrl(&quot;https://www.reddit.com/&quot;)
+    .addConverterFactory(GsonConverterFactory.create())
+    .build();
+RedditApi api = retrofit.create(RedditApi.class);
+api.getHot(&quot;android&quot;).enqueue(new Callback&lt;RedditResponse&gt;() {
+    @Override public void onResponse(Call&lt;RedditResponse&gt; call, Response&lt;RedditResponse&gt; r) {
+        adapter.setPosts(r.body().getPosts());
+    }
+    @Override public void onFailure(Call&lt;RedditResponse&gt; call, Throwable t) {
+        Toast.makeText(getBaseContext(), &quot;Сетевая ошибка&quot;, Toast.LENGTH_SHORT).show();
+    }
+});</code></pre>
+        <p>Следующие части плейлиста: детали поста, экраны загрузки и ошибок и работа с жизненным циклом Activity.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Собственное приложение для сервиса — лучший способ выучить Android-разработку: сеть, UI, жизненный цикл — всё на живом проекте, который можно открывать на телефоне.</p>
+      <h2>Итог</h2>
+        <p>Этот плейлист отлично подходит для начала работы с Android: все части повседневных приложений (API, список, изображения) показаны на видео и в практической работе. После него можно переходить к MVVM и Jetpack Compose.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> автор YouTube-плейлиста. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.youtube.com/playlist?list=PLgCYzUzKIBE9HUJU-upNvl3TRVAo9W47y" target="_blank" rel="noopener">YouTube-плейлисте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Как создать Android-приложение Reddit» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Как создать Android-приложение Reddit» принадлежит автору оригинала (автор YouTube-плейлиста). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор YouTube-плейлиста). Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLgCYzUzKIBE9HUJU-upNvl3TRVAo9W47y" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLgCYzUzKIBE9HUJU-upNvl3TRVAo9W47y</a>.
       </div>
     </article>

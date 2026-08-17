@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем систему сборки на Nim»
+          <b>Оригинальный источник:</b> «Writing a build system in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day11_buildsystem.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-build-system.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует систему сборки на Nim в духе Make: правила, зависимости и пересборка только изменённых целей. Вы напишете свой маленький build-инструмент и поймёте, как работают make и ninja.</p>
+      <h2>Что делает система сборки?</h2>
+        <p>Инструменты вроде make или ninja знают, что «чтобы получить выход X, сначала нужно выполнить эти действия в таком порядке». Вы просто хотите результат: build system строит граф зависимостей, выполняет только необходимые задачи и пропускает повторные (когда входные данные не менялись).</p>
+        <p>В этом уроке мы сделаем простую систему сборки на Nim, определяющую задачи и их зависимости и выполняющую их в правильном порядке.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Правила сборки: цель, источники, команды</li>
-          <li>Граф зависимостей и порядок сборки</li>
-          <li>Пересборка только устаревших целей</li>
-          <li>Проверка изменения файлов по времени</li>
-        </ul>
+      <h2>Определение задачи и зависимостей</h2>
+        <p>Основная идея: у задачи есть имя, исполняемое тело и список предварительных задач. После запуска система должна выполнить каждую задачу только один раз (даже если на неё ссылаются из нескольких мест):</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">type
+  Task = ref object
+    name: string
+    deps: seq[string]
+    action: proc()
+
+var tasks = initTable[string, Task]()
+
+# Регистрация новой задачи
+proc task(name: string, deps: seq[string] = @[], action: proc()) =
+  tasks[name] = Task(name: name, deps: deps, action: action)
+
+# Выполнение задачи + всех её зависимостей (один раз)
+proc build(name: string) =
+  if name in built: return        # повторные вызовы пропускаем
+  built.incl(name)
+  let t = tasks[name]
+  for d in t.deps: build(d)      # сначала зависимости
+  t.action()                     # потом сама задача</code></pre>
+        <p>Множество <code>built</code> играет роль «отметок о выполнении»: граф не зацикливается, и лишняя работа не повторяется.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Система сборки — это граф целей: каждая цель зависит от источников, и если источник новее результата, цель пересобирается. Механизм прост, но именно он стоит за всем миром компиляции.</p>
-        <p>Правило в миниатюре:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>rule "app":
-  # Если исходник новее бинарника — пересобираем
-  if newer("src/app.nim", "app"):
-    run("nim c src/app.nim")</code></pre>
+      <h2>Пример использования</h2>
+        <p>Определим несколько задач с зависимостями, чтобы увидеть порядок выполнения:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">task(&quot;compile&quot;) do:
+  echo &quot;Компиляция файлов...&quot;
+
+task(&quot;test&quot;, @[&quot;compile&quot;]) do:
+  echo &quot;Запуск тестов...&quot;
+
+task(&quot;package&quot;, @[&quot;test&quot;]) do:
+  echo &quot;Сборка финального пакета...&quot;
+
+build(&quot;package&quot;)
+# Вывод:
+# Компиляция файлов...
+# Запуск тестов...
+# Сборка финального пакета...</code></pre>
+        <p>Это ровно тот алгоритм, что make применяет к «целям», только без разбора синтаксиса Makefile.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Сборка проектов — повседневная работа программиста: понимание её внутренностей (make, ninja, bazel) позволит вам быстро находить причины медленных сборок и правильно их настраивать.</p>
+      <h2>К настоящей системе</h2>
+        <p>Следующим шагом можно добавить сравнение «времени файлов» (timestamps), чтобы, как в make, пересобирались только изменённые файлы, отчёты о цепочках ошибок и параллельное выполнение задач. Этот простой каркас — основа всех систем сборки в мире.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day11_buildsystem.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем систему сборки на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем систему сборки на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day11_buildsystem.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day11_buildsystem.html</a>.
       </div>
     </article>

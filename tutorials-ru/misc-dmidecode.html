@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем парсер DMIDecode на Nim»
+          <b>Оригинальный источник:</b> «Writing a DMIDecode parser in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day01_dmidecode.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-dmidecode.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,75 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует парсер вывода утилиты dmidecode на Nim: извлечение информации о системе — производитель, модель, BIOS и память — из сырого вывода команды.</p>
+      <h2>Что такое dmidecode?</h2>
+        <p>Инструмент <code>dmidecode</code> читает информацию об аппаратуре системы из таблиц SMBIOS/DMI: производителя материнской платы, версию BIOS, тип памяти, серийные номера и другое. Эти данные печатаются в стандартный вывод структурированным текстом, и обычно их нужно разбирать для автоматизации серверов (мониторинг, инвентаризация).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что выводит dmidecode и как читать структуры SMBIOS</li>
-          <li>Парсинг секций и ключей</li>
-          <li>Сопоставление типа и значения</li>
-          <li>Обработка отсутствующих полей</li>
-        </ul>
+      <h2>Структура вывода</h2>
+        <p>Вывод dmidecode состоит из «секций»: каждая начинается с типа (Type) и Handle, затем идут поля с отступами; группы информации — BIOS, System, Baseboard и другие:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left"># Пример вывода:
+# Handle 0x0000, DMI type 0, 24 bytes
+# BIOS Information
+#     Vendor: American Megatrends Inc.
+#     Version: 5.19
+#     Release Date: 08/10/2023
+# Handle 0x0001, DMI type 1, 27 bytes
+# System Information
+#     Manufacturer: LENOVO
+#     Product Name: ThinkPad T14</code></pre>
+        <p>Отличительный паттерн начала секции: строка, начинающаяся с <code>Handle</code> и сообщающая тип DMI и размер, а следующая строка — имя группы.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>dmidecode читает таблицы SMBIOS — структурированные записи о железе: тип записи (BIOS, системная плата, память), за которыми следуют поля. Парсер превращает сырой вывод в понятные записи.</p>
-        <p>Пример обработки строки ключ-значение:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code># Секция в dmidecode выглядит так: "Manufacturer: Dell"
-proc parseValue(line: string): string =
-  let parts = line.split(": ")
-  return parts[1]</code></pre>
+      <h2>Парсер на Nim</h2>
+        <p>Парсер читает построчно: увидев строку <code>Handle</code>, начинает новую секцию, а поля с отступами прикрепляет к ней:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">import strutils, tables, sequtils
+
+type
+  DmiRecord = object
+    dmiType: int
+    name: string
+    fields: Table[string, string]
+
+proc parseDMI(content: string): seq[DmiRecord] =
+  var
+    current: DmiRecord
+    inRecord = false
+
+  for line in content.splitLines():
+    if line.startsWith(&quot;Handle&quot;):
+      if inRecord: result.add(current)
+      # Извлечение типа из: Handle 0x0001, DMI type 1, 27 bytes
+      let m = line.findAll(&quot;\d+&quot;)
+      current = DmiRecord(
+        dmiType: parseInt(m[1]),
+        name: &quot;&quot;, fields: initTable[string, string]()
+      )
+      inRecord = true
+    elif line.startsWith(&quot;    &quot;) and inRecord:
+      let parts = line.strip().split(&quot;:&quot;, 1)
+      if parts.len == 2:
+        current.fields[parts[0]] = parts[1].strip()
+    elif inRecord and not line.startsWith(&quot; &quot;):
+      current.name = line.strip()
+
+  if inRecord: result.add(current)</code></pre>
+        <p>Тонкий момент: поля имеют отступ в 4 пробела, а имя секции — без отступа; этих двух правил достаточно, чтобы структурировать весь вывод.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Информация о железе нужна системным инструментам, мониторингу и инвентаризации: разобрав вывод dmidecode, вы увидите, как простые текстовые форматы превращаются в данные для программ.</p>
+      <h2>К настоящему инструменту</h2>
+        <p>Когда данные структурированы, можно собрать серийные номера серверов, прочитать MAC сетевых карт из секций типа 41 (Onboard Device) или генерировать вывод в JSON. У <code>dmidecode</code> более 40 типов DMI; этот урок — база для чтения их всех.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day01_dmidecode.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем парсер DMIDecode на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем парсер DMIDecode на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day01_dmidecode.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day01_dmidecode.html</a>.
       </div>
     </article>

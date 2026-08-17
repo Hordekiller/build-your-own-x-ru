@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Давайте создадим простой балансировщик нагрузки»
+          <b>Оригинальный источник:</b> «Let's create a simple load balancer in Go»
         </div>
         <a class="btn solid" href="https://kasvith.me/posts/lets-create-a-simple-lb-go/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-load-balancer.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,101 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство реализует балансировщик нагрузки на Go: распределение запросов между серверами по алгоритмам round-robin и по наименьшему количеству соединений, плюс проверка здоровья бэкендов.</p>
+      <h2>Что делает балансировщик нагрузки?</h2>
+        <p>Когда веб-трафик растёт, одного сервера недостаточно. Балансировщик нагрузки распределяет запросы между несколькими «бэкендами» (backend), чтобы сохранять отзывчивость. Простейшая стратегия — <b>round-robin</b>: каждый запрос уходит следующему по очереди серверу.</p>
+        <p>Этот урок строит балансировщик на стандартных инструментах Go (net/http и httputil), который также умеет проверки здоровья (health check).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Зачем нужен балансировщик и что он делает</li>
-          <li>Алгоритмы: round-robin и least connections</li>
-          <li>Проверка здоровья серверов и вывод из ротации</li>
-          <li>Проксирование запросов: пересылка заголовков и тел</li>
-        </ul>
+      <h2>Структура и reverse proxy</h2>
+        <p>Сердце работы — <code>httputil.ReverseProxy</code>, переписывающий запрос на целевой сервер. Мы держим несколько бэкендов и обходим их по кругу со счётчиком (index):</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Структура бэкендов
+type Server struct {
+    URL          *url.URL
+    Alive        bool
+    ReverseProxy *httputil.ReverseProxy
+}
+
+// Счётчик round-robin с блокировкой
+type LoadBalancer struct {
+    servers         []*Server
+    current         uint64
+    mu              sync.RWMutex
+}
+
+func (lb *LoadBalancer) NextServer() *Server {
+    lb.mu.Lock()
+    defer lb.mu.Unlock()
+    // Найди следующий живой сервер
+    for i := 0; i &lt; len(lb.servers); i++ {
+        idx := int(lb.current) % len(lb.servers)
+        lb.current++
+        if lb.servers[idx].Alive {
+            return lb.servers[idx]
+        }
+    }
+    return nil
+}</code></pre>
+        <p>Если ни один сервер не жив, нужно вернуть ошибку 503; иначе отвечает выбранный сервер.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Балансировщик — это прокси-узел, который решает, какому серверу отдать запрос. Равномерное распределение (round-robin) и наименее загруженный сервер — два классических алгоритма, с которых всё начинается.</p>
-        <p>Round-robin на один ход — выбор по счётчику:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>next := (counter % len(backends))
-counter++
-return backends[next]</code></pre>
+      <h2>Обработчик запросов</h2>
+        <p>Когда запрос доходит до балансировщика, его нужно передать одному из серверов. Простейший обработчик:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Распределение запросов по серверам
+func (lb *LoadBalancer) handleRequest(w http.ResponseWriter, r *http.Request) {
+    server := lb.NextServer()
+    if server == nil {
+        http.Error(w, &quot;Нет живых серверов&quot;, http.StatusServiceUnavailable)
+        return
+    }
+    server.ReverseProxy.ServeHTTP(w, r)
+}
+
+func main() {
+    lb := &amp;LoadBalancer{}
+    for _, s := range []string{&quot;http://localhost:8081&quot;, &quot;http://localhost:8082&quot;} {
+        u, _ := url.Parse(s)
+        proxy := httputil.NewSingleHostReverseProxy(u)
+        lb.servers = append(lb.servers, &amp;Server{URL: u, Alive: true, ReverseProxy: proxy})
+    }
+    http.ListenAndServe(&quot;:8080&quot;, http.HandlerFunc(lb.handleRequest))
+}</code></pre>
+        <p>С этими тридцатью строками round-robin распределение на двух серверах уже работает.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Балансировка нагрузки — база любой отказоустойчивой архитектуры: от Nginx до облачных load balancer'ов. Понимание алгоритмов поможет вам настраивать и проектировать масштабируемые системы.</p>
+      <h2>Проверки здоровья</h2>
+        <p>В более полной версии фоновая функция каждые несколько секунд опрашивает все серверы GET-запросом и обновляет флаг <code>Alive</code>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Периодическая проверка здоровья серверов
+func (lb *LoadBalancer) healthCheck() {
+    for _, s := range lb.servers {
+        resp, err := http.Get(s.URL.String() + &quot;/health&quot;)
+        lb.mu.Lock()
+        s.Alive = err == nil &amp;&amp; resp != nil &amp;&amp; resp.StatusCode == http.StatusOK
+        lb.mu.Unlock()
+        if resp != nil { resp.Body.Close() }
+    }
+}
+
+func startHealthCheck(lb *LoadBalancer, every time.Duration) {
+    ticker := time.NewTicker(every)
+    for range ticker.C { lb.healthCheck() }
+}</code></pre>
+        <p>Благодаря этому, если сервер падает, он автоматически выбывает из цикла распределения.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот урок умещает важные понятия веб-инфраструктуры — распределение нагрузки, обратный прокси и проверки здоровья — в маленький практичный проект. После него можно добавить более сложные алгоритмы (Least Connections, IP Hash).</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Касун Витанаге (Kasun Vithanage). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://kasvith.me/posts/lets-create-a-simple-lb-go/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Давайте создадим простой балансировщик нагрузки» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Давайте создадим простой балансировщик нагрузки» принадлежит автору оригинала (Касун Витанаге (Kasun Vithanage)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Касун Витанаге (Kasun Vithanage)). Читайте оригинал на
         <a href="https://kasvith.me/posts/lets-create-a-simple-lb-go/" target="_blank" rel="noopener">https://kasvith.me/posts/lets-create-a-simple-lb-go/</a>.
       </div>
     </article>

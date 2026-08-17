@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Реализуем промисы с нуля — в стиле TDD»
+          <b>Оригинальный источник:</b> «Implementing promises from scratch (TDD)»
         </div>
         <a class="btn solid" href="https://www.mauriciopoppe.com/notes/computer-science/computation/promises/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-promise-tdd.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,107 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок разрабатывает Promise методом TDD: сначала пишутся тесты, затем маленькими шагами реализуется поведение — состояния, цепочки, обработка ошибок — каждая деталь подтверждена тестом.</p>
+      <h2>Зачем TDD для этого проекта?</h2>
+        <p>У промисов точное, специфицированное поведение (однократный settle, цепочки, ошибки). Тесты, написанные до кода, точно определяют «какое поведение нам нужно» и позволяют реализовывать без догадок. Этот урок работает с <code>jest</code> или простым тест-раннером.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Дисциплина TDD: тест сначала, код потом</li>
-          <li>Реализация состояний и переходов</li>
-          <li>Обработка ошибок и прокидывание исключений</li>
-          <li>Кросс-браузерные нюансы микротасков</li>
-        </ul>
-      </section>
+      <h2>Первые тесты: resolve и then</h2>
+        <p>Первые тесты определяют базовое поведение: промис через resolve получает значение, а then принимает его:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Тест: промис создан и резолвится
+test(&#x27;resolve отдаёт значение&#x27;, () =&gt; {
+  const p = new MyPromise((resolve) =&gt; resolve(42));
+  return p.then(value =&gt; {
+    expect(value).toBe(42);
+  });
+});
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Подход прост: для каждого поведения сначала пишется тест, он падает, затем пишется минимальный код, и тест зеленеет. Так промис вырастает из десятков проверенных деталей.</p>
-        <p>Пример теста, который определяет поведение:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>test("then вызывается с результатом", () =&gt; {
-  const p = new MyPromise((res) =&gt; res(42));
-  return p.then((v) =&gt; expect(v).toBe(42));
+test(&#x27;работает цепочка then&#x27;, () =&gt; {
+  const p = new MyPromise((resolve) =&gt; resolve(2));
+  return p
+    .then(v =&gt; v * 10)
+    .then(v =&gt; v + 1)
+    .then(v =&gt; {
+      expect(v).toBe(21);
+    });
 });</code></pre>
+        <p>Теперь пишем минимальный код, чтобы тесты стали зелёными: state, settle и then с цепочкой.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>TDD — это способ мышления, а не просто инструмент: реализуя промис таким образом, вы получаете и работающий код, и уверенность в каждой его детали.</p>
+      <h2>Тесты reject и catch</h2>
+        <p>Следующий этап — ошибки: reject отдаёт значение ошибки, catch ловит её, а throw в executor приводит к reject:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Отклонение реализуется той же структурой settle
+test(&#x27;reject вызывает catch&#x27;, () =&gt; {
+  const p = new MyPromise((resolve, reject) =&gt; reject(new Error(&#x27;Плохо&#x27;)));
+
+  return p.catch(err =&gt; {
+    expect(err.message).toBe(&#x27;Плохо&#x27;);
+  });
+});
+
+test(&#x27;throw в executor равен reject&#x27;, () =&gt; {
+  const p = new MyPromise(() =&gt; {
+    throw new Error(&#x27;Взрыв&#x27;);
+  });
+  return expect(p).rejects.toThrow(&#x27;Взрыв&#x27;);
+});</code></pre>
+        <p>Чтобы тесты прошли, <code>constructor</code> должен выполнять аргумент executor в try/catch, а <code>catch</code> определяться как <code>then(undefined, onRejected)</code>.</p>
+      </section>
+      <section>
+      <h2>Финальная реализация (кратко)</h2>
+        <p>С этими тестами реализация становится понятной: объект с тремя состояниями, массив handlers и <code>settle</code>, вызываемый только один раз:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">class MyPromise {
+  static PENDING = &#x27;pending&#x27;;
+  static FULFILLED = &#x27;fulfilled&#x27;;
+  static REJECTED = &#x27;rejected&#x27;;
+
+  constructor(executor) {
+    this.state = MyPromise.PENDING;
+    this.value = undefined;
+    this.handlers = [];
+    const resolve = v =&gt; this.settle(MyPromise.FULFILLED, v);
+    const reject = r =&gt; this.settle(MyPromise.REJECTED, r);
+    try { executor(resolve, reject); } catch (e) { reject(e); }
+  }
+
+  settle(state, value) {
+    if (this.state !== MyPromise.PENDING) return;
+    this.state = state;
+    this.value = value;
+    this.handlers.forEach(h =&gt; h());
+  }
+
+  then(onF, onR) {
+    return new MyPromise((resolve, reject) =&gt; {
+      this.handlers.push(() =&gt; {
+        const handler = this.state === MyPromise.FULFILLED ? onF : onR;
+        try {
+          const r = handler ? handler(this.value) : this.value;
+          if (r instanceof MyPromise) r.then(resolve, reject);
+          else resolve(r);
+        } catch (e) { reject(e); }
+      });
+    });
+  }
+
+  catch(onR) { return this.then(undefined, onR); }
+}</code></pre>
+        <p>Важный момент: сначала пишутся тесты, потом код; и каждый этап реализуется ровно настолько, насколько нужно для зелёного теста.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот урок показывает, что TDD нужен не только в больших проектах — даже для алгоритмических задач это лучший способ добиться точности. После завершения можно добавить тесты асинхронного поведения (setTimeout и микротаски).</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Маурисио Поппе (Mauricio Poppe). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.mauriciopoppe.com/notes/computer-science/computation/promises/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Реализуем промисы с нуля — в стиле TDD» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Реализуем промисы с нуля — в стиле TDD» принадлежит автору оригинала (Маурисио Поппе (Mauricio Poppe)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Маурисио Поппе (Mauricio Poppe)). Читайте оригинал на
         <a href="https://www.mauriciopoppe.com/notes/computer-science/computation/promises/" target="_blank" rel="noopener">https://www.mauriciopoppe.com/notes/computer-science/computation/promises/</a>.
       </div>
     </article>

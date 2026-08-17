@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай свой кеш на Kotlin — cache-lite»
+          <b>Оригинальный источник:</b> «cache-lite: a lightweight LRU cache in Kotlin»
         </div>
         <a class="btn solid" href="https://github.com/kezhenxu94/cache-lite" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-cache-lite.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,89 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Проект cache-lite реализует собственный кеш на Kotlin: хранение значений, время жизни записей, ограничение размера и понятный API — маленькая библиотека, которую можно использовать в приложениях.</p>
+      <h2>Что такое LRU-кеш?</h2>
+        <p>Кеш (Cache) хранит часто используемые данные рядом с программой, чтобы следующий запрос отвечал быстрее. LRU (Least Recently Used — «давно не использовавшийся») — политика, при которой, когда ёмкость заполнена, удаляется элемент, дольше всех остававшийся без использования. Эта политика применяется в операционных системах, базах данных и браузерах.</p>
+        <p>Правильная реализация LRU требует сочетания HashMap (быстрый поиск) и двусвязного списка (Doubly Linked List), чтобы знать порядок использования.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Интерфейс кеша: put, get, удаление по ключу</li>
-          <li>Время жизни записи и истечение (TTL)</li>
-          <li>Ограничение размера и политики вытеснения</li>
-          <li>Потокобезопасность и простота API</li>
-        </ul>
-      </section>
+      <h2>Структура данных</h2>
+        <p>Основная идея: каждый элемент — «узел» двусвязного списка, а HashMap отображает ключи на узлы. Когда элемент используется, узел переносится в конец списка (самый свежий); а когда ёмкость заполнена, удаляется первый узел списка:</p>
+        <pre class="code"><span class="lang-tag">kotlin</span><code style="direction:ltr;text-align:left">class CacheLite&lt;K, V&gt;(private val capacity: Int) {
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Кеш — это словарь, который умеет забывать: записи живут ограниченное время, а при переполнении старые удаляются. Простая идея, но именно она делает приложения быстрыми.</p>
-        <p>Классический get с проверкой срока жизни:</p>
-        <pre class="code"><span class="lang-tag">Kotlin</span><code>fun get(key: String): T? {
-  val entry = store[key] ?: return null
-  // Запись устарела — удаляем и возвращаем null
-  if (entry.expiresAt &lt; now()) { store.remove(key); return null }
-  return entry.value
+    private class Node&lt;K, V&gt;(val key: K, var value: V) {
+        var prev: Node&lt;K, V&gt;? = null
+        var next: Node&lt;K, V&gt;? = null
+    }
+
+    private val map = HashMap&lt;K, Node&lt;K, V&gt;&gt;()
+    private var head: Node&lt;K, V&gt;? = null   // самый старый
+    private var tail: Node&lt;K, V&gt;? = null   // самый свежий
+
+    operator fun get(key: K): V? =
+        map[key]?.also { node -&gt; moveToTail(node) }?.value
+
+    operator fun set(key: K, value: V) {
+        val existing = map[key]
+        if (existing != null) {
+            existing.value = value              // обновление
+            moveToTail(existing)
+        } else {
+            val node = Node(key, value)
+            map[key] = node
+            appendTail(node)                    // добавить в конец
+            if (map.size &gt; capacity) evictHead()  // удалить старый
+        }
+    }
 }</code></pre>
+        <p>Операторы <code>get</code>/<code>set</code> делают использование кеша естественным, как с HashMap, — то самое ощущение, к которому стремился автор.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Кеширование — главный трюк производительности: от DNS до CDN и кешей приложений. Собрав свою библиотеку, вы поймёте нюансы TTL и вытеснения и будете осознанно выбирать готовые решения.</p>
+      <h2>Управление списком</h2>
+        <p>Вспомогательные функции (moveToTail, evictHead) — сердце поддержания порядка:</p>
+        <pre class="code"><span class="lang-tag">kotlin</span><code style="direction:ltr;text-align:left">    private fun moveToTail(node: Node&lt;K, V&gt;) {
+        if (node === tail) return
+        if (node === head) {
+            head = node.next
+            head?.prev = null
+        } else {
+            node.prev?.next = node.next
+            node.next?.prev = node.prev
+        }
+        appendTail(node)
+    }
+
+    private fun appendTail(node: Node&lt;K, V&gt;) {
+        node.prev = tail
+        node.next = null
+        tail = node
+        node.prev?.next = node
+        if (head == null) head = node
+    }
+
+    private fun evictHead() {
+        head?.let {
+            map.remove(it.key)
+            head = it.next
+            head?.prev = null
+        }
+    }</code></pre>
+        <p>Обратите внимание: <code>evictHead</code> должен удалять ключ и из HashMap — иначе останутся следы «просроченных» элементов.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Примерно за 70 строк вы построили полноценный LRU-кеш на Kotlin — более читаемый и безопасный, чем реализации на C. Эти же концепции (список + хеш-карта) вы встретите в Android LruCache и Redis — и в этот раз поймёте их глубже.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Кэчжэнь Сюй (Kezhen Xu). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/kezhenxu94/cache-lite" target="_blank" rel="noopener">GitHub-странице автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай свой кеш на Kotlin — cache-lite» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай свой кеш на Kotlin — cache-lite» принадлежит автору оригинала (Кэчжэнь Сюй (Kezhen Xu)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Кэчжэнь Сюй (Kezhen Xu)). Читайте оригинал на
         <a href="https://github.com/kezhenxu94/cache-lite" target="_blank" rel="noopener">https://github.com/kezhenxu94/cache-lite</a>.
       </div>
     </article>

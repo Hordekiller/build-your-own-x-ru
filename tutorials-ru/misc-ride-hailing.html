@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай приложение для вызова такси на React Native»
+          <b>Оригинальный источник:</b> «Build a ride hailing app with React Native»
         </div>
         <a class="btn solid" href="https://pusher.com/tutorials/ride-hailing-react-native" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-ride-hailing.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,74 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Практическое руководство по мобильному приложению вызова такси на React Native: экран карты, выбор точки, запрос поездки и общение с API — полный цикл мобильной разработки.</p>
+      <h2>Из каких частей состоит приложение такси?</h2>
+        <p>Приложения вроде Uber состоят из трёх основных частей: отображение карты и позиции пользователя, построение маршрута и расчёт цены, а также связь в реальном времени между водителем и пассажиром. В этом уроке все три реализуются бесплатными инструментами: <b>React Native</b> для интерфейса, <b>react-native-maps</b> для карты и <b>Pusher Channels</b> для сообщений в реальном времени.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Карта и геолокация в мобильном приложении</li>
-          <li>Выбор точки назначения и построение маршрута</li>
-          <li>Запрос поездки и статусы заказа</li>
-          <li>Связка UI и серверной логики</li>
-        </ul>
-      </section>
+      <h2>Шаг 1: карта и позиция</h2>
+        <p>Первый экран — MapView с текущей позицией пользователя. С <code>react-native-maps</code> это очень просто:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">import MapView, { Marker, Polyline } from &#x27;react-native-maps&#x27;;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Приложение — это карта плюс состояния заказа: пользователь указывает точки, приложение рисует маршрут и отправляет запрос серверу. Каждый шаг — маленькая задача: от геолокации до сетевого запроса.</p>
-        <p>Отправка запроса на поездку:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>async function requestRide(from, to) {
-  const res = await fetch("/api/rides", {
-    method: "POST",
-    body: JSON.stringify({ from, to }),
-  });
-  return res.json();
+export default function MapScreen({ route }) {
+  const { start, destination } = route.params;
+
+  return (
+    &lt;MapView
+      style={{ flex: 1 }}
+      initialRegion={{
+        latitude: start.latitude,
+        longitude: start.longitude,
+        latitudeDelta: 0.05,
+        longitudeDelta: 0.05,
+      }}
+    &gt;
+      &lt;Marker coordinate={start} title=&quot;Начало&quot; pinColor=&quot;green&quot; /&gt;
+      &lt;Marker coordinate={destination} title=&quot;Назначение&quot; pinColor=&quot;red&quot; /&gt;
+      &lt;Polyline coordinates={[start, destination]}
+                 strokeColor=&quot;#00a&quot; strokeWidth={4} /&gt;
+    &lt;/MapView&gt;
+  );
 }</code></pre>
+        <p>С этим компонентом на карте видны обе точки и линия между ними.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Мобильные сервисы из реальной жизни — лучшие учебные проекты: вы пройдёте путь от карты до работающего заказа и получите приложение, которое можно показать другим.</p>
+      <h2>Шаг 2: реальный маршрут и цена</h2>
+        <p>Прямая линия — не настоящий маршрут; для дорожного маршрута нужно использовать сервис маршрутизации (например, Google Directions API). Ответ API содержит polyline и расстояние; по расстоянию и тарифу рассчитывается примерная цена и показывается на следующем экране.</p>
+        <p>Обращение к API нужно делать через промежуточный сервер, чтобы не засветить ключ API, — обычный паттерн реальных приложений.</p>
+      </section>
+      <section>
+      <h2>Шаг 3: реальное время с Pusher</h2>
+        <p>Когда пассажир отправляет запрос, в канал Pusher отправляется событие, которое получает водитель (во втором приложении). Красота каналов в их простоте:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">import Pusher from &#x27;pusher-js/react-native&#x27;;
+
+// Структура клиента
+const pusher = new Pusher(&#x27;APP_KEY&#x27;, { cluster: &#x27;eu&#x27; });
+
+export function subscribeToRides(onRide) {
+  const channel = pusher.subscribe(&#x27;rides&#x27;);
+  channel.bind(&#x27;new-ride&#x27;, onRide);
+  return () =&gt; pusher.unsubscribe(&#x27;rides&#x27;);
+}
+
+// На стороне сервера: публикация события о новой поездке
+// pusher.trigger(&#x27;rides&#x27;, &#x27;new-ride&#x27;, { start, destination });</code></pre>
+        <p>Впрочем, более новые фреймворки (собственные WebSockets + Firebase) — тоже альтернатива, которая обсуждается в конце урока.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот проект покрывает все компоненты настоящего мобильного приложения: карту, сеть и реальное время, — и с React Native работает на Android и iOS. После него можно добавить автодополнение маршрутов с Google Places.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Pusher. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://pusher.com/tutorials/ride-hailing-react-native" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай приложение для вызова такси на React Native» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай приложение для вызова такси на React Native» принадлежит автору оригинала (Pusher). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Pusher). Читайте оригинал на
         <a href="https://pusher.com/tutorials/ride-hailing-react-native" target="_blank" rel="noopener">https://pusher.com/tutorials/ride-hailing-react-native</a>.
       </div>
     </article>

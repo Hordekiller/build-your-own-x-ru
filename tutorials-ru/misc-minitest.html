@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем тестовый фреймворк MiniTest на Nim»
+          <b>Оригинальный источник:</b> «Writing a MiniTest framework in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day08_minitest.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-minitest.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,73 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок создаёт с нуля мини-фреймворк для тестирования на Nim: регистрация тестов, проверки (assert), подсчёт результатов и понятный вывод — вы напишете свой tiny test runner.</p>
+      <h2>Из чего состоит тестовый фреймворк?</h2>
+        <p>Минимальные компоненты любого тестового фреймворка: регистрация тестов, изолированный запуск каждого теста, сравнение ожидания с результатом (assertion), сводка результатов и ненулевой код выхода при неудаче. Более продвинутые фреймворки имеют фикстуры (setup/teardown) и наборы (suites).</p>
+        <p>В этом уроке мы сделаем MiniTest на Nim с синтаксисом в духе RSpec — с помощью макросов.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Регистрация тестов и их запуск</li>
-          <li>Проверки: assert и сравнение значений</li>
-          <li>Подсчёт пройденных и упавших тестов</li>
-          <li>Читаемый вывод результатов</li>
-        </ul>
+      <h2>Описательный синтаксис с макросом</h2>
+        <p>Основная идея: макрос <code>describe</code> собирает тестовые блоки, а при запуске выполняются только тесты, имена которых пришли из командной строки. Каждый тест — простое замыкание:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">import macros
+
+# Регистрация тестов: массив из пары (имя, тело)
+var tests: seq[(string, proc())]
+
+macro describe(name: static[string], body: untyped): untyped =
+  # Работа макроса: сбор тестов из AST
+  result = newStmtList()
+  for child in body:
+    if child.kind == nnkCall and child[0].repr == &quot;test&quot;:
+      let testName = child[1].repr
+      let body = child[2]
+      # Узел регистрации: tests.add((имя теста, тело))
+      result.add newCall(ident&quot;tests.add&quot;,
+                         newTree(nnkTupleConstr, newLit(testName), body))
+
+describe &quot;Математические вычисления&quot;:
+  test &quot;Простое сложение&quot;:
+    check(1 + 1 == 2)
+  test &quot;Умножение&quot;:
+    check(2 * 3 == 6)</code></pre>
+        <p>Макросы Nim видят AST во время компиляции; поэтому можно строить «языки поверх языка» (DSL), не замедляя выполнение программы.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Тест-раннер — это реестр тестов и цикл запуска: каждый тест выполняется в изоляции, его результат собирается, а в конце выводится сводка. Весь фреймворк — сотни строк.</p>
-        <p>Регистрация теста — пара строк:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>test "addition works":
-  check 2 + 2 == 4
-  check "a" &amp; "b" == "ab"</code></pre>
+      <h2>Запуск и отчёт</h2>
+        <p>Часть запуска вызывает тесты по очереди, ловит ошибки и в конце подводит итог:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">var passed = 0
+var failed = 0
+
+for (name, body) in tests:
+  try:
+    body()
+    passed.inc
+    echo &quot;✓ &quot;, name
+  except CatchableError as e:
+    failed.inc
+    echo &quot;✗ &quot;, name, &quot; — &quot;, e.msg
+    echo &quot;  &quot;, getCurrentException().trace
+
+echo &quot;&quot;
+echo passed, &quot; успешно, &quot;, failed, &quot; неудач&quot;
+if failed &gt; 0:
+  quit(1)   # важно для CI!</code></pre>
+        <p>Именно <code>quit(1)</code> заставляет работать инструменты вроде pytest в CI-конвейерах: можно ничего не печатать, но нулевой или ненулевой код выхода говорит обо всём.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Автотесты — страховка любой серьёзной разработки: написав тестовый фреймворк, вы поймёте, что тесты — это просто программы, и сможете читать вывод любого CI.</p>
+      <h2>Итог</h2>
+        <p>Удивительно, что примерно за 50 строк кода вы построили описательный тестовый фреймворк (describe/it). В следующий раз, когда будете использовать RSpec или Jest, вы будете знать, что происходит за кулисами, — и Nim показывает это наглядно благодаря макросам.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day08_minitest.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем тестовый фреймворк MiniTest на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем тестовый фреймворк MiniTest на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day08_minitest.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day08_minitest.html</a>.
       </div>
     </article>

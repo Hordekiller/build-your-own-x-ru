@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай свой модульный бандлер — Minipack»
+          <b>Оригинальный источник:</b> «Minipack — a mini module bundler»
         </div>
         <a class="btn solid" href="https://github.com/ronami/minipack" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-minipack.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,103 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок Minipack воссоздаёт веб-бандлер, подобный webpack, с нуля на JavaScript: граф зависимостей, трансформация модулей и генерация итогового бандла — всего несколько десятков строк кода.</p>
+      <h2>Что делает бандлер?</h2>
+        <p>Когда ваш JavaScript-проект использует ES-модули, браузер не может прочитать их все в одном HTML-файле (разве что с import map). Бандлер (webpack, Rollup) превращает все модули в один исполняемый файл. Minipack реализует этот процесс в три главных шага: <b>извлечение зависимостей</b>, <b>построение графа</b> и <b>генерация бандла</b>.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что делает бандлер: от модулей к одному файлу</li>
-          <li>Разбор import/export через парсер модулей</li>
-          <li>Построение графа зависимостей и циклическая обёртка</li>
-          <li>Эмуляция require в браузере</li>
-        </ul>
-      </section>
+      <h2>Шаг 1: чтение и разбор</h2>
+        <p>Каждый файл модуля нужно разобрать в AST, чтобы найти import-выражения. С <code>babel-core</code> и <code>babel-traverse</code> это просто:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Чтение файла, разбор в AST и поиск import-зависимостей
+function createAsset(filename) {
+  const source = fs.readFileSync(filename, &#x27;utf-8&#x27;);
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Бандлер превращает десятки файлов в один: он читает каждый модуль, разбирает его зависимости, строит граф и упаковывает модули в единственный скрипт с собственной системой require.</p>
-        <p>Ключ всего — функция require, имитирующая Node.js:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function require(moduleId) {
-  const { map, code } = modules[moduleId];
-  const localRequire = (name) =&gt; require(map[name]);
-  const module = { exports: {} };
-  // исполняем код модуля в его окружении
-  new Function("require", "module", "exports", code)(localRequire, module, module.exports);
-  return module.exports;
+  // Разбор в синтаксическое дерево (AST)
+  const ast = babel.parse(source, { sourceType: &#x27;module&#x27; });
+
+  const dependencies = [];
+  // Обход дерева и поиск import
+  traverse(ast, {
+    ImportDeclaration: ({ node }) =&gt; {
+      dependencies.push(node.source.value);
+    }
+  });
+
+  // Преобразование ES-модулей в CommonJS для использования в бандле
+  const { code } = babel.transformFromAst(ast, null, {
+    presets: [&#x27;env&#x27;]
+  });
+
+  return { filename, dependencies, code };
 }</code></pre>
+        <p>Каждый «asset» — это файл с его зависимостями; из них и строится граф.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждый запуск npm build — этот маленький механизм: поняв бандлер, вы разберётесь в webpack, Vite и в том, почему фронтенд-инструменты устроены именно так.</p>
+      <h2>Шаг 2: построение графа зависимостей</h2>
+        <p>BFS-обходом от входного файла собираются все модули, и каждому выдаётся идентификатор (id). Итоговый граф — карта id → asset:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Построение графа обходом в ширину (breadth-first)
+function createGraph(entry) {
+  const mainAsset = createAsset(entry);
+  const queue = [mainAsset];
+
+  for (const asset of queue) {
+    asset.mapping = {};
+    const dirname = path.dirname(asset.filename);
+
+    asset.dependencies.forEach(relativePath =&gt; {
+      const absolutePath = path.join(dirname, relativePath);
+      const child = createAsset(absolutePath);
+      asset.mapping[relativePath] = child.id;
+      queue.push(child);
+    });
+  }
+  return queue;
+}</code></pre>
+        <p><code>mapping</code> — та самая таблица, превращающая относительный путь в id; она используется при выполнении бандла.</p>
+      </section>
+      <section>
+      <h2>Шаг 3: генерация бандла</h2>
+        <p>Теперь все assets вместе с маленьким загрузчиком (имитирующим <code>require</code>) собираются в один IIFE:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Генерация вывода: каждый модуль — в function с локальным require
+function bundle(graph) {
+  let modules = &#x27;&#x27;;
+
+  graph.forEach(mod =&gt; {
+    modules += `${mod.id}: [
+      function (require, module, exports) {
+        ${mod.code}
+      },
+      ${JSON.stringify(mod.mapping)},
+    ],`;
+  });
+
+  return `(function(modules) {
+    function require(id) {
+      const [fn, mapping] = modules[id];
+      function localRequire(name) { return require(mapping[name]); }
+      const module = { exports: {} };
+      fn(localRequire, module, module.exports);
+      return module.exports;
+    }
+    require(0);
+  })({${modules}})`;
+}</code></pre>
+        <p>Этот внутренний <code>require</code> делает ровно то, что делает runtime webpack: разрешает зависимости по mapping и выполняет модули.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Minipack меньше чем на 200 строках показывает, что бандлеры — не магия: разбор, граф и runtime. После этого ваше понимание реального поведения webpack (tree shaking, chunking) станет намного глубже.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ронен Амиэль (Ronen Amiel). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/ronami/minipack" target="_blank" rel="noopener">GitHub-странице автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай свой модульный бандлер — Minipack» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай свой модульный бандлер — Minipack» принадлежит автору оригинала (Ронен Амиэль (Ronen Amiel)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ронен Амиэль (Ronen Amiel)). Читайте оригинал на
         <a href="https://github.com/ronami/minipack" target="_blank" rel="noopener">https://github.com/ronami/minipack</a>.
       </div>
     </article>

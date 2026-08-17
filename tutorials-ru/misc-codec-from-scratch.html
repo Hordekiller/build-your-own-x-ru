@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Кодирование видео с нуля»
+          <b>Оригинальный источник:</b> «codec-from-scratch»
         </div>
         <a class="btn solid" href="https://github.com/kevmo314/codec-from-scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-codec-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,77 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Статья объясняет, как видео кодируется с нуля: кадры, макроблоки, трансформация, квантование и энтропийное кодирование — обзор принципов, лежащих в основе H.264 и VP9, с кодом на Go.</p>
+      <h2>Что такое кодек и зачем писать его с нуля?</h2>
+        <p>Кодек (Codec = Compressor-Decompressor) — алгоритм, сжимающий видео для хранения и передачи и восстанавливающий его обратно. H.264 — популярный стандарт, используемый в большинстве плееров и камер. Проект «codec-from-scratch» реализует его практическое подмножество, что для обучения гораздо ценнее изучения 600-страничного документа.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Почему несжатое видео слишком тяжёлое</li>
-          <li>Макроблоки и блочные трансформации (DCT)</li>
-          <li>Квантование: где прячутся визуальные потери</li>
-          <li>Энтропийное сжатие и потоки битов</li>
-        </ul>
-      </section>
+      <h2>Структура файла и NAL-юниты</h2>
+        <p>В H.264 данные делятся на «NAL-юниты» (Network Abstraction Layer), у каждого из которых есть свой «заголовок» и тело. Разбор этих юнитов — первый шаг:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Парсинг NAL-юнита: стартовый байт + заголовок + данные
+type NAL struct {
+    Header   byte
+    Type     int
+    Payload  []byte
+}
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Видеокодек находит избыточность: соседние кадры похожи, а внутри кадра есть участки без деталей. Кадр делится на макроблоки, к ним применяется трансформация, неважные детали отбрасываются квантованием, остальное сжимается.</p>
-        <p>Цепочка кодера выглядит так:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>// Упрощённая цепочка: кадр -&gt; блоки -&gt; DCT -&gt; квантование
-frame := splitIntoBlocks(yuv)
-for _, block := range frame {
-    dct(block)              // трансформация
-    quantize(block, qp)     // потеря деталей по уровню качества
+func parseNAL(data []byte) (*NAL, error) {
+    start := 0
+    // Формат 00 00 01 или 00 00 00 01
+    if len(data) &gt; 4 &amp;&amp; data[0]==0 &amp;&amp; data[1]==0 &amp;&amp; data[2]==0 &amp;&amp; data[3]==1 {
+        start = 4
+    } else if len(data) &gt; 3 &amp;&amp; data[0]==0 &amp;&amp; data[1]==0 &amp;&amp; data[2]==1 {
+        start = 3
+    } else {
+        return nil, errors.New(&quot;Недопустимый формат NAL&quot;)
+    }
+    header := data[start]
+    return &amp;NAL{
+        Header:  header,
+        Type:    int(header &amp; 0x1F),   // 5 средних битов: тип NAL
+        Payload: data[start+1:],
+    }, nil
 }</code></pre>
+        <p>Важные типы: <code>1</code> — не-IDR слайс, <code>5</code> — IDR (ключевой кадр) и <code>7</code> — SPS (параметры-метаданные).</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Видео на вашем телефоне — чудо из блоков и квантования: понимание кодеков поможет в обработке медиа, и вы увидите, почему «битрейт» и «качество» тесно связаны.</p>
+      <h2>Декодирование макроблоков</h2>
+        <p>Кадры делятся на «макроблоки» 16×16. Каждый макроблок может предсказываться с компенсацией движения (motion) из предыдущего кадра или декодироваться напрямую. Для каждого макроблока читаются коэффициенты DCT и события CAVLC:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Чтение одного макроблока из битового потока
+func (d *Decoder) decodeMacroblock() (mb, error) {
+    mbType := d.readUE()   // экспоненциальный код Голомба: номер типа
+    res := mb{}
+
+    if mbType &gt; 0 {        // тип не «пропущенный»
+        // Чтение разниц компенсации движения
+        res.mvDX = d.readSE()
+        res.mvDY = d.readSE()
+    }
+
+    // Чтение коэффициентов преобразования (детали)
+    for i := 0; i &lt; 256; i++ {
+        c, more := d.readCoeff()
+        if !more { break }
+        res.coeffs = append(res.coeffs, c)
+    }
+    return res, nil
+}</code></pre>
+        <p>Функции <code>readUE</code>/<code>readSE</code> (Exp-Golomb) — базовые компоненты сжатия, представляющие маленькие числа меньшим числом битов.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот проект показывает, что реализация кодека — сочетание битовых структур, предсказания изображения и математики преобразований. После простого декодера открывается путь к энкодеру и более новым стандартам (HEVC/AV1).</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Кевин Монахан (Kevin Monahan). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/kevmo314/codec-from-scratch" target="_blank" rel="noopener">GitHub-странице автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Кодирование видео с нуля» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Кодирование видео с нуля» принадлежит автору оригинала (Кевин Монахан (Kevin Monahan)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Кевин Монахан (Kevin Monahan)). Читайте оригинал на
         <a href="https://github.com/kevmo314/codec-from-scratch" target="_blank" rel="noopener">https://github.com/kevmo314/codec-from-scratch</a>.
       </div>
     </article>

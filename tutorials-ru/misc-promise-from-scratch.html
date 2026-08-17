@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Выучи промисы JavaScript, создав Promise с нуля»
+          <b>Оригинальный источник:</b> «Understand JavaScript Promises by building a Promise from scratch»
         </div>
         <a class="btn solid" href="https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-promise-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,46 +53,88 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует Promise с нуля: состояния, цепочки then, обработка ошибок и асинхронное выполнение — вы напишете свой Promise-класс и поймёте, что происходит за синтаксическим сахаром.</p>
+      <h2>Что такое промис?</h2>
+        <p>Промис (Promise) — объект, представляющий результат асинхронной операции: он либо успешен (fulfilled), либо отклонён (rejected), либо ещё в процессе (pending). Важнейшее его преимущество — цепочки операций через <code>then</code> и обработка ошибок через <code>catch</code>.</p>
+        <p>Чтобы по-настоящему понять, как это работает, лучший способ — построить собственную маленькую версию, поведение которой соответствует стандарту.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Состояния промиса: pending, fulfilled, rejected</li>
-          <li>Метод then: подписка на результат</li>
-          <li>Цепочки и прокидывание значений между then</li>
-          <li>Асинхронность: очередь микрозадач</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Промис — это контейнер для будущего значения. Он умеет запомнить, кто ждёт результата, и при наступлении события вызвать обработчики. Вся магия — в управлении списком подписчиков.</p>
-        <p>Ядро Promise — список обработчиков:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>class MyPromise {
+      <h2>Базовая структура: state и handlers</h2>
+        <p>Сердце класса MyPromise — хранение состояния, значения и списка обработчиков (handlers). Когда значение установлено, вызываются все handlers:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">class MyPromise {
   constructor(executor) {
-    this.state = "pending";
-    this.handlers = []; // ждём результата
-    executor(this.resolve.bind(this), this.reject.bind(this));
+    this.state = &#x27;pending&#x27;;   // pending | fulfilled | rejected
+    this.value = undefined;
+    this.handlers = [];
+
+    // Передаём executor&#x27;у resolve и reject
+    const resolve = value =&gt; this.settle(&#x27;fulfilled&#x27;, value);
+    const reject  = reason =&gt; this.settle(&#x27;rejected&#x27;, reason);
+
+    try {
+      executor(resolve, reject);
+    } catch (e) {
+      reject(e);
+    }
   }
-  then(onFulfilled, onRejected) {
-    // запомнить обработчик и вернуть новый промис
+
+  settle(state, value) {
+    if (this.state !== &#x27;pending&#x27;) return;  // только один раз
+    this.state = state;
+    this.value = value;
+    // Выполняем все ожидающие handlers
+    this.handlers.forEach(h =&gt; h());
+    this.handlers = [];
   }
 }</code></pre>
+        <p>Этот <code>settle</code> — центральная точка: промис «оседает» только один раз, и после этого уведомляются все ожидавшие.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Асинхронный JavaScript — вокруг промисов: собрав его сами, вы перестанете бояться замыканий и очередей и будете уверенно читать любой асинхронный код.</p>
+      <h2>Цепочка с then</h2>
+        <p>Самая сложная часть — <code>then</code>: он должен вернуть новый промис, и если обработчик возвращает значение, цепочка продолжается:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">  then(onFulfilled, onRejected) {
+    // Новый промис, присоединённый к предыдущему
+    return new MyPromise((resolve, reject) =&gt; {
+      const handle = () =&gt; {
+        if (this.state === &#x27;fulfilled&#x27;) {
+          try {
+            const result = onFulfilled ? onFulfilled(this.value) : this.value;
+            // Если результат — промис, цепочка продолжается
+            if (result instanceof MyPromise) {
+              result.then(resolve, reject);
+            } else {
+              resolve(result);
+            }
+          } catch (e) { reject(e); }
+        } else {
+          try {
+            const result = onRejected ? onRejected(this.value) : this.value;
+            resolve(result);
+          } catch (e) { reject(e); }
+        }
+      };
+      this.handlers.push(handle);
+    });
+  }
+
+  catch(onRejected) { return this.then(undefined, onRejected); }
+}</code></pre>
+        <p>С такой реализацией <code>promise.then(a).then(b)</code> работает корректно, а ошибки собираются в <code>catch</code>.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Видно, что промис — просто «автомат состояний» с очередью handlers. Раз вы построили его с нуля, поведение <code>Promise.all</code>, <code>Promise.race</code> и микротасков (queueMicrotask) станет для вас прозрачнее.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> автор статьи на levelup.gitconnected.com. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Выучи промисы JavaScript, создав Promise с нуля» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Выучи промисы JavaScript, создав Promise с нуля» принадлежит автору оригинала (автор статьи на levelup.gitconnected.com). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор статьи на levelup.gitconnected.com). Читайте оригинал на
         <a href="https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720" target="_blank" rel="noopener">https://levelup.gitconnected.com/understand-javascript-promises-by-building-a-promise-from-scratch-84c0fd855720</a>.
       </div>
     </article>

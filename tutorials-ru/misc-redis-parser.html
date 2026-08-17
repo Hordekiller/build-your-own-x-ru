@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем парсер протокола Redis на Nim»
+          <b>Оригинальный источник:</b> «Writing a RESP parser in Nim»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day12_resp.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-redis-parser.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,78 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует парсер протокола RESP (протокола Redis) на Nim: разбор команд, значений и ответов — вы построите клиентскую часть, с которой работает настоящий Redis-сервер.</p>
+      <h2>Что такое протокол RESP?</h2>
+        <p>RESP (REdis Serialization Protocol) — простой текстово-бинарный протокол, по которому клиент и сервер Redis общаются друг с другом. Каждый тип данных отмечается буквой-префиксом: <code>+</code> — простая строка, <code>-</code> — ошибка, <code>:</code> — целое число, <code>$</code> — бинарная строка и <code>*</code> — массив.</p>
+        <p>Написание парсера этого протокола — отличный шаг для изучения «бинарно-текстовых протоколов», и с Nim, у которого питоновский синтаксис и производительность C, это ещё и приятно.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Формат RESP: простые строки, ошибки, целые числа, массивы</li>
-          <li>Построчный парсер и безопасное чтение данных</li>
-          <li>Отправка команд и разбор ответов сервера</li>
-          <li>Мини-клиент, который говорит с Redis по-настоящему</li>
-        </ul>
+      <h2>Структура сообщений</h2>
+        <p>Примеры сообщений: <code>:1000\r\n</code> — число 1000; <code>$5\r\nhello\r\n</code> — бинарная строка длиной 5; а <code>*2\r\n$3\r\nfoo\r\n$3\r\nbar\r\n</code> — массив из двух строк. Разделитель CRLF — стандарт.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>RESP — простой текстовый протокол: каждое значение начинается с символа-типа (+, -, :, $, *), за которым следуют данные. Парсер читает строки и собирает из них структуры.</p>
-        <p>Разбор первого символа ответа:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>proc parseValue(line: string): RespValue =
-  # Тип определяется первым байтом
-  case line[0]
-  of '+': okSimpleString(line[1 .. ^1])
-  of ':': okInteger(parseInt(line[1 .. ^1]))
-  of '$': okBulk(line[1 .. ^1])
-  else: errUnknown</code></pre>
+      <h2>Простой парсер на Nim</h2>
+        <p>Реализация выполняется типом «буфер чтения» и маленькими функциями для каждого типа:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">import strutils, sequtils
+
+# Общий тип данных для любого ответа RESP
+type RespValue = object
+  case kind: enum
+    of rSimple: s: string
+    of rError:  e: string
+    of rInt:    i: int
+    of rBulk:   b: string
+    of rArray:  items: seq[RespValue]
+
+# Парсинг простой строки: +OK\r\n
+proc parseSimple(line: string): RespValue =
+  result = RespValue(kind: rSimple, s: line)
+
+# Парсинг bulk string: $len\r\n&lt;payload&gt;\r\n
+proc parseBulk(data: seq[string], idx: var int): RespValue =
+  let len = parseBiggestInt(data[idx]); inc idx
+  if len == -1:
+    return RespValue(kind: rBulk, b: &quot;&quot;)
+  result = RespValue(kind: rBulk, b: data[idx])
+  inc idx</code></pre>
+        <p>В главном цикле читается первая строка и по первому символу (префиксу) решение передаётся подходящей функции.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Протоколы поверх TCP — это просто договорённости о байтах: разобрав RESP, вы научитесь читать документацию любого протокола и писать клиенты к чему угодно — от баз данных до брокеров.</p>
+      <h2>Главный цикл разбора</h2>
+        <p>Со структурой данных, разбивающей сообщения по строкам, весь парсер идёт рекурсивно:</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left"># Парсинг массивов: элементы разбираются по очереди
+proc parseArray(data: seq[string], idx: var int): RespValue =
+  let count = parseBiggestInt(data[idx]); inc idx
+  var items: seq[RespValue]
+  for i in 0..&lt;count:
+    items.add(parseMessage(data, idx))
+  RespValue(kind: rArray, items: items)
+
+proc parseMessage(data: seq[string], idx: var int): RespValue =
+  let first = data[idx][0]
+  case first
+  of &#x27;+&#x27;: result = parseSimple(data[idx][1..^1]); inc idx
+  of &#x27;:&#x27;: result = RespValue(kind: rInt, i: parseBiggestInt(data[idx][1..^1])); inc idx
+  of &#x27;$&#x27;: result = parseBulk(data, idx)
+  of &#x27;*&#x27;: result = parseArray(data, idx)
+  of &#x27;-&#x27;: result = RespValue(kind: rError, e: data[idx][1..^1]); inc idx
+  else: raise newException(ValueError, &quot;Неизвестно: &quot; &amp; first)</code></pre>
+        <p>С парсером на 30 строк можно разговаривать с Redis (для запросов GET/SET).</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>RESP — один из самых простых реальных протоколов для изучения, и этот урок на Nim объясняет его маленьким и аккуратным кодом. После него можно доделать собственного Redis-клиента или перейти к более сложным бинарным протоколам.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ахмед Мансур (Ahmed Mansour). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://xmonader.github.io/nimdays/day12_resp.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем парсер протокола Redis на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем парсер протокола Redis на Nim» принадлежит автору оригинала (Ахмед Мансур (Ahmed Mansour)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ахмед Мансур (Ahmed Mansour)). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day12_resp.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day12_resp.html</a>.
       </div>
     </article>
