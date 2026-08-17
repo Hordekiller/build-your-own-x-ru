@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание проверки орфографии на Clojure»
+          <b>Оригинальный источник:</b> «Build a spellchecker in Clojure»
         </div>
         <a class="btn solid" href="https://bernhardwenzel.com/articles/clojure-spellchecker/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-spellchecker.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,74 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Статья строит проверку орфографии на Clojure в духе знаменитого алгоритма Питера Норвига: словарь, генерация кандидатов с расстоянием Левенштейна и выбор наиболее вероятного исправления.</p>
+      <h2>Как работает проверка орфографии?</h2>
+        <p>Проверка орфографии состоит из двух шагов: <b>обнаружение</b> — понять, что слова нет в словаре; и <b>предложение</b> — найти ближайшее допустимое слово. Простейший способ предлагать варианты — сгенерировать «редакции на расстоянии один» (deletion, insertion, substitution, transposition) и искать их в словаре.</p>
+        <p>Проект этого урока написан на Clojure — языке, который благодаря неизменяемым структурам данных и чистым функциям делает такой алгоритм аккуратным и читаемым.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Расстояние Левенштейна и генерация вариантов</li>
-          <li>Вероятностная модель: частотность слов в корпусе</li>
-          <li>Выбор лучшего исправления по кандидатам</li>
-          <li>Функциональный стиль на Clojure и набор данных</li>
-        </ul>
+      <h2>Генерация кандидатов редактированием на один символ</h2>
+        <p>Для каждого слова генерируются все однобуквенные изменения: удаление, замена, вставка и перестановка соседних букв:</p>
+        <pre class="code"><span class="lang-tag">clojure</span><code style="direction:ltr;text-align:left">; Генерация всех слов, получаемых одним изменением
+(defn edits1 [word]
+  (let [letters &quot;abcdefghijklmnopqrstuvwxyz&quot;
+        splits (for [i (range (inc (count word)))]
+                 [(subs word 0 i) (subs word i)])]
+    (concat
+      ; удаление буквы
+      (for [[a b] splits :when (pos? (count b))]
+        (str a (subs b 1)))
+      ; перестановка двух соседних букв
+      (for [[a b] splits :when (pos? (count (subs b 1)))]
+        (str a (subs b 1 2) (subs b 0 1) (subs b 2)))
+      ; замена
+      (for [[a b] splits :when (pos? (count b)) c letters]
+        (str a c (subs b 1)))
+      ; вставка
+      (for [[a b] splits c letters]
+        (str a c b))))</code></pre>
+        <p>Теперь сравниваем кандидатов со словарём, а если ни один не подошёл, применяем вторую редакцию (edits2).</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Проверка орфографии — это поиск по словарю и статистика: для неправильного слова генерируются близкие варианты (опечатки, замены, пропуски букв), а из них выбирается слово с наибольшей частотностью.</p>
-        <p>Генерация слов с расстоянием 1 — несколько строк:</p>
-        <pre class="code"><span class="lang-tag">Clojure</span><code>(defn edits1 [word]
-  ;; все слова на расстоянии одной правки
-  (into #{} (for [deletes splits ...] ...)))</code></pre>
+      <h2>Выбор лучшего предложения</h2>
+        <p>Чтобы выбрать среди нескольких допустимых кандидатов, используется частота слов в корпусе: побеждает самое частое слово. Эта простая «байесовская» модель — основа настоящих проверок орфографии:</p>
+        <pre class="code"><span class="lang-tag">clojure</span><code style="direction:ltr;text-align:left">; Лучший кандидат — с наибольшей частотой в словаре
+(defn best-candidate [freqs candidates]
+  (when (seq candidates)
+    (reduce (fn [best c]
+              (if (&gt; (get freqs c 0) (get freqs best 0))
+                c best))
+            (first candidates)
+            (rest candidates))))
+
+; Полная проверка: редакция 1, затем 2
+(defn correct [word freqs known-words]
+  (cond
+    (contains? known-words word) word
+    (seq (filter known-words (edits1 word)))
+      (best-candidate freqs (filter known-words (edits1 word)))
+    :else (best-candidate freqs
+            (filter known-words (edits2 word)))))</code></pre>
+        <p>Эта структура показывает, что «умные» алгоритмы иногда состоят из нескольких сотен простых строк.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Этот урок — идеальная демонстрация «мини-ИИ»: минимум кода, максимум пользы. Идеи вероятностной коррекции переносятся в автокомплиты, клавиатуры и поисковые системы.</p>
+      <h2>Шаги реализации и тестирования</h2>
+        <p>Этапы: 1) построить словарь из текстового корпуса функцией <code>frequencies</code>; 2) реализовать edits1/edits2; 3) написать функцию correct; 4) сделать небольшой REPL, исправляющий введённое пользователем слово, плюс набор тестов, проверяющих корректность.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот маленький проект демонстрирует большие концепции языковых моделей (частоты, редакционное расстояние) и красиво сочетается с Clojure. После него можно перейти к более продвинутым алгоритмам (например, BK-tree или Soundex).</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Бернхард Венцель (Bernhard Wenzel). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://bernhardwenzel.com/articles/clojure-spellchecker/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание проверки орфографии на Clojure» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание проверки орфографии на Clojure» принадлежит автору оригинала (Бернхард Венцель (Bernhard Wenzel)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Бернхард Венцель (Bernhard Wenzel)). Читайте оригинал на
         <a href="https://bernhardwenzel.com/articles/clojure-spellchecker/" target="_blank" rel="noopener">https://bernhardwenzel.com/articles/clojure-spellchecker/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем отладчик для Linux»
+          <b>Оригинальный источник:</b> «Writing a Linux Debugger»
         </div>
         <a class="btn solid" href="https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-linux-debugger.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,69 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия руководств по написанию собственного отладчика для Linux на C++: системный вызов ptrace, точки останова, управление регистрами, чтение памяти и символов ELF — весь набор инструментов, из которого состоит gdb.</p>
+      <h2>Что делают отладчики?</h2>
+        <p>Отладчик вроде gdb позволяет останавливать выполнение программы, ставить точки останова (breakpoint) и исследовать состояние памяти и стека. Чтобы написать отладчик для Linux, нужны три ключевых понятия: <b>ptrace</b> (API ядра для управления процессами), <b>ELF</b> (формат бинарных файлов) и <b>DWARF</b> (метаданные отладки).</p>
+        <p>Этот курс в нескольких «частях» с нуля реализует эти три уровня и в конце приводит к работающему TUI-отладчику.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Системный вызов ptrace: прикрепление и трассировка процесса</li>
-          <li>Точки останова: замена инструкции на INT3</li>
-          <li>Чтение и запись регистров и памяти</li>
-          <li>Разбор ELF и таблицы символов DWARF</li>
-        </ul>
+      <h2>ptrace: основа всего</h2>
+        <p>Самый важный вызов — <code>ptrace</code>: <code>PTRACE_ATTACH</code> прикрепляется к процессу, <code>PTRACE_CONT</code> продолжает его, а <code>PTRACE_PEEKDATA</code> читает память. Для чтения регистров используется <code>PTRACE_GETREGS</code>:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Начало: присоединение к процессу и чтение регистров
+#include &lt;sys/ptrace.h&gt;
+#include &lt;sys/user.h&gt;
+#include &lt;sys/wait.h&gt;
+
+void continue_execution(pid_t pid) {
+    if (ptrace(PTRACE_CONT, pid, nullptr, nullptr) == -1) {
+        perror(&quot;ptrace CONT&quot;);
+        return;
+    }
+    waitpid(pid, nullptr, 0);
+}
+
+void get_registers(pid_t pid, user_regs_struct&amp; regs) {
+    if (ptrace(PTRACE_GETREGS, pid, nullptr, ®s) == -1) {
+        perror(&quot;ptrace GETREGS&quot;);
+    }
+}</code></pre>
+        <p>На этом этапе, когда процесс остановлен, <code>PTRACE_GETREGS</code> возвращает содержимое регистров (например, rip), и вы можете проследить стек.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Отладчик опирается на ptrace: с его помощью отладчик может останавливать процесс, читать его регистры и память. Точка останова — это инструкция INT3, подставленная на место кода, и отладчик восстанавливает оригинал при срабатывании.</p>
-        <p>Установка точки останова — три шага:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>// 1) читаем инструкцию по адресу
-long orig = ptrace(PTRACE_PEEKTEXT, pid, addr, 0);
-// 2) подменяем её на INT3 (0xCC)
-ptrace(PTRACE_POKETEXT, pid, addr, (orig &amp; ~0xFF) | 0xCC);</code></pre>
+      <h2>Точки останова</h2>
+        <p>Простейший способ поставить breakpoint — заменить первый байт команды по нужному адресу на <code>0xcc</code> (команда INT3), а после срабатывания вернуть исходное значение. Помните: после срабатывания нужно вернуть указатель на один байт назад (rip--):</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Установка breakpoint: сохранить исходный байт и заменить на 0xcc
+uint64_t set_breakpoint(pid_t pid, uint64_t addr) {
+    uint64_t data = ptrace(PTRACE_PEEKDATA, pid, addr, nullptr);
+    uint64_t intr = (data &amp; 0xFFFFFFFFFFFFFF00) | 0xCC;
+    ptrace(PTRACE_POKEDATA, pid, addr, intr);
+    return data;   // для последующего восстановления
+}
+
+void unset_breakpoint(pid_t pid, uint64_t addr, uint64_t orig) {
+    ptrace(PTRACE_POKEDATA, pid, addr, orig);
+}</code></pre>
+        <p>Эти две функции — ядро любой системы отладки; то же самое происходит и внутри gdb.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Внутри gdb и lldb работают ровно эти механизмы: написав свой отладчик, вы будете смотреть на краши и трассировки совсем иначе — и, возможно, даже добавите свою фичу любимому отладчику.</p>
+      <h2>Понятия DWARF и метаданных</h2>
+        <p>Чтобы показывать имена переменных и строки кода, нужно читать секцию <code>.debug_info</code> ELF-файла (стандарт DWARF). Ваш отладчик должен держать таблицу соответствий (jumptable): адрес ← имя файла/строка, чтобы можно было показывать «текущее место выполнения».</p>
+        <p>Полная реализация в этом пошаговом цикле статей доходит до таблиц строк (line table) и DWARF-выражений.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Создание отладчика даёт глубочайшее понимание «выполнения программы»: регистры, стек, точки останова и процессы Unix. Если вы хотите понять, что происходит под капотом gdb/LLDB, или собрать собственный инструмент отладки, этот цикл — самый полный справочник.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Саймон Бренд (Simon Brand). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем отладчик для Linux» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем отладчик для Linux» принадлежит автору оригинала (Саймон Бренд (Simon Brand)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Саймон Бренд (Simon Brand)). Читайте оригинал на
         <a href="https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/" target="_blank" rel="noopener">https://blog.tartanllama.xyz/writing-a-linux-debugger-setup/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Простой эмулятор терминала на 100 строк Go»
+          <b>Оригинальный источник:</b> «Build a terminal emulator in 100 lines of Go»
         </div>
         <a class="btn solid" href="https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-terminal-emulator-go.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,69 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Компактный урок: эмулятор терминала за 100 строк на Go. Вы создадите псевдотерминал, запустите в нём командную оболочку и передадите вывод на экран с минимальным, но настоящим управляющим кодом.</p>
+      <h2>Терминал и псевдо-терминал</h2>
+        <p>Терминал отображает то, что в нём выполняется. Чтобы настоящая программа (например, sh) запускалась внутри вашего терминала, нужен <b>pty</b> (псевдо-терминал): пара master/slave, связывающая ввод и вывод. В Go библиотека <code>creack/pty</code> упрощает эту задачу.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Псевдотерминал (PTY) и запуск shell внутри него</li>
-          <li>Проброс ввода-вывода между терминалом и процессом</li>
-          <li>Простейшая обработка вывода в байтах</li>
-          <li>Компактность: 100 строк достаточно для настоящей работы</li>
-        </ul>
+      <h2>Архитектура: два цикла</h2>
+        <p>У эмулятора два потока данных: вывод программы → на экран и ввод пользователя → в программу. Они выполняются одновременно. Отображение делается с помощью <code>termbox-go</code> (библиотека TUI):</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func runTerminal(ptmx *os.File) {
+    go func() {
+        // Цикл чтения вывода программы и его отображения
+        buf := make([]byte, 4096)
+        for {
+            n, err := ptmx.Read(buf)
+            if err != nil { return }
+            termbox.SetCell(x, y, rune(buf[i]), fg, bg)
+            ...
+        }
+    }()
+
+    // Цикл событий клавиатуры: отправка в ptmx
+    for {
+        ev := termbox.PollEvent()
+        if ev.Type == termbox.EventKey {
+            _, err := ptmx.Write([]byte{byte(ev.Ch)})
+            if err != nil { ... }
+        }
+    }
+}</code></pre>
+        <p>Здесь <code>ptmx</code> и «читается», и «записывается»: мы читаем вывод программы и показываем его на сетке, а нажатия пользователя отправляем программе.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Идея проста: PTY-устройство ведёт себя как терминал, а Go-код соединяет его с вашим UI. Вывод оболочки идёт байтами, и эмулятор лишь решает, что с ними делать.</p>
-        <p>Запуск shell в PTY — минимальный код:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>cmd := exec.Command("bash")
-ptmx, _ := pty.Start(cmd)
-// соединяем PTY с окном приложения
-io.Copy(window, ptmx)</code></pre>
+      <h2>Обработка escape-последовательностей</h2>
+        <p>Все терминалы должны интерпретировать ANSI-последовательности. Простейший дизайн — маленький конечный автомат: когда встречается символ <code>\x1b</code>, собирай остальное до завершающего кода (например, <code>[m</code>):</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Простая интерпретация ANSI-кодов цвета
+func interpretANSI(data []byte) {
+    if len(data) &gt; 2 &amp;&amp; data[0] == 0x1b &amp;&amp; data[1] == &#x27;[&#x27; {
+        // Разбор параметров до завершающей буквы
+        parts := strings.Split(string(data[2:len(data)-1]), &quot;;&quot;)
+        if len(parts) &gt; 0 {
+            switch parts[0] {
+            case &quot;31&quot;: fg = termbox.ColorRed
+            case &quot;32&quot;: fg = termbox.ColorGreen
+            case &quot;0&quot;:  fg = termbox.ColorDefault
+            }
+        }
+    }
+}</code></pre>
+        <p>С этой простой функцией цветные выводы <code>ls --color</code> отображаются правильно.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Эмулятор за 100 строк — доказательство, что главное в системном программировании — понимать, а не иметь тысячи строк: вы пройдёте весь путь от открытого PTY до работающего терминала.</p>
+      <h2>Итог</h2>
+        <p>Этот урок показывает, что меньше чем за 150 строк Go и с двумя библиотеками можно собрать рабочий терминал. Понятия PTY, параллельных циклов и ANSI-кодирования — основа всех современных терминалов.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Ишуа (Ishuah). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Простой эмулятор терминала на 100 строк Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Простой эмулятор терминала на 100 строк Go» принадлежит автору оригинала (Ишуа (Ishuah)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ишуа (Ishuah)). Читайте оригинал на
         <a href="https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/" target="_blank" rel="noopener">https://ishuah.com/2021/03/10/build-a-terminal-emulator-in-100-lines-of-go/</a>.
       </div>
     </article>

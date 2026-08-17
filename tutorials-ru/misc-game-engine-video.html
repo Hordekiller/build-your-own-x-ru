@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай свой игровой движок — видеоплейлист»
+          <b>Оригинальный источник:</b> «Game Engine playlist (The Cherno)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-game-engine-video.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,56 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Большой видеокурс по созданию собственного игрового движка: серия уроков последовательно строит движок с нуля — от окна и рендеринга до игровых объектов и сцены, всё на C++ и OpenGL.</p>
+      <h2>О плейлисте</h2>
+        <p>Этот длинный видеокурс показывает путь создания игрового движка от первого окна до рендерера: создание окон с GLFW, OpenGL, шейдеры, трёхмерная математика, текстуры и модели. Каждая часть объясняет концепции на живом выполняющемся коде — наблюдение за ошибками и их исправлением в реальном времени несёт большую обучающую ценность.</p>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/videoseries?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT" title="Создай свой игровой движок (YouTube)" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p><a href="https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT" target="_blank" rel="noopener">Открыть плейлист на YouTube</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Инициализация окна и графического контекста</li>
-          <li>Пайплайн рендеринга и простые 3D-сцены</li>
-          <li>Игровые объекты, компоненты и обновление мира</li>
-          <li>Архитектура движка: время, цикл, состояние</li>
-        </ul>
+      <h2>От окна до треугольника</h2>
+        <p>Первые шаги — создание окна с GLFW и буфера. Для первого треугольника нужно настроить VBO (буфер вершин) и шейдер. Этот базовый этап определяет всю архитектуру графики.</p>
+        <p>Если вы не знакомы с OpenGL, обязательно сначала посмотрите вводные части, потому что остальной курс строится на этих понятиях.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Игровой движок — это программа-«цикл»: каждый кадр она обновляет состояние мира и рисует сцену. Курс разбивает эту задачу на маленькие шаги, начиная с пустого окна.</p>
-        <p>Сердце любого движка — игровой цикл:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>while (running) {
-    process_input();   // опрос клавиш
-    update(dt);        // обновить мир
-    render();          // нарисовать кадр
-}</code></pre>
+      <h2>Пример кода: рендер треугольника</h2>
+        <p>Один технический момент, который повторяется в курсе много раз, — правильная настройка шейдера и буферов:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Настройка вершин треугольника и отправка на GPU
+float vertices[] = {
+    -0.5f, -0.5f, 0.0f,
+     0.5f, -0.5f, 0.0f,
+     0.0f,  0.5f, 0.0f
+};
+
+unsigned int vbo, vao;
+glGenVertexArrays(1, &amp;vao);
+glBindVertexArray(vao);
+
+glGenBuffers(1, &amp;vbo);
+glBindBuffer(GL_ARRAY_BUFFER, vbo);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+
+// Описание раскладки вершин: 3 компонента float
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 3 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);</code></pre>
+        <p>Этот паттерн повторяется во всех дальнейших рендерах (куб, модель), но уже с матрицами преобразования и текстурами.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Собственный движок — лучший способ понять, как работают Unity и Unreal: вы будете знать, что скрывается за терминами «компонент», «сцена» и «рендер-пайплайн», и сможете использовать коммерческие движки осознанно.</p>
+      <h2>Чего вы достигнете?</h2>
+        <p>В конце курса у вас будет нечто, не зависящее от готового движка: собственный конвейер рендеринга, который можно развивать для личных и учебных проектов. Этот навык даёт глубокое понимание разработки игр — цикла рендера и памяти GPU.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Черно (The Cherno). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT" target="_blank" rel="noopener">YouTube-плейлисте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай свой игровой движок — видеоплейлист» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай свой игровой движок — видеоплейлист» принадлежит автору оригинала (Черно (The Cherno)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Черно (The Cherno)). Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLlrATfBNZ98dC-V-N3m0Go4deliWHPFwT</a>.
       </div>
     </article>

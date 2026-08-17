@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Как работают менеджеры окон X и как написать свой»
+          <b>Оригинальный источник:</b> «How X Window Managers work, and how to write one»
         </div>
         <a class="btn solid" href="https://seasonofcode.com/posts/how-x-window-managers-work-and-how-to-write-one-part-i.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-x-window-managers.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,60 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Статья объясняет механику X Window System и показывает, как пишутся менеджеры окон на C++ с использованием Xlib: управление фокусом, перестройка окон, перетаскивание и украшение рамками.</p>
+      <h2>Менеджер окон в экосистеме X11</h2>
+        <p>В X11 сервер X управляет только «рисованием» и вводом; раскладка окон отдаётся менеджеру окон (Window Manager). Менеджер окон — особый клиент: меняет рамки окон, рисует titlebar и интерпретирует клавиши. Обычные программы из-за декораций ничего не знают о раскладке.</p>
+        <p>Этот урок начинается с простого менеджера окон, который накладывает и перемещает окна, а позже добавляет такие возможности, как тайлинг (tiling) и фокус.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Архитектура X11: сервер, клиенты и свойства окон</li>
-          <li>Родительские окна и reparenting для рамок</li>
-          <li>Фокус, управление клавишами и мышью</li>
-          <li>Простейшая раскладка: тайлинг или плавающие окна</li>
-        </ul>
+      <h2>События и подключение к серверу</h2>
+        <p>Вся работа идёт через протокол X (на C с xcb). Менеджер окон должен слушать события <code>MapRequest</code> (когда новое окно хочет стать видимым) и <code>ConfigureRequest</code> (когда окно хочет изменить размер или позицию):</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Главный цикл событий менеджера окон
+while ((e = xcb_wait_for_event(conn))) {
+    switch (e-&gt;response_type &amp; ~0x80) {
+        case XCB_MAP_REQUEST:
+            map_request(conn, (xcb_map_request_event_t*)e);
+            break;
+        case XCB_CONFIGURE_REQUEST:
+            configure_request(conn, (xcb_configure_request_event_t*)e);
+            break;
+        case XCB_KEY_PRESS:
+            handle_key(conn, (xcb_key_press_event_t*)e);
+            break;
+    }
+    free(e);
+}
+
+// Показ и раскладка нового окна
+void map_request(xcb_connection_t* c, xcb_map_request_event_t* e) {
+    xcb_configure_window(c, e-&gt;window,
+        XCB_CONFIG_WINDOW_X | XCB_CONFIG_WINDOW_Y |
+        XCB_CONFIG_WINDOW_WIDTH | XCB_CONFIG_WINDOW_HEIGHT,
+        (uint32_t[]){ 0, 0, SCR_W, SCR_H });
+    xcb_map_window(c, e-&gt;window);
+    xcb_flush(c);
+}</code></pre>
+        <p>Так каждая новая программа автоматически разворачивается на весь экран — базовое поведение тайлинг-менеджеров окон.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Менеджер окон — это клиент X-сервера с особыми правами: он подписывается на события отображения окон и переупорядочивает их, добавляя рамки и управляя фокусом. Всё, что видно в графической среде, — результат такой работы.</p>
-        <p>Регистрация оконного менеджера на X-сервере:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>// Подписываемся на появление новых окон
-XSelectInput(display, root, SubstructureRedirectMask);
-// Теперь X будет присылать нам события MapRequest</code></pre>
+      <h2>EWMH и современный рабочий стол</h2>
+        <p>Одного протокола X недостаточно: чтобы рабочие среды замечали менеджера окон, нужно соблюдать протокол EWMH — объявлять <code>_NET_SUPPORTED</code>, <code>_NET_NUMBER_OF_DESKTOPS</code> и тому подобное. А также работать с <code>_NET_WM_STATE</code> для полноэкранных окон.</p>
+        <p>Эта часть полностью раскрывается во второй части урока, после чего проект готов к использованию на настоящем рабочем столе.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Графические оболочки Linux — не магия, а программы, как любые другие: разобрав менеджер окон, вы поймёте архитектуру X11 и сможете при необходимости писать свои клиенты, от панелей до компоновщиков.</p>
+      <h2>Итог</h2>
+        <p>Создание менеджера окон — мост между графикой, клиент-серверным протоколом и интерфейсом. Этот урок даёт знания, необходимые для создания декораций, тайлинга и горячих клавиш, — словом, то, что мало кто видел вблизи.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> автор блога Season of Code. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://seasonofcode.com/posts/how-x-window-managers-work-and-how-to-write-one-part-i.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Как работают менеджеры окон X и как написать свой» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Как работают менеджеры окон X и как написать свой» принадлежит автору оригинала (автор блога Season of Code). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор блога Season of Code). Читайте оригинал на
         <a href="https://seasonofcode.com/posts/how-x-window-managers-work-and-how-to-write-one-part-i.html" target="_blank" rel="noopener">https://seasonofcode.com/posts/how-x-window-managers-work-and-how-to-write-one-part-i.html</a>.
       </div>
     </article>

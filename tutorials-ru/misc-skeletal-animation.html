@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Загрузка и рендеринг 3D-скелетной анимации с нуля на C# и OpenGL»
+          <b>Оригинальный источник:</b> «Loading and rendering 3D skeletal animations»
         </div>
         <a class="btn solid" href="https://www.seanjoflynn.com/research/skeletal-animation.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-skeletal-animation.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,75 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство реализует скелетную анимацию с нуля: вы научитесь загружать кости и веса модели, считать матрицы поз и рендерить анимированного персонажа на OpenGL из C#.</p>
+      <h2>Что такое скелетная анимация?</h2>
+        <p>Когда 3D-персонаж ходит, перемещается не вся модель: внутри движется <b>скелет</b> (иерархия костей), а каждая вершина смещается матрицами соседних костей. Этот метод называется «skeletal animation» или «skinning».</p>
+        <p>В этом уроке всё создаётся с нуля: структура скелета, загрузка анимации (упрощённый формат glTF) и шейдер, применяющий матрицы костей.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Иерархия костей и скелет модели</li>
-          <li>Веса вершин и влияние костей</li>
-          <li>Матрицы поз: локальные трансформации и их композиция</li>
-          <li>Интерполяция кадров анимации по времени</li>
-        </ul>
+      <h2>Математика: матрица кости</h2>
+        <p>Сердце работы — вычисление «итоговой матрицы» для каждой кости: <code>global = parent * local</code>. Эти матрицы отправляются в шейдер, где для каждой вершины они комбинируются с весами:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Вычисление глобальных матриц костей обходом дерева
+void ComputeBoneMatrices(Bone[] bones, int parentIndex,
+                         Matrix4&lt;float&gt; parentMatrix) {
+    for (int i = 0; i &lt; bones.Length; i++) {
+        if (bones[i].parent != parentIndex) continue;
+
+        // Глобальная матрица = матрица родителя × локальная матрица
+        Matrix4&lt;float&gt; local = bones[i].localTransform;
+        Matrix4&lt;float&gt; global = local * parentMatrix;
+
+        // Итоговая матрица для рендера (inverse bind × global)
+        boneMatrices[i] = bones[i].inverseBindMatrix
+                          .Multiply(global);
+        ComputeBoneMatrices(bones, i, global);
+    }
+}</code></pre>
+        <p>Переменная <code>inverseBindMatrix</code> переводит вершину из «пространства модели» в «пространство кости», чтобы к ней применялось только движение кости.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Скелетная анимация — это кости с иерархией, каждая вершина модели «привязана» к нескольким костям с весами. Поза задаётся поворотами костей, а вершины двигаются как взвешенная сумма трансформаций костей.</p>
-        <p>Одна вершина суммирует влияние всех костей:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>// Итоговое положение вершины — взвешенная сумма по костям
-vec3 skinned = vec3.Zero;
-foreach (var b in boneInfluences)
-    skinned += b.weight * matrices[b.index].TransformPosition(v);</code></pre>
+      <h2>Шейдер и вершинный скининг</h2>
+        <p>У каждой вершины есть несколько индексов костей и весов (например, 4). Шейдер должен сложить соответствующие матрицы:</p>
+        <pre class="code"><span class="lang-tag">glsl</span><code style="direction:ltr;text-align:left">// Входы вершины: позиция, веса и индексы костей
+layout(location = 0) in vec3 aPosition;
+layout(location = 3) in vec4 aWeights;
+layout(location = 4) in ivec4 aBoneIndices;
+
+uniform mat4 uBoneMatrices[24];
+uniform mat4 uModelViewProjection;
+
+void main() {
+    // Комбинирование матриц костей с весами
+    mat4 skin =
+        uBoneMatrices[aBoneIndices.x] * aWeights.x +
+        uBoneMatrices[aBoneIndices.y] * aWeights.y +
+        uBoneMatrices[aBoneIndices.z] * aWeights.z +
+        uBoneMatrices[aBoneIndices.w] * aWeights.w;
+
+    vec4 worldPos = skin * vec4(aPosition, 1.0);
+    gl_Position = uModelViewProjection * worldPos;
+}</code></pre>
+        <p>Именно этот шейдер превращает движение скелета в графику; без него анимация осталась бы только на бумаге.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Скелетная анимация стоит за каждым анимированным персонажем в играх: разобрав её, вы сможете читать и модифицировать любые игровые ассеты и движки.</p>
+      <h2>Загрузка формата и проигрывание анимации</h2>
+        <p>Часть загрузки читает ключевые кадры (keyframes) и интерполирует позиции и повороты. Для простоты вращения используют кватернионы, чтобы избежать «gimbal lock».</p>
+        <p>В конце у вас будет простой цикл проигрывания анимации, обновляющий матрицы с dt и заставляющий персонажа ходить или бегать.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот урок раскрывает всю математику «анимированных персонажей»: иерархию матриц, inverse bind и взвешенный рендер. После него коммерческие форматы (FBX, glTF) перестанут быть чёрным ящиком.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Шон Дж. Флинн (Sean J. Flynn). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.seanjoflynn.com/research/skeletal-animation.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Загрузка и рендеринг 3D-скелетной анимации с нуля на C# и OpenGL» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Загрузка и рендеринг 3D-скелетной анимации с нуля на C# и OpenGL» принадлежит автору оригинала (Шон Дж. Флинн (Sean J. Flynn)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Шон Дж. Флинн (Sean J. Flynn)). Читайте оригинал на
         <a href="https://www.seanjoflynn.com/research/skeletal-animation.html" target="_blank" rel="noopener">https://www.seanjoflynn.com/research/skeletal-animation.html</a>.
       </div>
     </article>

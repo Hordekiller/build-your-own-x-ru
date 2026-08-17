@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Сети на C#: TCP-чат-сервер, TCP-игры, UDP-понг и многое другое»
+          <b>Оригинальный источник:</b> «C# Networking Tutorials»
         </div>
         <a class="btn solid" href="https://16bpp.net/tutorials/csharp-networking" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-csharp-networking.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,74 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия по сетевому программированию на C#: вы построите TCP-чат, простые сетевые игры и пинг-понг через UDP, узнаете про сокеты, асинхронность и различия протоколов на практике.</p>
+      <h2>Зачем учить сети на проектах?</h2>
+        <p>Многие руководства по сетям просто знакомят с «API»; этот же набор превращает каждую концепцию в полноценный выполняемый проект (чат, игра, Pong). Такой подход заставляет глубоко понимать «почему» и «как» каждого решения — TCP или UDP, буферы и кодирование.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Клиент-сервер на TCP: сокеты, подключения, потоки</li>
-          <li>Чат: широковещательная рассылка сообщений</li>
-          <li>Сетевые игры: синхронизация состояния по TCP</li>
-          <li>UDP: быстрые дейтаграммы и обработка потери пакетов</li>
-        </ul>
+      <h2>TCP: чат-сервер</h2>
+        <p>Первый проект — TCP-чат-сервер, который держит несколько клиентов и распространяет сообщения между ними. Ключевой момент — синхронизация: каждый клиент получает свой поток (или async), а сообщения должны отправляться атомарно:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Простой чат-сервер: принимает клиентов и распространяет сообщения
+using System.Net.Sockets;
+using System.Text;
+
+var listener = new TcpListener(System.Net.IPAddress.Any, 8888);
+listener.Start();
+Console.WriteLine(&quot;Сервер готов...&quot;);
+
+while (true) {
+    TcpClient client = listener.AcceptTcpClient();
+    _ = Task.Run(() =&gt; HandleClient(client));
+}
+
+void HandleClient(TcpClient client) {
+    using var stream = client.GetStream();
+    byte[] buffer = new byte[1024];
+    while (true) {
+        int read = stream.Read(buffer, 0, buffer.Length);
+        if (read == 0) break;                    // клиент закрыл соединение
+        string msg = Encoding.UTF8.GetString(buffer, 0, read);
+        Broadcast($&quot;[{client.Client.RemoteEndPoint}] {msg}&quot;);
+    }
+}</code></pre>
+        <p>С такой простой структурой заработает первый многоклиентный чат. Следующий шаг — протокол кодирования (длина сообщения + данные), чтобы длинные сообщения правильно разделялись.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>TCP гарантирует доставку и порядок, но требует установления соединения; UDP — быстрые дейтаграммы без гарантий. Игра или чат выбирает протокол под свои нужды, и в серии вы испытаете оба подхода.</p>
-        <p>TCP-сервер принимает клиентов так:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>TcpListener server = new TcpListener(IPAddress.Any, 7777);
-server.Start();
-TcpClient client = await server.AcceptTcpClientAsync();
-// Дальше читаем и пишем данные клиента</code></pre>
+      <h2>UDP: Pong</h2>
+        <p>Быстрые игры вроде Pong работают по UDP, потому что низкая задержка здесь важнее гарантии доставки всех сообщений. В UDP каждый пакет должен сам содержать всю информацию (например, полное состояние игры):</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Отправка состояния игры по UDP (каждый кадр)
+using System.Net;
+using System.Net.Sockets;
+using System.Text;
+
+var socket = new Socket(AddressFamily.InterNetwork,
+                        SocketType.Dgram, ProtocolType.Udp);
+var server = new IPEndPoint(IPAddress.Parse(&quot;127.0.0.1&quot;), 9000);
+
+// Состояние игры: превращаем позиции в строку
+string state = $&quot;{paddle1X};{paddle1Y};{ballX};{ballY}&quot;;
+byte[] data = Encoding.UTF8.GetBytes(state);
+socket.SendTo(data, server);</code></pre>
+        <p>Критический момент UDP: если пакет потерян, его место занимает «следующий пакет»; поэтому каждый пакет должен содержать полное состояние игры.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Сетевые игры и чаты — классика для изучения распределённых систем: реализовав их на C#, вы почувствуете, где искать узкие места и как проектировать протоколы.</p>
+      <h2>Многопользовательская TCP-игра</h2>
+        <p>В конце создаётся простая графическая игра, в которой клиенты общаются по TCP: события игры (движение, удары) сообщаются серверу, а сервер рассылает их всем.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Этот набор — лучшая точка входа в сети на C#: на практических проектах вы узнаёте разницу TCP/UDP, конкурентность, кодирование и игровой цикл — и сможете перенести те же навыки на любой другой язык.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> команда 16bpp. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://16bpp.net/tutorials/csharp-networking" target="_blank" rel="noopener">сайте 16bpp</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Сети на C#: TCP-чат-сервер, TCP-игры, UDP-понг и многое другое» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Сети на C#: TCP-чат-сервер, TCP-игры, UDP-понг и многое другое» принадлежит автору оригинала (команда 16bpp). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (команда 16bpp). Читайте оригинал на
         <a href="https://16bpp.net/tutorials/csharp-networking" target="_blank" rel="noopener">https://16bpp.net/tutorials/csharp-networking</a>.
       </div>
     </article>
