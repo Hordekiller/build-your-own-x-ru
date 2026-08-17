@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Kaleidoscope: язык на LLVM»
+          <b>Оригинальный источник:</b> «My First Language Frontend with LLVM — Kaleidoscope»
         </div>
         <a class="btn solid" href="https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-kaleidoscope.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,47 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Официальный учебник LLVM: язык Kaleidoscope — лексер, парсер и JIT — компиляция прямо в машинный код.</p>
+      <h2>Что вы строите в этом уроке</h2>
+        <p>LLVM (Low Level Virtual Machine) — набор инструментов для построения компиляторов; его выход — «промежуточный код» (IR), а затем оптимизированный машинный код. Этот официальный урок LLVM строит язык Kaleidoscope: функциональный язык с def для определения функций, extern для внешних функций, условиями, циклами, определяемыми пользователем операторами и изменяемыми переменными.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер и парсер</li>
-          <li>AST и IR</li>
-          <li>Кодогенерация LLVM</li>
-          <li>JIT-компиляция</li>
-        </ul>
+      <h2>Десятичастная архитектура</h2>
+        <p>Части спроектированы так, что каждая добавляет один слой: (1) lexer; (2) parser и AST; (3) генерация IR через IRBuilder; (4) добавление JIT для мгновенного исполнения; (5) оптимизатор (Optimizer с PassManager); (6) условия if/else (с узлами PHI); (7) циклы (for); (8) определяемые пользователем бинарные операторы (с динамической таблицей приоритетов); (9) изменяемые переменные (через alloca); (10) вывод в файл объектного кода.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Kaleidoscope показывает LLVM изнутри: ваш язык получает статическую компиляцию и JIT за пару глав.</p>
-        <p>Генерация сложения в IR:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>Value *BinaryExpr::codegen() {
-    Value *L = lhs-&gt;codegen(), *R = rhs-&gt;codegen();
-    return Builder.CreateFAdd(L, R, "addtmp");
+      <h2>Пример кода: генерация IR с IRBuilder</h2>
+        <p>Например, код def add(a, b) a + b генерирует такой IR:</p>
+        <pre class="code"><span class="lang-tag">C++</span><code style="direction:ltr;text-align:left">Value *CodegenVisitor::visit(BinaryExpr &amp;e) {
+  Value *L = codegen(e.LHS);
+  Value *R = codegen(e.RHS);
+  switch (e.Op) {
+  case &#x27;+&#x27;:
+    return Builder-&gt;CreateFAdd(L, R, &quot;addtmp&quot;);  // сложение с плавающей точкой
+  case &#x27;-&#x27;:
+    return Builder-&gt;CreateFSub(L, R, &quot;subtmp&quot;);
+  case &#x27;*&#x27;:
+    return Builder-&gt;CreateFMul(L, R, &quot;multmp&quot;);
+  case &#x27;/&#x27;:
+    return Builder-&gt;CreateFDiv(L, R, &quot;divtmp&quot;);
+  default:
+    return LogErrorV(&quot;неизвестный оператор&quot;);
+  }
 }</code></pre>
+        <p>Результат этого кода — модуль LLVM, который можно запустить через lli ещё до того, как backend будет завершён.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>LLVM — индустриальный компиляторный стек: учебник Kaleidoscope — обязательная вершина для желающих серьёзно в компиляторы.</p>
+      <h2>Ценные технические моменты</h2>
+        <p>Части 6 и 7 показывают работу с узлами PHI — важным понятием в SSA, которое вы увидите и в низкоуровневых языках, таких как Rust. Часть 9 на alloca (переменная на стеке) показывает, почему изменяемые переменные трудны в SSA. Часть 10 выводом в объектный файл делает ваш компилятор «настоящим».</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Самое полное официальное введение в построение frontend на LLVM на C++. Если вы ищете путь, на котором ваш язык впоследствии сможет набрать скорость на реальном CPU (JIT или AOT), начните с этого урока — затем Kaleidoscope можно расширить типами данных и модулями.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Kaleidoscope: язык на LLVM» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Kaleidoscope: язык на LLVM» принадлежит автору оригинала (Проект LLVM). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Проект LLVM). Читайте оригинал на
         <a href="https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html" target="_blank" rel="noopener">https://llvm.org/docs/tutorial/MyFirstLanguageFrontend/index.html</a>.
       </div>
     </article>

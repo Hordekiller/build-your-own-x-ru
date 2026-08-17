@@ -36,7 +36,7 @@
       </div>
       <h1>Игрушечный компилятор на C++</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">⚙ Язык: C++ / Flex / Bison</span>
         <span class="meta-badge">📁 Язык программирования</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://gnuu.org/2009/09/18/writing-your-own-toy-compiler/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игрушечный компилятор на C++»
+          <b>Оригинальный источник:</b> «Writing Your Own Toy Compiler»
         </div>
         <a class="btn solid" href="https://gnuu.org/2009/09/18/writing-your-own-toy-compiler/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-toy-compiler.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Игрушечный компилятор на C++: лексер, парсер и простой байткод — маленький, но настоящий компилятор.</p>
+      <h2>Почему Flex и Bison</h2>
+        <p>Прежде чем писать всё вручную, полезно узнать, как работают классические инструменты «сборки компиляторов». Flex генерирует лексер (превращает входной текст в токены), а Bison — генератор парсеров (разбирает грамматику методом LALR). Этот урок с помощью этих двух инструментов строит маленький компилятор с ассемблерным выходом.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>Парсер</li>
-          <li>Байткод</li>
-          <li>Интерпретация</li>
-        </ul>
+      <h2>Часть первая: файл Flex</h2>
+        <p>Файл лексера в Flex определяется тремя секциями: declarations (объявления), rules (правила) и дополнительный код. Например, определение математических токенов:</p>
+        <pre class="code"><span class="lang-tag">Flex</span><code style="direction:ltr;text-align:left">%{
+#include &quot;parser.hpp&quot;   // определение токенов из Bison
+%}
+
+DIGIT   [0-9]
+NUMBER  {DIGIT}+
+
+%%
+
+&quot;+&quot;   { return PLUS; }
+&quot;-&quot;   { return MINUS; }
+&quot;*&quot;   { return MULT; }
+&quot;/&quot;   { return DIV; }
+{NUMBER}  { yylval.num = atoi(yytext); return NUMBER; }
+[ \t\n]   { /* пропуск пробелов */ }
+.         { yyerror(&quot;недопустимый символ&quot;); }
+
+%%
+
+int yywrap(void) { return 1; }   // конец файла</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Учебный компилятор — это конвейер: токены, AST, байткод. На C++ всё видно структурно.</p>
-        <p>Выполнение байткода:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>void run() {
-    for (int pc = 0; pc &lt; code.size(); ) {
-        switch (code[pc++]) {
-            case PUSH: stack.push(code[pc++]); break;
-            case ADD: stack.push(stack.pop() + stack.pop()); break;
-        }
-    }
+      <h2>Часть вторая: грамматика Bison</h2>
+        <p>Скорость Bison — в грамматиках LALR; здесь определяется простое выражение, и при каждой свёртке (reduction) генерируется соответствующий ассемблерный код — именно эта связь «грамматика↔код» и есть суть работы компилятора:</p>
+        <pre class="code"><span class="lang-tag">Bison</span><code style="direction:ltr;text-align:left">%token NUMBER
+%left PLUS MINUS
+%left MULT DIV
+
+%%
+
+expr: expr PLUS expr   { $$ = gen_add($1, $3); }
+    | expr MULT expr   { $$ = gen_mult($1, $3); }
+    | NUMBER           { $$ = gen_number($1); }
+    ;
+
+%%
+
+int gen_number(int n) {
+  printf(&quot;push %d\n&quot;, n);   // ассемблерный код для числа
+  return 0;
 }</code></pre>
+        <p>Обратите внимание: выражения получают приоритет через %left — это эквивалентно тому, что делается в ручном парсере методом Пратта.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Игрушечные компиляторы — фундамент сложных: после этого шага можно смело читать LLVM.</p>
+      <h2>Следующие шаги</h2>
+        <p>После калькулятора статья указывает на добавление переменных, условий и функций. В целом путь такой: (1) лексер на Flex, (2) определение грамматики и AST, (3) генерация ассемблерного кода в actions, (4) сборка и запуск тестов.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Эта статья показывает, что старые инструменты (Flex/Bison) до сих пор — лучший способ быстро собрать lexer/parser; если вам нравится «ручное изготовление», позже идите к таким урокам, как acwj, — но если вы просто хотите собрать компилятор, этот способ — самая быстрая точка старта.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игрушечный компилятор на C++» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игрушечный компилятор на C++» принадлежит автору оригинала (gnuu.org). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (gnuu.org). Читайте оригинал на
         <a href="https://gnuu.org/2009/09/18/writing-your-own-toy-compiler/" target="_blank" rel="noopener">https://gnuu.org/2009/09/18/writing-your-own-toy-compiler/</a>.
       </div>
     </article>

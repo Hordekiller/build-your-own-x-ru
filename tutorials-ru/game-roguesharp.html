@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «RogueSharp: рогалик на C#»
+          <b>Оригинальный источник:</b> «RogueSharp — серия уроков»
         </div>
         <a class="btn solid" href="https://roguesharp.wordpress.com/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-roguesharp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,63 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>RogueSharp на C#: генерация подземелий, FOV и поиск пути — движок рогаликов с чистым API.</p>
+      <h2>Что такое RogueSharp</h2>
+        <p><b>RogueSharp</b> — open-source библиотека C# для roguelike-игр, которая берёт на себя тяжёлую работу: <b>генерацию карты подземелья</b>, <b>поле зрения (Field of View)</b>, <b>поиск пути (Pathfinding)</b> и <b>проверку линии видимости (Line of Sight)</b>. В обучении RogueSharp v3 сочетается с <b>RLNET</b> (для терминального рендера) — а более старая версия v2 также покрывалась с MonoGame.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы хотите писать всю логику roguelike самостоятельно, другие разделы этого сайта (то самое известное обучение «How to Make Your First Roguelike») относятся к той же теме.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта уроков</h2>
+        <p>Серия уроков пошагово покрывает:</p>
         <ul>
-          <li>Карта и генерация</li>
-          <li>Поле зрения</li>
-          <li>Поиск пути (A*)</li>
-          <li>Противники</li>
+          <li>Настройка проекта RLNET и отображение первого «@»</li>
+          <li>Построение карты и <b>случайная генерация подземелья</b> (комнаты и коридоры)</li>
+          <li><b>Поле зрения</b> с алгоритмом FOV и открытые стены</li>
+          <li><b>Движение и взаимодействие</b>: ходьба, открытие дверей</li>
+          <li><b>Поиск пути врагов</b> к игроку (Pathfinding)</li>
+          <li><b>Бой</b>: монстры, атака, урон и смерть</li>
+          <li>Система предметов, шрифты и палитра, сохранение игры</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Пример кода: карта и поле зрения</h2>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">using RogueSharp;
+using RogueSharp.MapCreation;
+
+// Построение карты случайным генератором подземелья (как в Rogue)
+IMapCreationStrategy&lt;Map&gt; strategy =
+    new RandomRoomsMapCreationStrategy&lt;Map&gt;(width: 80, height: 50,
+                                            maxRooms: 30, roomMaxSize: 12, roomMinSize: 6);
+Map map = Map.Create(strategy);
+
+// Вычисление поля зрения от взгляда игрока
+map.ComputeFov(x: playerX, y: playerY, radius: 10, lightWalls: true);
+
+// Обход карты и отрисовка: показывать только «видимые»
+// или «открытые» клетки
+foreach (Cell cell in map.GetAllCells())
+{
+    if (cell.IsInFov)
+        // освещено — отрисовка клетки
+    else if (cell.IsExplored)
+        // темно, но уже видели — отрисовка приглушённым цветом
+}</code></pre>
+        <p>Так достигается классическое ощущение «неизведанной темноты» roguelike-игр — без переписывания алгоритма FOV.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>RogueSharp выдаёт тяжёлую работу готовой (FOV, pathfinding, генерация карт); ваш фокус — на геймплее.</li>
+          <li>Официальная серия уроков полная и актуальная; код каждого урока дополняет предыдущий.</li>
+          <li>Хороший путь: сначала эта серия, затем переписывание логики (например, FOV) вручную для глубокого понимания.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>RogueSharp — библиотека для рогаликов: алгоритмы карт, FOV, пути. На её примере учатся, как строить игровые подсистемы.</p>
-        <p>Генерация подземелья — карта комнат:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>var map = new Map(80, 24);
-var rooms = MapGenerator.Generate(50, 10);
-foreach (var r in rooms) map.FillRect(r);</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Рогалик-движки — отличная лаборатория алгоритмов: вы воплотите деревья, пути и освещение в одной игре.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «RogueSharp: рогалик на C#» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «RogueSharp: рогалик на C#» принадлежит автору оригинала (Фэрон Брейси (Faron Bracy)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Фэрон Брейси (Faron Bracy)). Читайте оригинал на
         <a href="https://roguesharp.wordpress.com/" target="_blank" rel="noopener">https://roguesharp.wordpress.com/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создай свой веб-сервер с нуля на JavaScript»
+          <b>Оригинальный источник:</b> «Build Your Own Web Server From Scratch In Node.JS»
         </div>
         <a class="btn solid" href="https://build-your-own.org/webserver/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/web-server-nodejs-buildown.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,118 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство строит полноценный веб-сервер на чистом Node.js без фреймворков: вы создаёте сервер, разбираете HTTP-запросы, обрабатываете GET и POST, подключаете статические файлы и постепенно превращаете голый сокет в маленькую веб-платформу, готовую к расширению.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>1. Введение — что это за книга</h2>
+        <p>Большинство людей пользуются HTTP каждый день, но немногие разбираются в его внутреннем устройстве. Эта книга из серии «Build Your Own X» копает вглубь и учит основам с нуля — чтобы получить ясное понимание инструментов и технологий, на которые мы полагаемся:</p>
         <ul>
-          <li>Как работает модуль http и событийная модель Node.js</li>
-          <li>Разбор запроса: метод, путь, заголовки, тело</li>
-          <li>Обработка форм и данных POST-запросов</li>
-          <li>Раздача статических файлов и утилитарные ответы</li>
+          <li>Сетевое программирование.</li>
+          <li>Протоколы и коммуникации.</li>
+          <li>HTTP в полных деталях.</li>
+        </ul>
+        <p>Книга в двух частях: <b>первая часть</b> строит базовый HTTP-сервер (7 глав), <b>вторая</b> покрывает приложения и расширения (6 глав: динамический контент, файлы, Range-запросы, кэширование, сжатие и WebSocket).</p>
+      </section>
+      <section>
+      <h2>2. Обзор HTTP и простой TCP-сервер</h2>
+        <p>Книга начинается с обзора протокола HTTP: запрос и ответ, методы, коды статуса и заголовки — затем переходит к сетевому программированию. Первый проект — сырой TCP-сервер, который лишь принимает соединения и шлёт/принимает сырые данные:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">const net = require(&#x27;net&#x27;);
+
+// простой TCP-сервер: приветствует каждое соединение
+const server = net.createServer((socket) =&gt; {
+    console.log(&#x27;клиент подключился&#x27;);
+
+    socket.on(&#x27;data&#x27;, (data) =&gt; {
+        console.log(&#x27;получено:&#x27;, data.toString());
+        socket.write(&#x27;Привет от сервера!\r\n&#x27;);
+    });
+
+    socket.on(&#x27;close&#x27;, () =&gt; console.log(&#x27;соединение закрыто&#x27;));
+});
+
+server.listen(8000, () =&gt; console.log(&#x27;сервер на порту 8000&#x27;));</code></pre>
+        <p>Следующая глава — <b>Promise и события</b>: событийная модель Node (Event Loop), колбэки, промисы и async/await — потому что сетевые серверы по своей природе асинхронны. Затем теми же инструментами поверх TCP определяется <b>простой сетевой протокол</b>, чтобы увидеть, как протоколы имеют «формат сообщений» и «конечный автомат».</p>
+      </section>
+      <section>
+      <h2>3. Семантика и синтаксис HTTP</h2>
+        <p>Прежде чем писать HTTP-сервер, нужно правильно знать HTTP. Эта глава полностью разбирает синтаксис и семантику:</p>
+        <ul>
+          <li><b>Структура запроса</b>: строка запроса (<code>METHOD path HTTP/version</code>), заголовки (<code>Header: value</code>) и тело (опционально, с <code>Content-Length</code>).</li>
+          <li><b>Структура ответа</b>: строка статуса (<code>HTTP/version status reason</code>), заголовки и тело.</li>
+          <li><b>Методы</b>: GET, POST, HEAD и…; <b>коды статуса</b>: 200, 404, 301 и…; <b>ключевые заголовки</b>: <code>Host</code>, <code>Content-Type</code>, <code>Content-Length</code> и…</li>
+          <li><b>Продолжение соединения</b>: <code>Connection: keep-alive</code> и точная граница сообщений — место, где ломается большинство новичков, потому что непонятно, где заканчивается запрос.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Вся магия начинается с одного вызова: createServer регистрирует колбэк, который вызывается на каждое входящее подключение. Внутри колбэка мы вручную считываем метод, путь и заголовки.</p>
-        <p>Минимальный каркас сервера выглядит так:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>const http = require("http");
+      <h2>4. Пишем базовый HTTP-сервер</h2>
+        <p>Теперь реализация: на прежний TCP-сервер садятся парсер запроса, конструктор ответа и простая маршрутизация:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">const net = require(&#x27;net&#x27;);
 
-http.createServer((req, res) =&gt; {
-  // Обработка входящего запроса вручную
-  res.end("Hello from my own server!");
-}).listen(8080);</code></pre>
+const server = net.createServer((socket) =&gt; {
+    let buf = &#x27;&#x27;;
+
+    socket.on(&#x27;data&#x27;, (data) =&gt; {
+        buf += data.toString();
+
+        // запрос завершён, когда мы видим \r\n\r\n
+        const headerEnd = buf.indexOf(&#x27;\r\n\r\n&#x27;);
+        if (headerEnd === -1) return; // ещё не полный; ждём
+
+        const requestLine = buf.slice(0, buf.indexOf(&#x27;\r\n&#x27;));
+        const [method, path, version] = requestLine.split(&#x27; &#x27;);
+
+        console.log(`${method} ${path}`);
+
+        const body = &#x27;Hello, World!&#x27;;
+        const response =
+            &#x27;HTTP/1.1 200 OK\r\n&#x27; +
+            `Content-Length: ${body.length}\r\n` +
+            &#x27;Content-Type: text/plain\r\n&#x27; +
+            &#x27;\r\n&#x27; +
+            body;
+
+        socket.write(response);
+        socket.end();
+    });
+});
+
+server.listen(8000, () =&gt; console.log(&#x27;HTTP-сервер на порту 8000&#x27;));</code></pre>
+        <p>В духе «построй с нуля» эта реализация отбрасывает собственный <code>http</code> в Node и использует базовый <code>net</code>, чтобы все слои были самодельными, — затем та же логика сравнивается со стандартной библиотекой.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Вы увидите, что веб-сервер — это просто функция, реагирующая на запросы, а все фреймворки — лишь удобная обёртка над этим циклом. Один JavaScript-файл превращается в платформу для ваших идей.</p>
+      <h2>5. Вторая часть: расширения</h2>
+        <p>Вторая часть приближает базовый сервер к настоящему, глава за главой:</p>
+        <ul>
+          <li><b>Динамический контент и потоки (Streaming)</b>: генерация ответов на лету вместо заранее собранных строк; знакомство со <b>Stream API</b> в Node (как конвейер: <code>readable.pipe(writable)</code>).</li>
+          <li><b>Файловый ввод/вывод и управление ресурсами</b>: отдача файлов с диска, MIME-типы и корректная обработка ошибок и оборванных соединений.</li>
+          <li><b>Range-запросы</b>: поддержка заголовка <code>Range</code> и ответа <code>206 Partial Content</code> — то, на что опираются стриминговые видео.</li>
+          <li><b>HTTP-кэш</b>: заголовки <code>Cache-Control</code>, <code>ETag</code> и <code>Last-Modified</code> — чтобы не отправлять неизменный контент повторно.</li>
+          <li><b>Сжатие</b>: поддержка <code>Accept-Encoding</code> и gzip-ответа через Stream API — «потоковое» сжатие без хранения всего файла в памяти.</li>
+          <li><b>WebSocket и конкурентность</b>: самодельное обновление соединения с HTTP до WebSocket (рукопожатие через <code>Upgrade</code>, кадрирование фреймов с маской и т.д.) и управление многими открытыми соединениями.</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// отдача файла с диска потоком: память не занимается
+const fs = require(&#x27;fs&#x27;);
+const path = require(&#x27;path&#x27;);
+
+function serveFile(socket, filePath) {
+    const full = path.join(__dirname, &#x27;public&#x27;, filePath);
+    const stat = fs.statSync(full);
+
+    socket.write(&#x27;HTTP/1.1 200 OK\r\n&#x27;);
+    socket.write(`Content-Length: ${stat.size}\r\n`);
+    socket.write(&#x27;Content-Type: text/html; charset=utf-8\r\n&#x27;);
+    socket.write(&#x27;\r\n&#x27;);
+
+    // потоковая передача файла клиенту по частям
+    const stream = fs.createReadStream(full);
+    stream.pipe(socket);
+}</code></pre>
+        <div class="callout note">
+          Замечание: полный текст книги (13 глав с упражнениями и полным кодом) можно купить; веб-версия глав первой части бесплатна. Если вы не знаете JavaScript, «Eloquent JavaScript» — рекомендованный самой книгой источник.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создай свой веб-сервер с нуля на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создай свой веб-сервер с нуля на JavaScript» принадлежит автору оригинала (James Smith). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (James Smith). Читайте оригинал на
         <a href="https://build-your-own.org/webserver/" target="_blank" rel="noopener">https://build-your-own.org/webserver/</a>.
       </div>
     </article>

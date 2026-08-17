@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Нейросеть на F# — часть 2»
+          <b>Оригинальный источник:</b> «Building Neural Networks in F# — Part 2»
         </div>
         <a class="btn solid" href="https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-fsharp-part2.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,60 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Часть 2: полносвязная сеть на F# — прямые и обратные проходы, обучение на данных.</p>
+      <h2>Продолжение с части 1</h2>
+        <p>В части 1 завершена инфраструктура: функция активации tanh, типы Layer и Node и прямое распространение. Проблема была в том, что веса случайны и сеть ничего не знает. В этой части приходит механизм обучения: <b>обратное распространение (backpropagation)</b>, которое послойно возвращает ошибку выхода назад, и <b>градиентный спуск</b>, корректирующий веса.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Градиент и правило цепочки</h2>
+        <p>Градиент функции стоимости по каждому весу говорит о «направлении и величине нужного изменения». Для его вычисления в глубоких сетях используется <b>правило цепочки</b>: производная ошибки по конечному выходу, умноженная на локальные производные каждого слоя, сзади наперёд. Для каждого веса: новое значение = старое − скорость обучения × градиент:</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Обновление веса: w ← w − η × градиент ошибки по w
+let updateWeights (lr: double) (weights: Matrix&lt;double&gt;) (grad: Matrix&lt;double&gt;) =
+    weights - (grad.Multiply(lr))</code></pre>
+        <p>Скорость обучения (<code>η</code>) управляет балансом между скоростью и стабильностью: большая = перепрыгивание долин минимумов, малая = медленная сходимость.</p>
+      </section>
+      <section>
+      <h2>Распространение ошибки в скрытых слоях</h2>
+        <p>Главная проблема: ошибка напрямую вычисляется только в выходном слое. Для скрытых слоёв ошибка «распределяется»: ошибка следующего слоя умножается на транспонированную матрицу весов, чтобы получить вклад каждого скрытого нейрона в ошибку, а затем умножается на производную tanh (то есть <code>1 - tanh²</code>) для создания ошибки «масштабированной уверенностью»:</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Распространение ошибки в скрытый слой:
+// ошибка выхода, взвешенная транспонированной матрицей весов, затем умножение на производную tanh
+let backpropagate (nextError: Vector&lt;double&gt;) (weights: Matrix&lt;double&gt;)
+                 (hiddenOut: Vector&lt;double&gt;) =
+    let weightedError = weights.Transpose() * nextError
+    weightedError.PointwiseMultiply(hiddenOut.Map(tanhDerivative))</code></pre>
+      </section>
+      <section>
+      <h2>Полный цикл обучения</h2>
+        <p>Теперь собираем все части вместе: прямое распространение ← вычисление ошибки ← обратное распространение ← обновление всех весов. Повторение цикла на всём датасете называется «эпохой» (epoch); с каждой эпохой ошибка сети уменьшается:</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Один полный обучающий шаг на одном образце
+let trainStep (network: Network) (input: Vector&lt;double&gt;) (expected: Vector&lt;double&gt;)
+              (lr: double) =
+    let output = feedForward network input          // 1) предсказание
+    let error = output - expected                   // 2) ошибка
+    let grad = backpropagate error network.weights  // 3) распространение назад
+    let newWeights = updateWeights lr network.weights grad // 4) правка весов
+    { network with weights = newWeights }</code></pre>
+      </section>
+      <section>
+      <h2>Обучение и оценка на реальных данных</h2>
+        <p>Автор обучает сеть на реальном датасете и следит за прогрессом через функцию стоимости: устойчивое снижение стоимости — признак здорового обучения. Для честной оценки данные делятся на <b>обучающую</b> и <b>тестовую</b> части — сеть видит только обучающую и проверяется на тестовой, чтобы измерить способность к обобщению (а не запоминанию). Точность (процент верных ответов) — главный отчётный критерий.</p>
+        <div class="callout note">
+          <strong>Дополнительное замечание:</strong> если стоимость обучения мала, а тестовая велика — признак переобучения; решения: больше образцов, сеть поменьше или ранняя остановка.
+        </div>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>Архитектура сети</li>
-          <li>Прямой проход</li>
-          <li>Обратное распространение</li>
-          <li>Эксперименты</li>
+          <li>Обучение = обратное распространение ошибки + обновление весов градиентным спуском.</li>
+          <li>Транспонированная матрица весов — мост между ошибкой следующего слоя и вкладом скрытого слоя.</li>
+          <li>Производная tanh проста (<code>1−tanh²</code>); эта простота и делает backprop практичным.</li>
+          <li>Разделение обучения/теста — реальный показатель качества модели.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Серия усложняется: сеть с несколькими слоями, сигмоида и обратное распространение — полный цикл обучения.</p>
-        <p>Активация слоя:</p>
-        <pre class="code"><span class="lang-tag">F#</span><code>let sigmoid x = 1.0 / (1.0 + exp(-x))
-let layerOutput w x = x |&gt; Array.map2 (*) w |&gt; Array.sum |&gt; sigmoid</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Вторая часть даёт полноценную сеть: вы увидите, как обучение превращается в математику и код.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Нейросеть на F# — часть 2» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Нейросеть на F# — часть 2» принадлежит автору оригинала (Haaris Mehmood). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Haaris Mehmood). Читайте оригинал на
         <a href="https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6" target="_blank" rel="noopener">https://medium.com/data-science/building-neural-networks-in-f-part-2-training-evaluation-5e3a68889da6</a>.
       </div>
     </article>

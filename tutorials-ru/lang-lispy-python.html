@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Lispy: Lisp-интерпретатор на Python»
+          <b>Оригинальный источник:</b> «lisp.py»
         </div>
         <a class="btn solid" href="http://khamidou.com/compilers/lisp.py/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-lispy-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,56 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Lispy Норвига: интерпретатор Scheme-подобного Lisp на Python — парадигма eval за 100 строк.</p>
+      <h2>Знакомство</h2>
+        <p>lisp.py — интерпретатор Lisp в несколько десятков строк Python, вмещающий главные уроки написания интерпретаторов: tokenizer, parser, evaluator с окружением и поддержку определения функций через <code>lambda</code> или <code>def</code>, условия <code>if</code> и базовые операторы.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>S-выражения</li>
-          <li>Eval с окружением</li>
-          <li>Стандартные процедуры</li>
-          <li>Практические расширения</li>
-        </ul>
+      <h2>Структура кода</h2>
+        <p>Код разбит на три аккуратные части: <code>tokenize</code> (превращение текста в список), <code>parse</code> (построение дерева рекурсией) и <code>eval</code> (выполнение с окружением). Проект написан так, чтобы его можно было читать напрямую как «обучающий интерпретатор» — без внешних зависимостей, только стандартный Python.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Норвиг показывает искусство краткости: весь интерпретатор — 100 строк. Чистое понимание eval.</p>
-        <p>Полный eval на Python:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def eval(x, env=global_env):
-    if isa(x, Symbol):    return env[x]
-    if not isa(x, list):  return x
-    if x[0] == "quote":   return x[1]
-    op, *args = x
-    return eval(op, env)(*[eval(a, env) for a in args])</code></pre>
+      <h2>Пример кода: сердце интерпретатора</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def eval(x, env):
+    if type(x) is int:                    # число: само значение
+        return x
+
+    if type(x) is str:                    # символ: прочитать из окружения
+        return env[x]
+
+    if x[0] == &#x27;quote&#x27;:
+        return x[1]
+
+    if x[0] == &#x27;if&#x27;:                      # условие: только правильная ветка
+        (_, test, true, false) = x
+        return eval(true, env) if eval(test, env) else eval(false, env)
+
+    if x[0] == &#x27;lambda&#x27;:                  # lambda: построение closure
+        (_, params, body) = x
+        return Lambda(params, body, env)
+
+    if x[0] == &#x27;define&#x27;:                  # определение переменной
+        (_, name, value) = x
+        env[name] = eval(value, env)
+        return None
+
+    # вызов функции: вычисляем оператор и аргументы
+    op = eval(x[0], env)
+    args = [eval(arg, env) for arg in x[1:]]
+    return apply(op, args, env)</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Lispy — обязательный этап: 100 строк, которые навсегда меняют представление о языках.</p>
+      <h2>Что ещё узнаете</h2>
+        <p>Через <code>apply</code> и структуру <code>Lambda</code>, хранящую окружение определения, вы на практике увидите понятие closure — то, что делает функции Lisp мощными. Дальше можно добавить <code>let</code>, <code>begin</code> и даже простой GC (по статье «Baby's First Garbage Collector»).</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Небольшой, но полный проект для старта в написании интерпретаторов на Python: быстрый, на все базовые темы и удобный для практики. Если хотите увидеть тот же уровень с большей глубиной, следующий шаг — «lispy» Норвига (90 строк!).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Lispy: Lisp-интерпретатор на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Lispy: Lisp-интерпретатор на Python» принадлежит автору оригинала (khamidou). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (khamidou). Читайте оригинал на
         <a href="http://khamidou.com/compilers/lisp.py/" target="_blank" rel="noopener">http://khamidou.com/compilers/lisp.py/</a>.
       </div>
     </article>

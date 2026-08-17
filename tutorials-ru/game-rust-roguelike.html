@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Рогалик на Rust»
+          <b>Оригинальный источник:</b> «Roguelike Tutorial in Rust + tcod»
         </div>
         <a class="btn solid" href="https://tomassedovic.github.io/roguelike-tutorial/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-rust-roguelike.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,73 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Рогалик на Rust: BSP-генерация подземелий, FOV и пошаговый бой — крупный проект с гарантиями типов.</p>
+      <h2>Об обучении</h2>
+        <p>Эта известная серия строит классический roguelike в стиле Roguebasin: ASCII-сетка, случайные подземелья, движение клавишами, <b>поле зрения</b>, <b>поиск пути</b> и монстры. Rust-версия — концептуальный перевод знаменитого Python-туториала (python/libtcod), и каждая часть доступна и в блоге, и в GitHub-репозитории (<code>tomassedovic/roguelike-tutorial</code>).</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы раньше не делали roguelike, сначала посмотрите Python-версию (rogueliketutorials.com); эта версия предполагает знание концепций и фокусируется на их переводе на Rust.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта частей</h2>
         <ul>
-          <li>Генерация подземелий (BSP)</li>
-          <li>Поле зрения</li>
-          <li>Монстры</li>
-          <li>Типовой игровой цикл</li>
+          <li>Настройка проекта и отображение «@»</li>
+          <li>Движение клавишами и ввод с клавиатуры/мыши</li>
+          <li>Генерация подземелья (комнаты, коридоры и тоннели)</li>
+          <li>Поле зрения (FOV) с алгоритмом</li>
+          <li>Монстры и простой ИИ (преследование)</li>
+          <li>Сохранение через serde, предметы и пошаговый цикл</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Пример кода</h2>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">use tcod::console::*;
+use tcod::colors;
+
+// Главная структура игры: игрок + карта + консоль
+struct Game {
+    player: Player,
+    map: Map,
+}
+
+// Главный цикл с tcod
+fn main() {
+    let mut root = Root::initializer()
+        .font(&quot;arial10x10.png&quot;, FontLayout::Tcod)
+        .font_type(FontType::Greyscale)
+        .size(SCREEN_WIDTH, SCREEN_HEIGHT)
+        .title(&quot;Roguelike на Rust&quot;)
+        .init();
+
+    let mut con = Offscreen::new(SCREEN_WIDTH, SCREEN_HEIGHT);
+    let mut game = Game::new();
+
+    while !root.window_closed() {
+        // Отрисовка карты и игрока на con
+        game.render(&amp;mut con);
+
+        // Копирование con в root и показ
+        blit(&amp;con, (0, 0), (SCREEN_WIDTH, SCREEN_HEIGHT), &amp;mut root, (0, 0), 1.0);
+        root.flush();
+
+        // Ввод: пересчёт поля зрения при каждом движении
+        let key = root.wait_for_keypress(true);
+        game.handle_key(key);
+    }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Самый полный Rust-порт всем известного roguelike-туториала.</li>
+          <li>Подходит тем, кто знает Rust и хочет попрактиковаться в деле.</li>
+          <li>Код на GitHub вместе с инструкциями по установке и запуску.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Рогалик на Rust — сочетание алгоритмов и строгости: компилятор ловит ошибки соседств и состояний до запуска.</p>
-        <p>Обработка хода игрока — перечисление:</p>
-        <pre class="code"><span class="lang-tag">Rust</span><code>enum PlayerAction { Move(Direction), Wait, Quit }
-// чистый ввод -&gt; действие, компилятор знает все варианты</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Roguelike на Rust — беттест надёжности: вы увидите, как типы помогают строить крупные игры.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Рогалик на Rust» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Рогалик на Rust» принадлежит автору оригинала (Томаш Седович (Tomáš Sedovič)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Томаш Седович (Tomáš Sedovič)). Читайте оригинал на
         <a href="https://tomassedovic.github.io/roguelike-tutorial/" target="_blank" rel="noopener">https://tomassedovic.github.io/roguelike-tutorial/</a>.
       </div>
     </article>

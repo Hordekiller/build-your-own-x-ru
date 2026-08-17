@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «LLM с нуля: как устроены большие языковые модели»
+          <b>Оригинальный источник:</b> «Build a Large Language Model (From Scratch)»
         </div>
         <a class="btn solid" href="https://github.com/rasbt/LLMs-from-scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/ai-llm-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,56 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Курс по созданию большой языковой модели с нуля: токенизация, эмбеддинги, трансформер, обучение на текстах и генерация — полный путь от корпуса текстов до модели, умеющей говорить.</p>
+      <h2>О проекте</h2>
+        <p>Этот репозиторий содержит код разработки, предобучения (pretraining) и тонкой настройки (finetuning) большой языковой модели, похожей на GPT, и является официальным кодом книги <a href="https://amzn.to/4fqvn0D" target="_blank" rel="noopener">Build a Large Language Model (From Scratch)</a> Себастьяна Рашки.</p>
+        <p>В этой книге вы узнаете, как большие языковые модели (LLM) работают изнутри — написав их с нуля, шаг за шагом. Автор ведёт вас по пути создания собственной LLM, объясняя каждый шаг ясным текстом, диаграммами и примерами.</p>
+        <p>Методика обучения и разработки небольшой, но рабочей модели в учебных целях — тот же подход, что используется при создании больших базовых моделей, например моделей, лежащих в основе ChatGPT. Кроме того, в книге есть код загрузки весов более крупных предобученных моделей для тонкой настройки.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Оглавление</h2>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">Глава</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">Название</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">Исходный код</th></tr>
+          </thead>
+          <tbody>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 1</td><td style="padding:8px;border-bottom:1px solid var(--line)">Понимание больших языковых моделей</td><td style="padding:8px;border-bottom:1px solid var(--line)">— (без кода)</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 2</td><td style="padding:8px;border-bottom:1px solid var(--line)">Работа с текстовыми данными</td><td style="padding:8px;border-bottom:1px solid var(--line)">ch02.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 3</td><td style="padding:8px;border-bottom:1px solid var(--line)">Программирование механизмов внимания (Attention)</td><td style="padding:8px;border-bottom:1px solid var(--line)">ch03.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 4</td><td style="padding:8px;border-bottom:1px solid var(--line)">Реализация модели GPT с нуля</td><td style="padding:8px;border-bottom:1px solid var(--line)">ch04.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 5</td><td style="padding:8px;border-bottom:1px solid var(--line)">Предобучение на немаркированных данных</td><td style="padding:8px;border-bottom:1px solid var(--line)">ch05.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 6</td><td style="padding:8px;border-bottom:1px solid var(--line)">Тонкая настройка для классификации текста</td><td style="padding:8px;border-bottom:1px solid var(--line)">ch06.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Глава 7</td><td style="padding:8px;border-bottom:1px solid var(--line)">Тонкая настройка для следования инструкциям</td><td style="padding:8px;border-bottom:1px solid var(--line)">ch07.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Приложение A</td><td style="padding:8px;border-bottom:1px solid var(--line)">Знакомство с PyTorch</td><td style="padding:8px;border-bottom:1px solid var(--line)">code-part1.ipynb</td></tr>
+            <tr><td style="padding:8px;border-bottom:1px solid var(--line)">Приложение E</td><td style="padding:8px;border-bottom:1px solid var(--line)">Низкозатратная тонкая настройка с LoRA</td><td style="padding:8px;border-bottom:1px solid var(--line)">appendix-E.ipynb</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section>
+      <h2>Предпосылки</h2>
         <ul>
-          <li>Пайплайн LLM: токены, эмбеддинги, слои</li>
-          <li>Архитектура трансформера: внимание и позиции</li>
-          <li>Обучение: предсказание следующего токена</li>
-          <li>Генерация текста и декодирование</li>
+          <li>Самый важный предмет — прочный фундамент программирования на Python</li>
+          <li>Знакомство с глубокими нейронными сетями поможет, так как LLM строятся на этих архитектурах</li>
+          <li>Книга реализует весь код с нуля — без внешних LLM-библиотек, только с PyTorch; знание основ PyTorch полезно (краткое введение есть в приложении A)</li>
+        </ul>
+        <h3>Требования к оборудованию</h3>
+        <p>Код основных глав рассчитан на выполнение на обычных ноутбуках за разумное время и не требует специального оборудования; при наличии GPU код автоматически использует его.</p>
+        <h3>Загрузка репозитория</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">git clone --depth 1 https://github.com/rasbt/LLMs-from-scratch.git</code></pre>
+      </section>
+      <section>
+      <h2>Дополнительные материалы</h2>
+        <ul>
+          <li><strong>Видеокурс:</strong> 17-часовой 15-минутный видеокурс, в котором автор по шагам пишет код каждой главы</li>
+          <li><strong>Книга-продолжение:</strong> «Build A Reasoning Model (From Scratch)» — продолжение этой книги о рассуждении, обучении с подкреплением и дистилляции</li>
+          <li><strong>Упражнения:</strong> в каждой главе есть упражнения; ответы — в приложении C и блокнотах exercise-solutions</li>
+          <li><strong>Бонусные материалы:</strong> BPE-токенизатор с нуля, KV Cache, альтернативы вниманию (GQA, MLA, SWA), архитектуры Llama 3.2, Qwen3, Gemma 3 с нуля, DPO для выравнивания и др.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>LLM учится предсказывать следующий токен: увидев много текста, модель выучивает статистические закономерности языка. Трансформер обрабатывает последовательности через механизм внимания — все современные NLP-модели построены на нём.</p>
-        <p>Внимание в миниатюре — веса между токенами:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code># Attention(Q,K,V): вес пары токенов из их векторов
-scores = (Q @ K.T) / sqrt(d)
-weights = softmax(scores, dim=-1)
-out = weights @ V</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>ChatGPT и все языковые интерфейсы — это масштабированный трансформер: собрав мини-LLM, вы поймёте, почему модели «воображают», и сможете читать статьи об ИИ на профессиональном языке.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «LLM с нуля: как устроены большие языковые модели» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «LLM с нуля: как устроены большие языковые модели» принадлежит автору оригинала (Себастьян Рашка (Sebastian Raschka)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Себастьян Рашка (Sebastian Raschka)). Читайте оригинал на
         <a href="https://github.com/rasbt/LLMs-from-scratch" target="_blank" rel="noopener">https://github.com/rasbt/LLMs-from-scratch</a>.
       </div>
     </article>

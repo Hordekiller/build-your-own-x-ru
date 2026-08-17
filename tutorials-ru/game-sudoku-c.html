@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Судоку на C с девятью командами»
+          <b>Оригинальный источник:</b> ««Programming a Sudoku Solver in C» — плейлист»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLkTXsX7igf8edTYU92nU-f5Ntzuf-RKvW" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-sudoku-c.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Генератор и решатель судоку на C: рекурсивный поиск, проверки и CLI — головоломка, решаемая алгоритмом.</p>
+      <h2>Об обучении</h2>
+        <p>Судоку — классическая «интеллектуальная игра», и создание её решателя — отличная практика <b>рекурсии</b> и алгоритма <b>backtracking</b> на C. В этом плейлисте создаётся программа, которая читает любую доску судоку с ввода и решает её — с построчным объяснением логики.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> backtracking — та же базовая техника, что используется в решении головоломок, поиске пути (например, робот в лабиринте) и даже в шахматных движках — учить её на судоку очень наглядно.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Представление сетки</li>
-          <li>Проверка валидности</li>
-          <li>Решение поиском</li>
-          <li>Генерация задачи</li>
-        </ul>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; весь плейлист — по ссылке на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/playlist?list=PLkTXsX7igf8edTYU92nU-f5Ntzuf-RKvW" target="_blank" rel="noopener">▶ Смотреть плейлист «Programming a Sudoku Solver in C»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Судоку решается рекурсией: попробовать цифру, проверить, продолжить — возвратом к перебору. Генерация — та же логика в обратную сторону.</p>
-        <p>Базовая проверка валидности клетки:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>int valid(int g[9][9], int r, int c, int v) {
-    for (int i = 0; i &lt; 9; i++)
-        if (g[r][i] == v || g[i][c] == v) return 0;
-    // проверка блока 3x3...
-    return 1;
+      <h2>Основной алгоритм</h2>
+        <p>Сердце программы — рекурсивная функция решения, реализуемая в серии:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Доска судоку 9×9 — пустая клетка обозначена 0
+int board[9][9];
+
+// Проверка, допустимо ли разместить num в (row, col)
+int is_safe(int row, int col, int num) {
+  // Проверка строки и столбца
+  for (int i = 0; i &lt; 9; i++) {
+    if (board[row][i] == num || board[i][col] == num) return 0;
+  }
+  // Проверка квадрата 3×3
+  int box_r = (row / 3) * 3, box_c = (col / 3) * 3;
+  for (int i = 0; i &lt; 3; i++)
+    for (int j = 0; j &lt; 3; j++)
+      if (board[box_r + i][box_c + j] == num) return 0;
+  return 1;
+}
+
+// Рекурсивное решение с backtracking
+int solve(void) {
+  for (int row = 0; row &lt; 9; row++) {
+    for (int col = 0; col &lt; 9; col++) {
+      if (board[row][col] == 0) {         // найдена пустая клетка
+        for (int num = 1; num &lt;= 9; num++) {
+          if (is_safe(row, col, num)) {
+            board[row][col] = num;        // предположи
+            if (solve()) return 1;        // продолжай — решено?
+            board[row][col] = 0;          // не вышло → вернись (backtrack)
+          }
+        }
+        return 0;                         // ни одно число не подошло
+      }
+    }
+  }
+  return 1; // все клетки заполнены — решено
 }</code></pre>
+        <p>Этого простого алгоритма мгновенно хватает почти для всех обычных судоку. В видео также разбираются чтение ввода из файла, отображение доски и простые оптимизации (например, начало с клетки с наименьшим числом вариантов).</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Головоломки — учебник алгоритмов: судоку на C покажет поиск, отсечение и генерацию в компактном виде.</p>
+      <h2>Итоги</h2>
+        <p>Проект короткий и сфокусированный — укладывается в один вечер; итог: глубокое понимание backtracking и хорошая практика C. Для продолжения тот же алгоритм можно применить к игре «лабиринт» или «кубик Рубика».</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Судоку на C с девятью командами» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLkTXsX7igf8edTYU92nU-f5Ntzuf-RKvW" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLkTXsX7igf8edTYU92nU-f5Ntzuf-RKvW</a>.
       </div>
     </article>

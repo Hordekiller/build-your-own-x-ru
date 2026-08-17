@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Собственный шелл на Rust»
+          <b>Оригинальный источник:</b> «Build Your Own Shell using Rust»
         </div>
         <a class="btn solid" href="https://www.joshmcguigan.com/blog/build-your-own-shell-rust/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/build-your-own-shell-rust.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,133 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Шелл на Rust: цикл, разбор, пайпы и сигналы — безопасный системный интерпретатор без паники.</p>
+      <h2>Что такое шелл?</h2>
+        <p>Шелл — это программа, которая позволяет управлять компьютером; в основном это делается путём упрощения запуска других программ. Но сам по себе шелл — не интерактивная программа! Большинство пользователей взаимодействует с шеллом через «эмулятор терминала»:</p>
+        <blockquote>Эмулятор терминала (который обычно называют просто «терминал») — «это просто окно». Он запускает текстовую программу, которой по умолчанию является ваш шелл входа. Когда вы печатаете в окне, терминал рисует символы в окне и точно так же отправляет их в stdin шелла; а вывод stdout и stderr шелла идёт в терминал, и терминал рисует его в окне. — пользователь geirha</blockquote>
+        <p>В этом уроке мы напишем собственный шелл и запустим его в обычном терминале. (Примеры не работают в Rust Playground, так как там нет поддержки stdin или длительных процессов.)</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Системы и типы</li>
-          <li>Разбор и выполнения</li>
-          <li>Пайпы безопасно</li>
-          <li>Обработка завершения</li>
-        </ul>
+      <h2>Точка старта — простейший возможный шелл</h2>
+        <p>Достаточно нескольких строк Rust: <code>stdin().read_line</code> блокируется, пока пользователь не нажмёт Enter, и затем записывает весь ввод (вместе с новой строкой) в нашу строку; через <code>input.trim()</code> убираем новую строку и выполняем команду:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">fn main() {
+    let mut input = String::new();
+    stdin().read_line(&amp;mut input).unwrap();
+
+    let command = input.trim();   // read_line добавляет завершающую новую строку
+
+    Command::new(command)
+        .spawn()
+        .unwrap();
+}</code></pre>
+        <p>После <code>cargo run</code> вы увидите курсор, ждущий ввода; наберите <code>ls</code> — содержимое папки будет выведено, и шелл завершится.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Rust добавляет гарантии: нет незакрытых дескрипторов, типовые ошибки видны. Шелл на Rust — универсум системного кода.</p>
-        <p>Запуск процесса с пайпом в Rust:</p>
-        <pre class="code"><span class="lang-tag">Rust</span><code>let mut cmd = Command::new("ls");
-cmd.stdout(Stdio::piped());
-let output = cmd.output()?;
-// безопасно и предсказуемо</code></pre>
+      <h2>Несколько команд и аргументы</h2>
+        <p>Чтобы шелл не завершался после одной команды, помещаем код в <code>loop</code> и вызываем <code>wait</code> для каждого дочернего процесса, чтобы новое приглашение не печаталось до завершения текущего процесса (а чтобы отличать ввод пользователя от вывода процессов, печатаем <code>&gt;</code>, который нужно явно сбросить через <code>stdout().flush()</code>):</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">fn main() {
+    loop {
+        print!(&quot;&gt; &quot;);
+        stdout().flush();
+
+        let mut input = String::new();
+        stdin().read_line(&amp;mut input).unwrap();
+
+        let command = input.trim();
+
+        let mut child = Command::new(command).spawn().unwrap();
+        child.wait();   // пока эта команда не завершится, следующую не принимай
+    }
+}</code></pre>
+        <p>Теперь <code>ls -a</code> падает, потому что наш шелл не знает об аргументах и пытается запустить программу с именем <code>ls -a</code>. Решение: разбиваем ввод по пробелам; всё до первого пробела — имя команды, остальное — аргументы:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">let mut parts = input.trim().split_whitespace();
+let command = parts.next().unwrap();
+let args = parts;
+
+let mut child = Command::new(command)
+    .args(args)
+    .spawn()
+    .unwrap();
+child.wait();</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Безопасный системный код — тренд и потребность: rust-шелл покажет, как современный язык меняет системную разработку.</p>
+      <h2>Встроенные команды — почему cd нужно реализовывать в шелле</h2>
+        <p>Есть команды, которые шелл не может поручить другому процессу: они касаются внутреннего состояния самого шелла и должны быть реализованы им. Самый известный пример — <code>cd</code> (вот две ссылки с объяснением: <a href="https://unix.stackexchange.com/a/38809" target="_blank" rel="noopener">почему cd должна быть встроенной</a> и <a href="https://unix.stackexchange.com/a/38819" target="_blank" rel="noopener">почему тем не менее существует программа cd</a>). Реализация:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">match command {
+    &quot;cd&quot; =&gt; {
+        // если путь не задан, по умолчанию &#x27;/&#x27;
+        let new_dir = args.peekable().peek().map_or(&quot;/&quot;, |x| *x);
+        let root = Path::new(new_dir);
+        if let Err(e) = env::set_current_dir(&amp;root) {
+            eprintln!(&quot;{}&quot;, e);
+        }
+    },
+    command =&gt; {
+        let mut child = Command::new(command).args(args).spawn().unwrap();
+        child.wait();
+    }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Обработка ошибок и команда exit</h2>
+        <p>Если ввести несуществующую команду, прежние шеллы падали. Здесь ошибка печатается достойно, и пользователю разрешается ввести другую команду. Поскольку «плохая команда» до этого была лёгким способом закрыть шелл, добавляем ещё одну встроенную команду — <code>exit</code>:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">&quot;exit&quot; =&gt; return,
+command =&gt; {
+    let child = Command::new(command).args(args).spawn();
+    match child {
+        Ok(mut child) =&gt; { child.wait(); },
+        Err(e) =&gt; eprintln!(&quot;{}&quot;, e),  // достойная обработка неудачного ввода
+    };
+}</code></pre>
+      </section>
+      <section>
+      <h2>Каналы (пайпы)</h2>
+        <p>Работать в шелле без каналов трудно. <code>|</code> говорит шеллу направить вывод первой команды во ввод второй; например, <code>ls | grep Cargo</code>: (1) ls выдаёт список файлов, (2) шелл передаёт этот список в grep, (3) grep фильтрует и печатает только файлы, содержащие «Cargo». Базовая реализация: разбиваем ввод по <code>" | "</code> (с peekable, чтобы знать, что мы на последней команде), и вывод каждого процесса становится stdin следующего:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">let mut commands = input.trim().split(&quot; | &quot;).peekable();
+let mut previous_command = None;
+
+while let Some(command) = commands.next() {
+    let mut parts = command.trim().split_whitespace();
+    let command = parts.next().unwrap();
+    let args = parts;
+
+    match command {
+        &quot;cd&quot; =&gt; { /* ... */ previous_command = None; },
+        &quot;exit&quot; =&gt; return,
+        command =&gt; {
+            let stdin = previous_command
+                .map_or(Stdio::inherit(),
+                        |output: Child| Stdio::from(output.stdout.unwrap()));
+
+            let stdout = if commands.peek().is_some() {
+                Stdio::piped()       // за этой командой есть ещё одна
+            } else {
+                Stdio::inherit()     // последняя команда; в stdout шелла
+            };
+
+            let output = Command::new(command)
+                .args(args).stdin(stdin).stdout(stdout).spawn();
+
+            match output {
+                Ok(output) =&gt; { previous_command = Some(output); },
+                Err(e) =&gt; { previous_command = None; eprintln!(&quot;{}&quot;, e); },
+            };
+        }
+    }
+}
+
+if let Some(mut final_command) = previous_command {
+    final_command.wait();  // дождаться завершения последней команды
+}</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Меньше чем за 100 строк Rust мы построили шелл, пригодный для многих повседневных задач, но у настоящего шелла возможностей гораздо больше. Онлайн-руководство bash от GNU со <a href="https://www.gnu.org/software/bash/manual/html_node/Basic-Shell-Features.html" target="_blank" rel="noopener">списком возможностей шелла</a> — отличная отправная точка. Автор подчёркивает, что это учебный проект, и везде, где простота конфликтовала с надёжностью, он выбирал простоту. Код этого шелла (bubble-shell) доступен на <a href="https://github.com/JoshMcguigan/bubble-shell" target="_blank" rel="noopener">github.com/JoshMcguigan/bubble-shell</a>.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Собственный шелл на Rust» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Собственный шелл на Rust» принадлежит автору оригинала (Джош Макгиган (Josh Mcguigan)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Джош Макгиган (Josh Mcguigan)). Читайте оригинал на
         <a href="https://www.joshmcguigan.com/blog/build-your-own-shell-rust/" target="_blank" rel="noopener">https://www.joshmcguigan.com/blog/build-your-own-shell-rust/</a>.
       </div>
     </article>

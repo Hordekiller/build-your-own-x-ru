@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Хак виртуальной памяти»
+          <b>Оригинальный источник:</b> «Hack the Virtual Memory — Chapter 0: C strings &amp; /proc»
         </div>
         <a class="btn solid" href="https://blog.holbertonschool.com/hack-the-virtual-memory-c-strings-proc/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-hack-virtual-memory.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,66 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Виртуальная память своими руками: страницы, таблицы и подкачка — защита и абстракция памяти.</p>
+      <h2>Идея серии</h2>
+        <p>«Hack the Virtual Memory» — серия учебных статей, показывающих виртуальную память «руками пригодной к взлому»: вместо сухой теории мы вскрываем память реально работающего процесса инструментами Linux и изменяем её. Глава 0 начинается просто и в то же время удивительно — с C-строк и файловой системы /proc.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта памяти процесса</h2>
+        <p>Каждый процесс Linux имеет «виртуальное адресное пространство» со стандартными секциями: text (код программы), data (глобальные переменные), stack (стек) и heap (динамическое выделение). C-строковые переменные в зависимости от способа определения попадают в разные секции:</p>
         <ul>
-          <li>Виртуальная память</li>
-          <li>Страницы и таблицы</li>
-          <li>Подкачка</li>
-          <li>Преимущества</li>
+          <li>Строковый литерал (например, "hello") — в секцию text (только для чтения).</li>
+          <li>Глобальный массив (например, char s[] = "…" на глобальном уровне) — в секцию data.</li>
+          <li>Локальная переменная — на стек (stack).</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Виртуальная память даёт процессам иллюзию владения всей памятью: таблицы страниц переводят адреса.</p>
-        <p>Обработка страничной ошибки:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void page_fault(uint32_t addr) {
-    // страница не загружена — грузим из swap
-    load_page(addr);
-    __asm__("iret"); // возвращаем управление
+      <h2>Окно в память: /proc/pid/mem</h2>
+        <p>Ключевой момент: Linux выставляет память любого процесса через файл /proc/&lt;pid&gt;/mem. Читая этот файл (как обычный файл) и пользуясь /proc/&lt;pid&gt;/maps (картой секций), можно увидеть содержимое памяти живого процесса и даже перезаписать его:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Чтение одного символа из памяти живого процесса
+int read_byte(pid_t pid, long addr) {
+    char path[64];
+    snprintf(path, sizeof path, &quot;/proc/%d/mem&quot;, pid);
+
+    int fd = open(path, O_RDONLY);
+    char byte;
+    pread(fd, &amp;byte, 1, addr);   // чтение одного байта по заданному адресу
+    close(fd);
+    return byte;
 }</code></pre>
+        <p>Если программа не остановлена через ptrace или attach, открытие /proc/pid/mem может дать ошибку EIO — это само по себе важный урок о правах доступа и состоянии остановки процесса.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Виртуальная память — сердце ОС: этот хак покажет страницы, swap и защиту на практике.</p>
+      <h2>Настоящий хак: изменение строки в живом процессе</h2>
+        <p>Знаменитый пример главы: программа печатает на экран строку; мы находим её адрес в карте памяти, затем записью в /proc/pid/mem меняем её содержимое — и при следующей печати программа показывает нашу строку:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Изменение одного байта строки живого процесса
+int write_byte(pid_t pid, long addr, char value) {
+    char path[64];
+    snprintf(path, sizeof path, &quot;/proc/%d/mem&quot;, pid);
+
+    int fd = open(path, O_WRONLY);
+    pwrite(fd, &amp;value, 1, addr);
+    close(fd);
+    return 0;
+}</code></pre>
+        <p>Чтобы найти точный адрес, подключаем GDB: x/s показывает адрес строки, а p/x — адреса переменных.</p>
+      </section>
+      <section>
+      <h2>Что мы узнаём</h2>
+        <ul>
+          <li><b>Реальную разницу между секциями памяти</b> (stack / data / text) прямым наблюдением.</li>
+          <li><b>Практическое применение /proc</b> и понятия PID и прав доступа.</li>
+          <li><b>Концепцию виртуальных и физических адресов</b> — почему адреса в maps «виртуальные».</li>
+          <li><b>Инструменты</b>, которыми пользуются разработчики отладчиков и инструментов для взлома памяти.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> у серии есть и другие главы (виртуальные адреса, внутренности malloc и т.д.); глава 0 благодаря простоте и наглядности — лучший вход в мир управления памятью Linux.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Хак виртуальной памяти» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Хак виртуальной памяти» принадлежит автору оригинала (Блог Holberton School). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Блог Holberton School). Читайте оригинал на
         <a href="https://blog.holbertonschool.com/hack-the-virtual-memory-c-strings-proc/" target="_blank" rel="noopener">https://blog.holbertonschool.com/hack-the-virtual-memory-c-strings-proc/</a>.
       </div>
     </article>

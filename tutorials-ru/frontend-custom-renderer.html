@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Custom Renderer для React»
+          <b>Оригинальный источник:</b> «Building a Custom React Renderer»
         </div>
         <a class="btn solid" href="https://youtu.be/CGpMlWVcHok" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-custom-renderer.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,98 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Как написать свой рендерер для React: Reconciler, host config и интеграция — рендерим свои компоненты куда угодно.</p>
+      <h2>1. О докладе</h2>
+        <p>Софи Альперт в этом докладе с React Conf 2019 показывает, как с помощью официального пакета <code>react-reconciler</code> построить собственный React-рендерер. Она оставляет «мозг» React (алгоритм сравнения и планирования) как есть и меняет только «руки»: <b>HostConfig</b>, который говорит, как узлы создаются, обновляются и удаляются. Результат её работы — <b>React DOM Mini</b>: полноценный рендерер для DOM, запускающий настоящие React-компоненты.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> код доклада и учебный проект доступны в <a href="https://github.com/zaki-yama-labs/building-a-custom-react-renderer" target="_blank" rel="noopener">репозитории zaki-yama-labs</a>, а похожие примеры (такие как react-dom-mini) — на GitHub; отлично подходит для практики.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Смотрите видео</h2>
+        <p>Это видео-доклад, и его содержание не размещается на этой странице; прямая ссылка на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://youtu.be/CGpMlWVcHok" target="_blank" rel="noopener">▶ Смотреть видео «Building a Custom React Renderer»</a>
+        </div>
+      </section>
+      <section>
+      <h2>3. Главная идея: что такое HostConfig?</h2>
+        <p>Каждый React-рендерер состоит из двух частей: <b>reconciler</b> (решает, «что изменить») и <b>renderer</b> («применяет» решение). Интерфейс между ними — именно <code>HostConfig</code>. В докладе Софи создаёт рендерер, передавая объект с функциями в <code>react-reconciler</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// точка входа: создание reconciler с нашими функциями платформы
+let reconciler = ReactReconciler({
+  // «мутационный режим»: наша среда похожа на DOM (есть appendChild и removeChild)
+  supportsMutation: true,
+
+  // создание узла в целевой среде
+  createInstance(type, props, rootContainerInstance, hostContext, internalInstanceHandle) {
+    const el = document.createElement(type);
+    return el;
+  },
+
+  // создание текстового узла
+  createTextInstance(text) {
+    return document.createTextNode(text);
+  },
+
+  // присоединение узлов
+  appendChildToContainer(container, child) {
+    container.appendChild(child);
+  },
+  appendChild(parent, child) {
+    parent.appendChild(child);
+  },
+  appendInitialChild(parent, child) {
+    parent.appendChild(child);
+  },
+
+  // удаление и перемещение
+  removeChildFromContainer(container, child) {
+    container.removeChild(child);
+  },
+  removeChild(parent, child) {
+    parent.removeChild(child);
+  },
+  insertInContainerBefore(container, child, before) {
+    container.insertBefore(child, before);
+  },
+  insertBefore(parent, child, before) {
+    parent.insertBefore(child, before);
+  },
+
+  // обновление: вычисление и применение изменений props
+  prepareUpdate(instance, type, oldProps, newProps) {
+    // вычисли разницу; если её нет — верни null
+    return computeDiff(oldProps, newProps);
+  },
+  commitUpdate(instance, updatePayload, type, oldProps, newProps) {
+    applyUpdatePayload(instance, updatePayload);
+  },
+
+  // контрактные вспомогательные функции
+  shouldSetTextContent() { return false; },
+  getChildHostContext() { return {}; },
+  getPublicInstance(instance) { return instance; },
+  getRootHostContext() { return {}; },
+  prepareForCommit() {},
+  resetAfterCommit() {},
+  finalizeInitialChildren() {},
+});</code></pre>
+        <p>Когда эти функции готовы, рендерер запускается двумя вызовами: <code>createContainer</code> (создание корня) и <code>updateContainer</code> (начало рендера):</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const root = reconciler.createContainer(domElement, false);
+reconciler.updateContainer(&lt;App /&gt;, root, null, () =&gt; console.log(&#x27;рендер завершён&#x27;));</code></pre>
+      </section>
+      <section>
+      <h2>4. Почему этот доклад важен?</h2>
         <ul>
-          <li>Хост-конфигурация</li>
-          <li>Reconciler</li>
-          <li>Создание узлов</li>
-          <li>Обновления и события</li>
+          <li>Вы поймёте, как React Native, React Three Fiber и десятки других рендереров работают с одним общим «мозгом».</li>
+          <li>Настоящий код продакшен-рендереров (например, react-dom) очень сложен; минимальная версия сохраняет только концептуальный слой.</li>
+          <li>После этого видео прочитайте статью «Learn you some custom React renderers» с HackerNoon, чтобы увидеть ту же работу в письменном виде.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>React Reconciler — общий движок, а вы даёте host config: createInstance, insertBefore, commitUpdate. Так появляются React Native и react-konva.</p>
-        <p>Конфигурация хоста — протокол обмена:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>const HostConfig = {
-  createInstance(type) { return myRuntime.create(type); },
-  appendChildToContainer(c, child) { c.appendChild(child); },
-  // ...
-};</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Кастомный рендерер — профессиональный уровень фронтенда: урок откроет путь к расширениям, которые видит вся команда.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Custom Renderer для React» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Custom Renderer для React» принадлежит автору оригинала (Софи Альперт (Sophie Alpert)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Софи Альперт (Sophie Alpert)). Читайте оригинал на
         <a href="https://youtu.be/CGpMlWVcHok" target="_blank" rel="noopener">https://youtu.be/CGpMlWVcHok</a>.
       </div>
     </article>

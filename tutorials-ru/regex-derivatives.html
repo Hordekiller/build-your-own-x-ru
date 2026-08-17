@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Регекспы через производные (Brzozowski)»
+          <b>Оригинальный источник:</b> «Regular Expressions via Derivatives (dpk.io)»
         </div>
         <a class="btn solid" href="http://dpk.io/dregs/toydregs" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/regex-derivatives.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,354 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Производные Бжозовского: сопоставление regex через дифференцирование — элегантный алгоритм на JS.</p>
+      <h2>Введение</h2>
+        <p>Если вы, как большинство современных программистов, хоть раз в жизни писали регулярные выражения: короткие (а может, длинные), почти нечитаемые комбинации букв и символов, позволяющие проверить, похожа ли строка на ожидаемую.</p>
+        <p>Но задумывались ли вы, как можно написать программу, <em>сопоставляющую</em> регулярные выражения? Регулярные выражения — самая успешная форма декларативного программирования, но под капотом компьютеры остаются императивными существами. Должен быть способ сопоставлять их императивным кодом!</p>
+        <p>Эта статья показывает теорию одного из способов реализации регулярных выражений, а затем ведёт к построению игрушечного regex-движка на JavaScript в более-менее чисто функциональном стиле. Используем JavaScript, потому что это хороший язык-посредник, чей синтаксис знаком большинству программистов.</p>
+        <div class="callout note">
+          <strong>Замечание о представлении строк в JavaScript:</strong> строки JavaScript — массив UTF-16 code unit. Эти единицы работают до тех пор, пока не столкнётесь с эмодзи или китайским символом; тогда ваш код вдруг имеет дело лишь с частью символа. Наша реализация старается везде, где возможно, использовать codepoint и индексацию по codepoint.
+        </div>
+        <p>В конце есть упражнения для самостоятельной работы и список дополнительного чтения. Статья предполагает, что вы знакомы с использованием регулярных выражений в коде, но не глубоко с их историей или теорией.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Теоретический контекст</h2>
+        <p>Регулярные выражения, называемые также регулярными грамматиками, изобрёл около 1951 года математик Стивен Клини как способ формального описания множества строк внутри «регулярного языка». Позже Ноам Хомский заметил, что любой регулярный язык является также контекстно-свободным, поместив тем самым регулярные грамматики вниз иерархии Хомского. В строгом смысле регулярные выражения — математическая идея: регулярные языки — это множества языков, распознаваемых максимум одним конечным автоматом; проще говоря, строку всегда можно проверить на принадлежность регулярному языку одним проходом по её символам с памятью не больше самой строки.</p>
+        <p>Регулярные выражения, которые знают и любят современные программисты, впервые появились в Unix в 1969 году. Крупнейшее расширение возможностей произошло, когда Ларри Уолл изобрёл Perl. Perl добавил огромный набор новых возможностей и при этом старался не ломать синтаксическую совместимость со стандартными расширенными выражениями Unix. В результате синтаксис стал запутаннее, а с добавлением обратных ссылок, произвольных нулевой ширины проверок и рекурсивных групп выражения Perl фактически вышли за пределы строгого математического определения регулярной грамматики. Выражения усложнились и широко использовались для разбора языков, которые не были и никогда не могли быть регулярными. А перестав сопоставлять только регулярные языки, движки выражений из-за неэффективных стилей реализации, которые им пришлось принять для поддержки новых возможностей, стали смертельными ловушками производительности (ReDoS).</p>
+        <p>Эти проблемы породили частичную реакцию и попытки улучшить. Сам Ларри Уолл заявил, что Perl 6 полностью преобразит регулярные выражения. Тем временем создатели Unix строили новую операционную систему Plan 9 и решили пойти другим путём, исправив сломанное представление людей о сопоставлении regex: намеренно откатить синтаксис почти до выражений первой версии Unix. С таким regex можно сопоставить любой регулярный язык — ровно той же мощности, что POSIX ERE и даже Perl (кроме обратных ссылок и lookaround). Позже один из разработчиков Plan 9 создал проект re2 — реализацию большинства выражений Perl, но без возможностей, делавших их нерегулярными, так что их снова можно было сопоставлять без наихудшего экспоненциального времени.</p>
+      </section>
+      <section>
+      <h2>Терминология</h2>
+        <p>Чтобы все были на одной странице, вот термины для разных частей синтаксиса regex, которые я использую:</p>
         <ul>
-          <li>Производные</li>
-          <li>Символьное вычисление</li>
-          <li>Сопоставление</li>
-          <li>Элегантность</li>
+          <li><code>ab</code> — конкатенация двух regex <code>a</code> и <code>b</code></li>
+          <li><code>a|b</code> — альтернатива двух вариантов <code>a</code> и <code>b</code></li>
+          <li><code>a*</code> — повторение (точно: повторение минимум ноль раз)</li>
+          <li><code>a?</code> — необязательность <code>a</code></li>
         </ul>
+        <p>Наша игрушечная система регулярных выражений реализует только группировку, альтернативу и повторение ноль-или-более, плюс базовый поиск строки для литерального символа и джокера. Хотите верьте, хотите нет, но, кроме проверок нулевой ширины, только с этими возможностями можно сопоставить любое выражение POSIX (или даже любой PCRE без обратных ссылок) после применения подходящих преобразований.</p>
+        <pre class="code"><span class="lang-tag">Преобразования</span><code style="direction:ltr;text-align:left">синтаксис Perl/POSIX            эквивалент
+[abc]  (класс символов)    альтернатива символов класса (например, (a|b|c))
+a?     (необязательно)     альтернатива a с пустой строкой (то есть (a|))
+a+     (один и более)      aa*
+a{m,}  (минимум m раз)     m литеральных a, за которыми a*
+a{m,n} (между m и n раз)   m литеральных a, за которыми (n−m) раз a?
+a{,n}  (максимум n раз)    n раз a? литерально</code></pre>
+        <p>Обратите внимание: это не обязательно самый эффективный способ реализации; но на теоретическом уровне базовых возможностей синтаксиса достаточно. Мы также не реализуем проверки нулевой ширины, потому что они усложняют процесс, который в противном случае может предполагать: каждый сопоставляемый токен в выражении соответствует продвижению на один символ по входной строке.</p>
+        <p>Мы также не строим разборщик синтаксиса POSIX; вместо этого разрабатываем дружелюбную к JavaScript нотацию для regex. Две другие вещи остаются упражнениями: выяснение, сопоставляется ли конкретный regex с подстрокой входной строки (наш сопоставитель может лишь сказать, сопоставляется ли <em>целая</em> строка с <em>целым</em> regex), и извлечение подсовпадений.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Метод производных — альтернатива автоматам: выражение «производной» по символу ведёт к точному сопоставлению.</p>
-        <p>Производная по символу:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function derivative(re, c) {
-  // разбор по типу: буква, конкатенация, звёздочка
-  if (re.type === "literal") return re.c === c ? EPSILON : NULL;
-  // ...
+      <h2>Начнём снизу</h2>
+        <p>Вопреки общепринятой мудрости программного дизайна, предпочитающей проектирование сверху вниз, мы начинаем реализацию снизу и постепенно строим больше уровней абстракции, чтобы движок рос с нуля и на каждом шаге имел полезное и работающее поведение. Самый нижний слой системы — структура, в которую превращается входной regex.</p>
+        <h3>Теория</h3>
+        <p>Наш движок работает повторным вычислением <em>производной</em> выражения относительно входной строки. Производная выражения — его модифицированная версия после сопоставления одного символа. Пример:</p>
+        <pre class="code"><span class="lang-tag">Пример</span><code style="direction:ltr;text-align:left">шаг   вход (остаток)    regex (производная)
+0     abd               a(b|c)d
+      ... производная a(b|c)d относительно символа a ...
+1     bd                (b|c)d
+      ... производная (b|c)d относительно символа b ...
+2     d                 d
+      ... производная d относительно символа d ...
+3     (пусто)           (пусто)
+
+Поскольку и входная строка, и производная regex пусты, regex сопоставляется!</code></pre>
+        <p>Взятие производной regex относительно символа, с которого его сопоставление не начинается, порождает специальный пустой regex, не сопоставляющийся ни с чем. Обратите внимание, как мы движемся по входной строке один к одному, и каждый символ входной строки соответствует символу выражения. Поэтому шаблоны, которые мы хотим сопоставлять, представляем списком символов — а именно односвязным списком, у некоторых узлов которого есть дополнительные внешние указатели для представления альтернатив. Есть специальный элемент списка для regex пустой строки, который (теоретически) гарантированно сопоставляется с чем угодно и представляет полное сопоставление.</p>
+        <p>Это отлично работает, когда одна из альтернатив группы длиннее остальных; и даже когда обе альтернативы успешно дифференцируются относительно конкретного символа — просто возвращаем альтернативу из процесса дифференцирования.</p>
+        <h3>Практика</h3>
+        <p>Вместо того чтобы альтернативы существовали только как узлы с несколькими исходящими указателями в теории, на практике у нас будет специальный узел альтернативы в дереве, работающий с дифференцированием относительно нескольких возможных сопоставлений. Для начала создаём суперкласс узла, от которого наследуются два других типа узлов — символы и альтернативы. Помещаем метод <code>derive</code>, который большинство подклассов переопределяют.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class RegexpNode {
+    derive (char) {
+        return NeverMatches;
+    }
 }</code></pre>
-      </section>
+        <p>Также определяем объект <code>NeverMatches</code> (представляющий неудачное сопоставление) и <code>EmptyString</code> (представляющий успешное сопоставление) как непосредственные синглтон-экземпляры класса <code>RegexpNode</code>.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const EmptyString = new RegexpNode();
+const NeverMatches = new RegexpNode();</code></pre>
+        <p>Затем нужно определить два типа узлов, которые действительно сопоставляют. Класс <code>CharacterNode</code> — более базовый и содержит суть «списко-подобной» структуры, по которой мы идём при сопоставлении:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class CharacterNode extends RegexpNode {
+    constructor (char, next) {
+        super(); // JavaScript заставляет вызывать это во всех подклассах
+        this.char = char;
+        this.next = next;
+    }
 
+    derive (char) {
+        if (char === this.char) {
+            return this.next;
+        } else {
+            return NeverMatches;
+        }
+    }
+}</code></pre>
+        <p>Надеюсь, это ясно: по сути производная символьного узла — следующий узел списка, если символ, относительно которого дифференцируем, сопоставился; иначе пустой regex (<code>NeverMatches</code>).</p>
+        <p>Класс альтернативы чуть сложнее:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class AlternationNode extends RegexpNode {
+    constructor (alternatives) {
+        super();
+        let _alternatives = alternatives.filter((alt) =&gt; alt !== NeverMatches);</code></pre>
+        <p>Первое, что делаем в конструкторе, — фильтруем все альтернативы, являющиеся пустым regex. Может показаться странным передавать <code>NeverMatches</code> как альтернативу, но помните из теории: иногда мы порождаем <code>AlternationNode</code> как производную другого <code>AlternationNode</code>. Обработка этого случая здесь позволяет упростить реализацию <code>derive</code> ниже и гарантирует, что мы <em>никогда</em> не создаём невалидный узел альтернативы.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">        if (_alternatives.length === 0) {
+            return NeverMatches;
+        } else if (_alternatives.length === 1) {
+            return _alternatives[0];</code></pre>
+        <p>После фильтрации списка переданных конструктору альтернатив нужно провести проверку корректности. Если в итоге валидных альтернатив не осталось, мы должны были дифференцировать альтернативу, которая никогда не сопоставляется (например, сопоставляя строку <code>a</code> с regex <code>b|c</code>). Если осталась одна, можно вообще обойти структуру <code>AlternationNode</code> (как выше, когда сопоставляли <code>bbd</code> с <code>(bb|c)d</code> и получали <code>bd</code>).</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">        } else {
+            this.alternatives = _alternatives;
+        }
+        return this;
+    }</code></pre>
+        <p>Для обработки этих случаев используем прекрасную возможность ES6: при создании класса можно вернуть объект другого типа. Наконец, если валидных альтернатив всё ещё больше двух, создаём обычный экземпляр класса. Обратите внимание: в отличие от символьных узлов, здесь нет <code>next</code>; символьные узлы сами содержат указатель на то, что идёт после группы с альтернативой.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">    derive (char) {
+        return new AlternationNode(this.alternatives.map((alt) =&gt; alt.derive(char)));
+    }
+}</code></pre>
+        <p>Наконец, благодаря проверке корректности конструктора выше, производную альтернативы можно определить просто как альтернативу производных всех вариантов.</p>
+        <p>Повторения ещё нет, но мы уже можем сопоставлять настоящие regex. Более того, для типа языка, который мы только что реализовали, есть имя: бесзвёздочный язык (star-free), то есть regex без оператора <code>*</code>, гарантирующий завершение сопоставления. Как построить и проверить regex <code>a(b|c)d</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">let commonTail = new CharacterNode(&#x27;d&#x27;, EmptyString),
+    alternation = new AlternationNode([
+        new CharacterNode(&#x27;b&#x27;, commonTail),
+        new CharacterNode(&#x27;c&#x27;, commonTail)
+    ]),
+    head = new CharacterNode(&#x27;a&#x27;, alternation);
+
+head.derive(&#x27;a&#x27;); //=&gt; средний AlternationNode
+head.derive(&#x27;a&#x27;).derive(&#x27;b&#x27;); //=&gt; CharacterNode &#x27;d&#x27;
+head.derive(&#x27;a&#x27;).derive(&#x27;e&#x27;); //=&gt; NeverMatches
+head.derive(&#x27;a&#x27;).derive(&#x27;b&#x27;).derive(&#x27;d&#x27;); //=&gt; EmptyString; полное сопоставление</code></pre>
+        <p>Даже если вы сразу видите, как это работает, надеюсь, согласитесь: утомительно строить regex так и сопоставлять посимвольно! Позже перейдём к API более высокого уровня. А пока быстро взглянем на два других типа узлов: <code>AnyCharacterNode</code> и <code>RepetitionNode</code>.</p>
+        <p><code>AnyCharacterNode</code>, эквивалент <code>.</code> в классическом синтаксисе, подобен <code>CharacterNode</code>, но проще: он не сопоставляет конкретный символ, а любой; просто продвигает состояние сопоставления на шаг.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class AnyCharacterNode extends RegexpNode {
+    constructor (next) {
+        super();
+        this.next = next;
+    }
+
+    derive (char) { return this.next; }
+}</code></pre>
+        <p>Наконец, быстро вернёмся к теории, чтобы понять, как реализовать <code>RepetitionNode</code>. Предположим, есть regex <code>(abc)*d</code>, и мы хотим найти производную относительно символа «a». Полученная производная должна сопоставляться со строками вида «bc» и «bcabcabcabc…», поэтому ответ: <code>bc(abc)*d</code>. У повторения два входных указателя: от начального узла и от конца самого повторения к началу. В обеих точках можно попасть в узел «a» или в узел «d» — либо обойти повторение, либо выйти из него. Как и в любом циклическом связном списке, для построения такого узла приходится использовать побочный эффект. У <code>RepetitionNode</code> всегда будет два выходных указателя: на «голову» повторения (в примере выше <code>a</code>) и на узел после повторения, как обычно. Сам <code>RepetitionNode</code> появляется и в начале, и в конце повторения, чтобы обрабатывать и обход повторения, и выход из цикла.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class RepetitionNode extends RegexpNode {
+    constructor (next) {
+        super();
+        // head устанавливается позже корректным изменением
+        this.head = NeverMatches;
+        this.next = next;
+    }
+
+    derive (char) {
+        return new AlternationNode([
+            this.head.derive(char),
+            this.next.derive(char),
+        ]);
+    }
+}</code></pre>
+        <p>Прежде чем перейти к более дружелюбному API, протестируем его на «скомпилированном» вручную regex:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">let tail = new CharacterNode(&#x27;d&#x27;, EmptyString),
+    repetition = new RepetitionNode(tail),
+    repetitionBody = new CharacterNode(&#x27;a&#x27;, new CharacterNode(&#x27;b&#x27;, new CharacterNode(&#x27;c&#x27;, repetition)));
+
+// Это часть с побочным эффектом, устанавливающая цикл
+repetition.head = repetitionBody;
+
+repetition.derive(&#x27;a&#x27;); //=&gt; CharacterNode b
+repetition.derive(&#x27;d&#x27;); //=&gt; EmptyString; полное сопоставление
+let repeatedOnce = repetition.derive(&#x27;a&#x27;).derive(&#x27;b&#x27;).derive(&#x27;c&#x27;); //=&gt; снова тот же RepetitionNode
+repeatedOnce.derive(&#x27;a&#x27;) //=&gt; возврат к b
+repeatedOnce.derive(&#x27;d&#x27;) //=&gt; снова EmptyString</code></pre>
+        <p>Работает! Теперь перейдём к построению более приятного интерфейса функционального уровня.</p>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Математическая красота в коде: производные Бжозовского — редкая и захватывающая тема.</p>
+      <h2>Компилятор regex (без разборщика)</h2>
+        <p>Какой хороший способ писать regex в синтаксисе JavaScript? Давайте выйдем из рамок мышления, пленяющего нас в юниксоидном синтаксисе строк, и спроектируем способ построения regex с использованием значений JavaScript и вызовов функций. Думаю, это очень хорошо:</p>
+        <pre class="code"><span class="lang-tag">Конвенция</span><code style="direction:ltr;text-align:left">&quot;abc&quot;          (строка-литерал)            сопоставляется с символами строки
+[a, b, c, ...] (обычный массив)         конкатенация regex из массива
+Or([a, b, ...]) (функция Or)            альтернатива regex из массива
+ZeroOrMore(re) (функция ZeroOrMore)     позволяет повторять данный regex
+Any            (переменная Any)         сопоставляется с любым отдельным символом</code></pre>
+        <p>Для удобства и чистоты опускаю префикс <code>new</code> для узлов <code>Or</code> и <code>ZeroOrMore</code>. Сначала создаём типы данных, функции и объекты, нужные для работы:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class _Or {
+    constructor (alternatives) {
+        this.alternatives = alternatives;
+    }
+}
+function Or(alternatives) {
+    if (!(alternatives instanceof Array)) {
+        throw new TypeError(&quot;Переданные в Or альтернативы должны быть Array&quot;);
+    } else {
+        return new _Or(alternatives);
+    }
+}
+
+class _ZeroOrMore {
+    constructor (repeatable) {
+        this.repeatable = repeatable;
+    }
+}
+function ZeroOrMore(repeatable) {
+    return new _ZeroOrMore(repeatable);
+}
+
+const Any = Symbol(&#x27;Any&#x27;);</code></pre>
+        <p>Итак, как превратить нашу более красивую нотацию в узлы, построенные выше? Вспомните: структура скомпилированного regex похожа на связный список с альтернативами. Эффективнее всего строить связный список справа налево, значит, нужно обходить вход в обратном порядке. С общим компилятором <code>compile</code>, который мы ещё не написали, пишем компилятор, превращающий строки-литералы в цепочки символьных узлов:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function compileString(str, tail=EmptyString) {
+    // это единственный способ развернуть codepoint строки в JavaScript
+    let reversedStr = Array.from(str).reverse();
+    for (let char of reversedStr) {
+        tail = new CharacterNode(char, tail);
+    }
+    return tail;
+}</code></pre>
+        <p>На каждой итерации создаём новый символьный узел для текущего символа, у которого указатель <code>next</code> — на символьный узел предыдущей итерации (то есть следующий символ строки, потому что идём в обратном порядке).</p>
+        <p>Компилятор массивов очень похож, с той разницей, что для каждой подчасти рекурсивно обращаемся к <code>compile</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function compileArray(arr, tail=EmptyString) {
+    for (let expr of arr.reverse()) {
+        tail = compile(expr, tail);
+    }
+    return tail;
+}</code></pre>
+        <p>Компиляция выражения <code>Or</code> немного иная: в конце создаём единственный узел альтернативы, каждый из членов которого имеет тот же общий tail, вместо повторной альтернативы. На этот раз идти назад не нужно, просто используем <code>.map</code> для построения всех вариантов, передаваемых в <code>AlternationNode</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function compileOr(or, tail=EmptyString) {
+    return new AlternationNode(or.alternatives.map((alternative) =&gt; compile(alternative, tail)));
+}</code></pre>
+        <p>Из-за побочного характера построения <code>RepetitionNode</code>, описанного ранее, компилятору <code>ZeroOrMore</code> приходится немного схитрить: он говорит другим функциям компиляции компилировать с <code>RepetitionNode</code> в качестве tail, который ещё не по-настоящему валиден. Затем, после компиляции содержимого, делает узел валидным, добавляя указатель head:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function compileZeroOrMore(zeroOrMore, tail=EmptyString) {
+    let repetition = new RepetitionNode(tail),
+        contents = compile(zeroOrMore.repeatable, repetition);
+    repetition.head = contents;
+    return repetition;
+}</code></pre>
+        <p>Остаётся совсем тривиальная компиляция <code>Any</code> относительно конкретного tail:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function compileAny(tail=EmptyString) {
+    return new AnyCharacterNode(tail);
+}</code></pre>
+        <p>Наконец, реализуем ту функцию <code>compile</code>, в которую всё так рекурсирует:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function compile(expr, tail=EmptyString) {
+    if ((typeof expr) === &#x27;string&#x27;) {
+        return compileString(expr, tail);
+    } else if (expr instanceof Array) {
+        return compileArray(expr, tail);
+    } else if (expr instanceof _Or) {
+        return compileOr(expr, tail);
+    } else if (expr instanceof _ZeroOrMore) {
+        return compileZeroOrMore(expr, tail);
+    } else if (expr === Any) {
+        return compileAny(tail);
+    } else {
+        throw new TypeError(&quot;Попытка скомпилировать невалидные данные regex&quot;);
+    }
+}</code></pre>
+        <p>Затем создаём класс-обёртку <code>RE</code> для наших типов узлов, который запускает компилятор. (Не называем его <code>Regexp</code>, потому что встроенный класс JavaScript называется <code>RegExp</code>, а иметь два имени класса, различающихся только регистром, — плохая идея.) Инстанцировать этот класс можно, например, как <code>new RE(["hello ", Or(["world", "dpk"])])</code>. Также создаём простую функцию, обходящую символы строки и сообщающую true, если regex и строка закончились одновременно:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class RE {
+    constructor (regexp) {
+        this.start = compile(regexp);
+    }
+
+    match (str) {
+        let state = this.start,
+            chars = Array.from(str);
+        if ((chars.length === 0) &amp;&amp; (state === EmptyString)) { return true; }
+        for (let i = 0; i &lt; chars.length; i++) {
+            let char = chars[i];
+            state = state.derive(char);
+            if (state === EmptyString) {
+                // дошли до конца regex ...
+                if (i === (chars.length - 1)) {
+                    // если это и конец строки, сопоставление есть
+                    return true;
+                } else {
+                    // иначе в строке есть лишнее, чего нет в regex
+                    return false;
+                }
+            } else if (state === NeverMatches) {
+                return false;
+            }
+        }
+        // символы кончились раньше конца regex; сопоставления нет
+        return false;
+    }
+}</code></pre>
+        <p>Попробуем!</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">new RE([&quot;a&quot;, Or([&quot;a&quot;, &quot;b&quot;]), &quot;d&quot;]).match(&quot;abd&quot;); //=&gt; true
+new RE([&quot;a&quot;, Or([&quot;a&quot;, &quot;b&quot;]), &quot;d&quot;]).match(&quot;aed&quot;); //=&gt; false
+new RE([ZeroOrMore(&quot;abc&quot;), &quot;d&quot;]).match(&quot;d&quot;); //=&gt; true</code></pre>
+        <p>Похоже, работает! Но…</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">new RE([ZeroOrMore(&quot;abc&quot;)]).match(&quot;abc&quot;); //=&gt; false?
+new RE([ZeroOrMore(&quot;abc&quot;)]).match(&quot;abcabc&quot;); //=&gt; false ... что?
+new RE([ZeroOrMore(&quot;abc&quot;)]).start.derive(&#x27;a&#x27;).derive(&#x27;b&#x27;).derive(&#x27;c&#x27;); //=&gt; ага, вернулись к узлу повторения</code></pre>
+        <p>В функции <code>match</code> есть баг! Поскольку повторение всегда возвращается к себе в конце, regex, заканчивающийся повторением, никогда не вернёт чистый <code>EmptyString</code> как конечное значение. Можно было бы внутри <code>match</code> проверить и сделать особый случай, когда state — <code>RepetitionNode</code>. Но так или иначе я находил функцию <code>match</code> слишком громоздкой со всеми вложенными if… Кроме того, в будущем могут понадобиться другие типы узлов с проблемой, похожей на <code>RepetitionNode</code>.</p>
+        <p>Вместо этого возвращаемся к слою узлов и реализуем на каждом новый метод, сообщающий, когда мы сопоставили:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class RegexpNode {
+    derive (char) {
+        return NeverMatches;
+    }
+    matchEnd() { return false; }
+    canMatchMore() { return !this.matchEnd(); }
+}
+
+class _EmptyString extends RegexpNode {
+    matchEnd() { return true; }
+}
+const EmptyString = new _EmptyString();</code></pre>
+        <p>Функция <code>matchEnd</code> сообщает, можем ли мы остановиться <em>здесь</em>; функция <code>canMatchMore</code> сообщает, должны ли мы остановиться здесь. На практике ни одна функция, возвращающая из <code>matchEnd</code> false, никогда не вернёт из <code>canMatchMore</code> false, но обратное возможно, как увидим ниже.</p>
+        <p>Для базовых типов узлов <code>CharacterNode</code> и <code>AnyCharacterNode</code> просто наследуем поведение <code>RegexpNode</code>, потому что они всегда могут сопоставлять больше. Но <code>AlternationNode</code> тоньше. Пока хотя бы одна альтернатива в <code>matchEnd</code>, он сам возможно в <code>matchEnd</code>. Но также пока хотя бы одна альтернатива <code>canMatchMore</code>, он сам может <code>canMatchMore</code>.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class AlternationNode extends RegexpNode {
+    // ...
+    matchEnd() { return this.alternatives.some((alt) =&gt; alt.matchEnd()); }
+    canMatchMore() { return this.alternatives.some((alt) =&gt; alt.canMatchMore()); }
+}</code></pre>
+        <p>Аналогичная логика применима к <code>RepetitionNode</code>, но на практике <em>голова</em> повторения не гарантированно в <code>matchEnd</code>; ею может быть <em>next</em>. Поэтому просто вызываем метод <code>matchEnd</code> указателя next узла повторения и возвращаем true из <code>canMatchMore</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class RepetitionNode extends RegexpNode {
+    // ...
+    matchEnd() { return this.next.matchEnd(); }
+    canMatchMore() { return true; }
+}</code></pre>
+        <p>Теперь готовы построить функцию уровня выше <code>match</code> с новыми возможностями узлов:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class RE {
+    // ...
+    match (str) {
+        let state = this.start,
+            chars = Array.from(str);
+        if ((chars.length === 0) &amp;&amp; state.matchEnd()) { return true; }
+        for (let i = 0; i &lt; chars.length; i++) {
+            let char = chars[i];
+            state = state.derive(char);
+            if (state.matchEnd() &amp;&amp; (i === (chars.length - 1))) {
+                // конец regex и конец строки; успешное сопоставление
+                return true;
+            } else if (state.matchEnd() &amp;&amp; !state.canMatchMore()) {
+                // конец regex, но не конец строки; не сопоставляется
+                return false;
+            }
+        }
+        // конец строки, но не конец regex; не сопоставляется
+        return false;
+    }
+}</code></pre>
+        <p>Работает?</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">new RE(ZeroOrMore(&#x27;abc&#x27;)).match(&#x27;abcabc&#x27;); //=&gt; true
+new RE([ZeroOrMore(&quot;abc&quot;), &quot;d&quot;]).match(&quot;d&quot;); //=&gt; true
+new RE([&quot;a&quot;, Or([&quot;a&quot;, &quot;b&quot;]), &quot;d&quot;]).match(&quot;abd&quot;); //=&gt; true
+new RE([&quot;a&quot;, Or([&quot;a&quot;, &quot;b&quot;]), &quot;d&quot;]).match(&quot;aed&quot;); //=&gt; false
+
+// поскольку мы работаем с обычными объектами JS, можно даже наспех определить классы символов ...
+let Digit = Or([&#x27;0&#x27;, &#x27;1&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, &#x27;4&#x27;, &#x27;5&#x27;, &#x27;6&#x27;, &#x27;7&#x27;, &#x27;8&#x27;, &#x27;9&#x27;]),
+    usPhoneNumber = new RE([Or([[&#x27;(&#x27;, Digit, Digit, Digit, &#x27;) &#x27;], &#x27;&#x27;]), Digit, Digit, Digit, &#x27;-&#x27;, Digit, Digit, Digit, Digit]);
+
+usPhoneNumber.match(&#x27;(415) 555-1212&#x27;); //=&gt; true
+usPhoneNumber.match(&#x27;555-1212&#x27;); //=&gt; true
+usPhoneNumber.match(&#x27;squirrel&#x27;); //=&gt; false</code></pre>
+        <p>Да, работает!</p>
+      </section>
+      <section>
+      <h2>Заключение</h2>
+        <p>В этой статье вы увидели, как реализовать маленький regex-движок в полностью функциональном стиле на JavaScript. Полная реализация — чуть меньше 150 строк кода (без учёта пробелов и комментариев); если убрать строки со скобками, всего 111 строк.</p>
+        <p>Подчёркиваю: это лишь один способ реализации regex. Большинство реализаций, которыми вы пользовались, на самом деле работают не так — вместо этого они пробуют каждую альтернативу в конкретной точке сопоставления и при неудаче откатываются. Как можно представить, для некоторых выражений это может делать их очень медленными.</p>
+        <p>С оценочными упражнениями (оптимизация, сопоставление части строки, нечувствительность к регистру, классы символов и диапазоны, проверки нулевой ширины, извлечение подсовпадений и ручной разборщик синтаксиса POSIX или Plan 9) можно строить на этой основе. В конце есть сравнение подходов: реализации на производных компилируются за время O(n), но в худшем случае сопоставляют за O(mn); реализации на DFA требуют времени O(2ⁿ) на компиляцию, но всегда сопоставляют за O(m) — обе куда лучше рекурсивных реализаций вроде Perl, PCRE, Python и Ruby, которые склонны к O(n) компиляции и O(2^m) сопоставления в худшем случае.</p>
+        <p>Я впервые познакомился с реализацией regex через производные благодаря посту Мэтта Мейта. Для дальнейшего чтения: статья Расс Кокса о реализациях на NFA и DFA, оригинальная статья Бжозовского о производных regex и статья Owens–Reppy–Turon, возродившая эту идею.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Регекспы через производные (Brzozowski)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Регекспы через производные (Brzozowski)» принадлежит автору оригинала (Daphne Preston-Kendal). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Daphne Preston-Kendal). Читайте оригинал на
         <a href="http://dpk.io/dregs/toydregs" target="_blank" rel="noopener">http://dpk.io/dregs/toydregs</a>.
       </div>
     </article>

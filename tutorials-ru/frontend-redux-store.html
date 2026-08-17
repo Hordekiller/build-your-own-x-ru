@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Redux: пишем свой Store»
+          <b>Оригинальный источник:</b> «Implementing Store from Scratch»
         </div>
         <a class="btn solid" href="https://egghead.io/lessons/react-redux-implementing-store-from-scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-redux-store.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,90 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Сфокусированный урок про Store в Redux: подписки, dispatch и связи с UI — основы создания предсказуемого состояния.</p>
+      <h2>Смотреть видео</h2>
+        <p>Это видео-урок с пошаговым программированием. Чтобы смотреть и повторять одновременно, нажмите кнопку ниже:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://egghead.io/lessons/react-redux-implementing-store-from-scratch" target="_blank" rel="noopener">▶ Смотреть урок «Implementing Store from Scratch»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>1. Об уроке</h2>
+        <p>В этом уроке серии «Знакомство с Redux» Дэн Абрамов (автор самого Redux) показывает, как работает <code>createStore</code>: он пишет руками небольшую полную реализацию store и на практике объясняет концепции <code>getState</code>, <code>dispatch</code> и <code>subscribe</code>. Главный посыл урока: <b>в Redux нет никакой магии; вы можете написать его сами.</b></p>
+        <div class="callout tip">
+          <strong>Совет:</strong> этот урок — часть полной бесплатной серии «Getting Started with Redux» на Egghead, которую настоятельно рекомендуют для начала работы с Redux.
+        </div>
+      </section>
+      <section>
+      <h2>2. Смотрите видео</h2>
+        <p>Это видео-урок, и его содержание не размещается на этой странице; по ссылке ниже вы попадёте прямо на урок:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://egghead.io/lessons/react-redux-implementing-store-from-scratch" target="_blank" rel="noopener">▶ Открыть урок «Implementing Store from Scratch»</a>
+        </div>
+      </section>
+      <section>
+      <h2>3. Ядро урока: реализация createStore</h2>
+        <p>Содержание и код урока — тот же классический подход, кратко изложенный ниже, — с ручной реализацией четырёх основных методов:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const createStore = (reducer) =&gt; {
+  let state;
+  let listeners = [];
+
+  // только reducer может менять state
+  const getState = () =&gt; state;
+
+  const dispatch = (action) =&gt; {
+    state = reducer(state, action);
+    listeners.forEach((listener) =&gt; listener());
+  };
+
+  const subscribe = (listener) =&gt; {
+    listeners.push(listener);
+    return () =&gt; {
+      listeners = listeners.filter((l) =&gt; l !== listener);
+    };
+  };
+
+  // инициализация: вызываем reducer с неопределённым state
+  dispatch({});
+
+  return { getState, dispatch, subscribe };
+};</code></pre>
+        <p>Важная деталь — вызов <code>dispatch({})</code> в конце: пустой action обычно возвращается reducer'ом через <code>default</code> как есть, но при этом state инициализируется значением по умолчанию reducer'а (например, пустым массивом).</p>
+      </section>
+      <section>
+      <h2>4. Практическое использование</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// простой reducer для счётчика
+const counter = (state = 0, action) =&gt; {
+  switch (action.type) {
+    case &#x27;INCREMENT&#x27;: return state + 1;
+    case &#x27;DECREMENT&#x27;: return state - 1;
+    default: return state;
+  }
+};
+
+const store = createStore(counter);
+
+store.subscribe(() =&gt; {
+  console.log(&#x27;текущий state:&#x27;, store.getState());
+});
+
+store.dispatch({ type: &#x27;INCREMENT&#x27; }); // 1
+store.dispatch({ type: &#x27;INCREMENT&#x27; }); // 2
+store.dispatch({ type: &#x27;DECREMENT&#x27; }); // 1</code></pre>
+        <p>Дизайнерская деталь, на которой настаивает урок: <b>action должен явно говорить «что произошло», а не «как изменить state»</b> — то есть мы отправляем только <code>{ type: 'INCREMENT' }</code>, а что это значит, знает reducer. Это разделение и есть философия Redux.</p>
+      </section>
+      <section>
+      <h2>5. Почему этот урок важен?</h2>
         <ul>
-          <li>Что такое Store</li>
-          <li>Подписки и уведомления</li>
-          <li>Dispatch и immutable-обновления</li>
-          <li>Связь с компонентами</li>
+          <li>Из уст создателя библиотеки; все решения объясняются с реальными причинами.</li>
+          <li>Ручная реализация показывает, что store — это простое замыкание.</li>
+          <li>Полная серия «Getting Started with Redux» после этого урока объясняет остальные части (combineReducers, connect, middleware) тем же ручным методом.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Store — единственный источник правды: компоненты подписываются, изменения распространяются. Немногие строки делают состояние предсказуемым.</p>
-        <p>Иммутабельное обновление состояния:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>store.dispatch({ type: "TOGGLE", id });
-// состояние никогда не меняется на месте:
-state = { ...state, todos: [...state.todos, newTodo] }</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Дисциплина store-подхода — ключ к здоровым приложениям: вы поймёте, почему огромные приложения выбирают предсказуемое состояние.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Redux: пишем свой Store» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Redux: пишем свой Store» принадлежит автору оригинала (Дэн Абрамов (Dan Abramov)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Дэн Абрамов (Dan Abramov)). Читайте оригинал на
         <a href="https://egghead.io/lessons/react-redux-implementing-store-from-scratch" target="_blank" rel="noopener">https://egghead.io/lessons/react-redux-implementing-store-from-scratch</a>.
       </div>
     </article>

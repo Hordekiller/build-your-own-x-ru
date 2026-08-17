@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Компилятор на Elixir»
+          <b>Оригинальный источник:</b> «Demystifying compilers — свой компилятор на Elixir (видео)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=zMJYoYwOCd4" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-compiler-elixir.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,55 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Компилятор на Elixir: лексер, парсер и кодогенерация — функциональный компилятор с чистым кодом.</p>
+      <h2>О видео</h2>
+        <p>Это видео показывает, как строится компилятор на языке Elixir — функциональном языке на основе Erlang/OTP. Elixir отлично подходит для построения компиляторов, потому что паттерн-матчинг и неизменяемые данные делают написание lexer и parser гораздо более читаемым.</p>
+        <p><a class="btn solid" href="https://www.youtube.com/watch?v=zMJYoYwOCd4" target="_blank" rel="noopener">▶ Смотреть видео</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер на Elixir</li>
-          <li>Парсер</li>
-          <li>AST и код</li>
-          <li>Запуск скомпилированного</li>
-        </ul>
+      <h2>Основы: три главных этапа</h2>
+        <p>Компилятор в целом проходит три этапа: (1) Lexing — превращение строки символов в список токенов; (2) Parsing — превращение токенов в абстрактное синтаксическое дерево (AST); (3) Code generation — превращение AST в исполняемый выход (например, байткод BEAM или ассемблер). В Elixir все три этапа пишутся чистыми функциями и паттерн-матчингом.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Elixir-компилятор учит выразительности: конвейеры и паттерн-матчинг делают стадии компилятора прозрачными.</p>
-        <p>Паттерн-матчинг AST:</p>
-        <pre class="code"><span class="lang-tag">Elixir</span><code>def eval_ast({:add, a, b}), do: eval_ast(a) + eval_ast(b)
-def eval_ast({:sub, a, b}), do: eval_ast(a) - eval_ast(b)
-def eval_ast(n) when is_number(n), do: n</code></pre>
+      <h2>Пример: маленький lexer на Elixir</h2>
+        <p>Чтобы почувствовать это на практике, посмотрите очень простой lexer (с числами и операторами):</p>
+        <pre class="code"><span class="lang-tag">Elixir</span><code style="direction:ltr;text-align:left">defmodule Lexer do
+  @digits ~r/^[0-9]/
+
+  def tokenize(str), do: tokenize(str, [])
+
+  # конец входа
+  defp tokenize(&quot;&quot;, acc), do: Enum.reverse(acc)
+
+  # числа: несколько цифр подряд
+  defp tokenize(&lt;&lt;c::utf8, rest::binary&gt;&gt;, acc) when c in ?0..?9 do
+    {num, rest2} = take_digits(&lt;&lt;c::utf8&gt;&gt; &lt;&gt; rest, &quot;&quot;)
+    tokenize(rest2, [{:number, String.to_integer(num)} | acc])
+  end
+
+  # операторы
+  defp tokenize(&lt;&lt;&quot;+&quot;, rest::binary&gt;&gt;, acc), do: tokenize(rest, [{:plus, &quot;+&quot;} | acc])
+  defp tokenize(&lt;&lt;&quot;-&quot;, rest::binary&gt;&gt;, acc), do: tokenize(rest, [{:minus, &quot;-&quot;} | acc])
+
+  defp tokenize(&lt;&lt;_, rest::binary&gt;&gt;, acc), do: tokenize(rest, acc)  # пробел
+
+  defp take_digits(&lt;&lt;c::utf8, rest::binary&gt;&gt;, acc) when c in ?0..?9,
+    do: take_digits(rest, acc &lt;&gt; &lt;&lt;c&gt;&gt;)
+  defp take_digits(rest, acc), do: {acc, rest}
+end</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Языки реализуются на любых языках: Elixir-версия покажет красоту функциональных компиляторов.</p>
+      <h2>Что ещё вы узнаете</h2>
+        <p>Построение AST в Elixir через struct и рекурсию; выполнение операций над AST (например, выделение регистров); и наконец генерация байткода или прямое вычисление. Видео также показывает ошибки, которые нужно предусмотреть при проектировании языка (неизвестный токен, незакрытая скобка и т.д.).</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Если вам интересен язык Elixir, это видео учит и принципам компилятора, и укрепляет навыки Elixir. Если у вас нет опыта построения интерпретаторов, лучше начать с более простого урока (например, Little Lisp на JavaScript), а к этому видео вернуться позже.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Компилятор на Elixir» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=zMJYoYwOCd4" target="_blank" rel="noopener">https://www.youtube.com/watch?v=zMJYoYwOCd4</a>.
       </div>
     </article>

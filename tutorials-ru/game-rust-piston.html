@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игры на Rust с Piston»
+          <b>Оригинальный источник:</b> «Adventures in Rust — A Basic 2D Game»
         </div>
         <a class="btn solid" href="https://a5huynh.github.io/posts/2018/adventures-in-rust/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-rust-piston.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,65 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Игры на Rust с движком Piston: окно, графика и события — системный язык в геймдеве.</p>
+      <h2>Об обучении</h2>
+        <p>Эта статья — одна из первых известных публикаций «разработка игр на Rust»: с помощью <b>Piston</b> (набора крейтов для окон, ввода и рендера) создаётся простая двухмерная игра (вдохновлённая Defender — горизонтальным шутером). Фокус статьи — <b>модульная архитектура</b>: разделение главного цикла, рендера и игровой логики по разным файлам (<code>main.rs</code> и <code>lib.rs</code>).</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> предпосылка — базовое знакомство с Rust (управление пакетами через Cargo); концепции Piston объясняются по ходу статьи.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура проекта</h2>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">src/
+├── main.rs   # точка входа: окно, цикл событий
+└── lib.rs    # игровая логика: update, render, сущности
+Cargo.toml</code></pre>
+        <p>В <code>Cargo.toml</code> добавляются крейты <code>piston_window</code>, <code>graphics</code> и другие как зависимости, и одной командой <code>cargo run</code> игра запускается.</p>
+      </section>
+      <section>
+      <h2>Пример кода</h2>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">// main.rs — окно и главный цикл
+extern crate piston_window;
+extern crate adventures;
+
+use piston_window::*;
+use adventures::render::{Render, draw};
+use adventures::update::{Update, update};
+use adventures::Player;
+
+fn main() {
+    let mut window: PistonWindow =
+        WindowSettings::new(&quot;Adventures in Rust&quot;, [640, 480])
+            .exit_on_esc(true)
+            .build()
+            .unwrap();
+
+    let mut player = Player::new(&amp;mut window);
+
+    while let Some(event) = window.next() {
+        // Обновление логики по событиям ввода
+        update(&amp;mut player, &amp;event);
+        // Рендер по событиям отрисовки
+        window.draw_2d(&amp;event, |c, g| {
+            clear([0.0, 0.0, 0.0, 1.0], g);
+            draw(&amp;player, &amp;c, g);
+        });
+    }
+}</code></pre>
+        <p>Игровая логика в <code>lib.rs</code> разделяется на структуры и трейты <code>Update</code>/<code>Render</code>, чтобы код оставался чистым.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
         <ul>
-          <li>Piston и окно</li>
-          <li>Рендер и события</li>
-          <li>Игровая логика</li>
-          <li>Пример игры</li>
+          <li>Практический путь в разработку игр на Rust (без тяжёлого движка).</li>
+          <li>Модульная архитектура: update/render разделены — тот же паттерн, что в движках.</li>
+          <li>Статья показывает и реальные вызовы (владение/borrow checker в игре).</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Piston — движок на чистом Rust: окно, графика и события без распределителя. Урок покажет, на что способен Rust в играх.</p>
-        <p>Цикл прорисовки в Piston:</p>
-        <pre class="code"><span class="lang-tag">Rust</span><code>window.draw_2d(&amp;e, |c, g| {
-    clear([0.1, 0.1, 0.1, 1.0], g);
-    rectangle([1.0, 0.0, 0.0, 1.0], rect, c.transform, g);
-});</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Rust-игры — ниша для уверенности: урок совместит системное программирование и геймдев.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игры на Rust с Piston» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игры на Rust с Piston» принадлежит автору оригинала (Адам Хуин (Adam Huynh)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Адам Хуин (Adam Huynh)). Читайте оригинал на
         <a href="https://a5huynh.github.io/posts/2018/adventures-in-rust/" target="_blank" rel="noopener">https://a5huynh.github.io/posts/2018/adventures-in-rust/</a>.
       </div>
     </article>

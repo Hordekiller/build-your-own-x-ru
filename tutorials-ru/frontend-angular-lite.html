@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Angular Lite: свой фреймворк на JavaScript»
+          <b>Оригинальный источник:</b> «Build Your Own Simplified AngularJS in 200 Lines of JavaScript»
         </div>
         <a class="btn solid" href="https://blog.mgechev.com/2015/03/09/build-learn-your-own-light-lightweight-angularjs/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-angular-lite.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,181 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок строит микроверсию Angular: двусторонняя привязка данных, элементы и шаблоны — свой мини-фреймворк за один пост.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>1. Три столпа AngularJS</h2>
+        <p>Статья выделяет три главные части и восстанавливает их по одной:</p>
         <ul>
-          <li>Двусторонняя привязка</li>
-          <li>Директивы</li>
-          <li>Шаблоны и scope</li>
-          <li>Компиляция в DOM</li>
+          <li><b>DOMCompiler ($compile)</b>: находит директивы (directives) в HTML и выполняет их;</li>
+          <li><b>Provider ($provide + $injector)</b>: определяет и внедряет сервисы;</li>
+          <li><b>Scope</b>: иерархическая модель, делающая возможным двустороннее связывание.</li>
+        </ul>
+        <p>Именно это и делает AngularJS AngularJS'ом; всё остальное (роутинг, фильтры, элементы форм) просто собрано вокруг этих трёх осей.</p>
+      </section>
+      <section>
+      <h2>2. DOMCompiler: поиск и выполнение директив</h2>
+        <p>Когда AngularJS загружается, он начинает «компилировать» DOM: обходит все элементы, находит директивы по имени атрибута и выполняет их с текущим scope. Наша простая реализация:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const DOMCompiler = {
+  bootstrap() {
+    // рекурсивный обход всех DOM-узлов
+    this.compile(document.children[0], Provider.get(&#x27;$rootScope&#x27;));
+  },
+
+  compile(el, scope) {
+    const dirs = this._getElDirectives(el);
+    // выполнение каждой директивы со scope
+    dirs.forEach((d) =&gt; {
+      d.scope = scope;
+      d.fn(scope, el, d.attrs, d);
+    });
+    // атрибут ng-repeat и ему подобные: игнорируем повторяемый элемент
+    if (dirs.some((d) =&gt; d.name === &#x27;ng-repeat&#x27;)) return;
+    // обход детей
+    Array.prototype.slice.call(el.children).forEach((child) =&gt; {
+      this.compile(child, scope);
+    });
+  },
+
+  _getElDirectives(el) {
+    const attrs = el.attributes;
+    const result = [];
+    for (let i = 0; i &lt; attrs.length; i++) {
+      const attr = attrs[i];
+      if (Directive.get(attr.nodeName)) {
+        result.push({
+          name: attr.nodeName,
+          value: attr.nodeValue,
+          fn: Directive.get(attr.nodeName),
+        });
+      }
+    }
+    return result;
+  },
+};</code></pre>
+        <p>Директивы хранятся в реестре (Directive): это функции, принимающие <code>(scope, element, attrs)</code> и обычно выполняющие «одноразовые» операции — например, регистрацию watch или построение нового DOM.</p>
+      </section>
+      <section>
+      <h2>3. Provider и внедрение зависимостей</h2>
+        <p>Внедрение зависимостей в AngularJS просто: сервисы регистрируются по имени, и когда функция объявляет «хочу такой-то сервис», injector находит и доставляет его. Имена аргументов функции и есть «описание потребности»:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const Provider = {
+  _providers: {},
+  _cache: {},
+
+  provide(name, fn) {
+    this._providers[name] = fn;
+  },
+
+  // внедрение: читаем имена аргументов функции из её определения
+  get(name) {
+    if (this._cache[name]) return this._cache[name];
+    const provider = this._providers[name];
+    if (!provider) throw new Error(&#x27;Неизвестный сервис: &#x27; + name);
+
+    // получаем имена параметров, превратив функцию в строку и разобрав её текст
+    const args = this._getParams(provider);
+    // автоматическое создание зависимых сервисов (рекурсивно)
+    const deps = args.map((arg) =&gt; this.get(arg));
+    const instance = provider.apply(null, deps);
+    this._cache[name] = instance; // только один экземпляр каждого сервиса
+    return instance;
+  },
+
+  _getParams(fn) {
+    // разбор строки определения функции для извлечения имён параметров
+    const fnStr = fn.toString();
+    const params = fnStr.match(/^function\s*[^\(]*\(\s*([^\)]*)\)/m);
+    if (!params || !params[1]) return [];
+    return params[1].split(&#x27;,&#x27;).map((p) =&gt; p.trim().replace(/[^_$a-zA-Z0-9]/g, &#x27;&#x27;));
+  },
+};</code></pre>
+        <p>Тот же приём, что использовал сам AngularJS (а Angular 2+ — с компилируемым DI): «имена параметров» были проблемой в продакшене (минификация), и поэтому Angular позже перешёл на явное внедрение (комментарий или массив имён).</p>
+      </section>
+      <section>
+      <h2>4. Scope и двустороннее связывание</h2>
+        <p>Каждый scope — дерево: через <code>$new()</code> создаётся дочерний scope (который видит свойства родителя, но не возвращает ему свои изменения), а <code>$digest</code> запускает цикл проверки изменений. Директива <code>ng-bind</code> привязывает значение scope к тексту элемента:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class Scope {
+  constructor() {
+    this.$$watchers = [];
+  }
+
+  $watch(fn, listener) {
+    const watcher = { fn, last: undefined, listener };
+    this.$$watchers.push(watcher);
+  }
+
+  // цикл digest: повторяй проверку, пока есть изменения (максимум 10 раз)
+  $digest() {
+    let dirty = true;
+    let count = 0;
+    while (dirty &amp;&amp; count &lt; 10) {
+      dirty = this._digestOnce();
+      count++;
+    }
+  }
+
+  _digestOnce() {
+    let dirty = false;
+    this.$$watchers.forEach((watcher) =&gt; {
+      const newValue = watcher.fn(this);
+      if (newValue !== watcher.last) {
+        watcher.last = newValue;
+        watcher.listener(newValue, watcher.last, this);
+        dirty = true;
+      }
+    });
+    return dirty;
+  }
+
+  $new() {
+    // иерархия scope: для дочерних
+    const child = new Scope();
+    child.$parent = this;
+    return child;
+  }
+}
+
+// директива ng-bind: привязка выражения scope к тексту элемента
+Directive.set(&#x27;ng-bind&#x27;, (scope, el, attrs) =&gt; {
+  scope.$watch(() =&gt; {
+    // вычисление выражения (например &quot;name&quot;) в текущем scope
+    return eval(&#x27;scope.&#x27; + attrs[&#x27;ng-bind&#x27;]);
+  }, (value) =&gt; {
+    el.innerHTML = value;
+  });
+});</code></pre>
+      </section>
+      <section>
+      <h2>5. Собираем всё вместе: полное приложение</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// регистрация сервисов
+Provider.provide(&#x27;$scope&#x27;, () =&gt; new Scope());
+Provider.provide(&#x27;$rootScope&#x27;, () =&gt; new Scope());
+
+// директива ng-model для полей ввода (двустороннее связывание)
+Directive.set(&#x27;ng-model&#x27;, (scope, el) =&gt; {
+  el.addEventListener(&#x27;input&#x27;, () =&gt; {
+    scope.model = el.value;
+    scope.$digest(); // digest выполняется при каждом вводе
+  });
+});
+
+// bootstrap: начинаем с корня документа
+DOMCompiler.bootstrap();</code></pre>
+        <p>Теперь любой HTML с <code>ng-bind="model"</code> и <code>ng-model</code> на поле ввода ведёт себя как настоящий двусторонне связанный AngularJS — и всё это примерно в 200 строк!</p>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> почему AngularJS был таким медленным? Потому что каждое изменение запускало полный digest всего дерева scope (dirty checking). Новые фреймворки, такие как Angular и Vue, вместо этого отслеживают изменения напрямую — через «зоны» или «наблюдение getter/setter».
+        </div>
+      </section>
+      <section>
+      <h2>6. Итоги</h2>
+        <ul>
+          <li>Директивы = функции, выполняемые со scope; <code>ng-repeat</code>, <code>ng-bind</code> и прочие — всё это записи в простом реестре.</li>
+          <li>Внедрение зависимостей = чтение имён аргументов из текста функции.</li>
+          <li>Scope = дерево watcher'ов с циклом digest; источник и силы, и слабости AngularJS.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Angular-магия — это наблюдаемые объекты и связанные шаблоны: при изменении модели DOM обновляется сам. Урок раскрывает механизм.</p>
-        <p>Привязка данных — наблюдение за свойством:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>Object.defineProperty(model, "name", {
-  set(v) { this._name = v; syncDOM(); }, // DOM догоняет
-  get() { return this._name; }
-})</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Фреймворки — не чёрные ящики: собрав свой mini-Angular, вы будете уверенно оценивать магию любого инструмента.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Angular Lite: свой фреймворк на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Angular Lite: свой фреймворк на JavaScript» принадлежит автору оригинала (Минко Гечев (Minko Gechev)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Минко Гечев (Minko Gechev)). Читайте оригинал на
         <a href="https://blog.mgechev.com/2015/03/09/build-learn-your-own-light-lightweight-angularjs/" target="_blank" rel="noopener">https://blog.mgechev.com/2015/03/09/build-learn-your-own-light-lightweight-angularjs/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Давай напишем Redux сами»
+          <b>Оригинальный источник:</b> «Let's Write Redux!»
         </div>
         <a class="btn solid" href="https://www.jamasoftware.com/blog/lets-write-redux/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-lets-write-redux.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,48 +53,114 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Пошаговая реализация Redux: createStore, combineReducers, middleware и react-redux — полный стек управления состоянием своими руками.</p>
+      <h2>1. Подход статьи: разработка через тесты (TDD)</h2>
+        <p>Отличительная черта этого учебника — Redux строится <b>тест-ориентированным</b> методом: для каждой API-функции сначала пишется тест (который падает), затем реализация, пока тест не станет зелёным. Этот подход и проясняет логику Redux, и укрепляет правильную привычку писать код. Инструменты: <b>Jest</b> для тестов и <b>Babel</b> для модулей.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы не знакомы с TDD, эта статья — отличный учебный пример: цикл «красный ← зелёный ← рефакторинг» практикуется на реальном проекте.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>createStore и API</li>
-          <li>Объединение редукторов</li>
-          <li>Middleware и applyMiddleware</li>
-          <li>Подключение к React</li>
-        </ul>
+      <h2>2. Проектирование API глазами потребителя</h2>
+        <p>Прежде чем писать код, определим, какой API видит потребитель Redux, — это настоящий API Redux:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const store = createStore(reducer, initialState);
+
+store.getState();              // чтение текущего state
+store.dispatch(action);        // отправка action (обязательно объекта с type)
+store.subscribe(listener);     // подписка на изменения; возвращает функцию отписки</code></pre>
+        <p>Затем тесты закрепляют именно этот контракт. Например, первые тесты:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">describe(&#x27;createStore&#x27;, () =&gt; {
+  it(&#x27;возвращает начальное состояние&#x27;, () =&gt; {
+    const reducer = (state = {}, action) =&gt; state;
+    const store = createStore(reducer, { count: 0 });
+    expect(store.getState()).toEqual({ count: 0 });
+  });
+
+  it(&#x27;обновляет state при dispatch action&#x27;, () =&gt; {
+    const reducer = (state = { count: 0 }, action) =&gt; {
+      if (action.type === &#x27;ADD&#x27;) return { count: state.count + action.payload };
+      return state;
+    };
+    const store = createStore(reducer);
+    store.dispatch({ type: &#x27;ADD&#x27;, payload: 5 });
+    expect(store.getState()).toEqual({ count: 5 });
+  });
+});</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Урок воспроизводит API Redux строка за строкой: каждый инструмент (store, reducer, middleware) получает реализацию и объяснение.</p>
-        <p>Создание store — сердце Redux:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function createStore(reducer) {
-  let state = reducer(undefined, { type: "__INIT__" });
+      <h2>3. Реализация createStore</h2>
+        <p>Чтобы тесты стали зелёными, реализуем createStore — классическое исполнение с замыканием:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">export function createStore(reducer, initialState) {
+  let state = initialState;
   const listeners = [];
-  return {
-    getState: () =&gt; state,
-    dispatch: (action) =&gt; {
-      state = reducer(state, action);
-      listeners.forEach(l =&gt; l());
-    },
-    subscribe: (l) =&gt; listeners.push(l),
+
+  function getState() {
+    return state;
+  }
+
+  function dispatch(action) {
+    // reducer должен быть чистой функцией: возвращает новый state, не мутирует
+    state = reducer(state, action);
+    listeners.forEach((listener) =&gt; listener());
+    return action;
+  }
+
+  function subscribe(listener) {
+    listeners.push(listener);
+    return function unsubscribe() {
+      const index = listeners.indexOf(listener);
+      if (index &gt; -1) listeners.splice(index, 1);
+    };
+  }
+
+  return { getState, dispatch, subscribe };
+}</code></pre>
+        <p>Обратите внимание: <code>dispatch</code> не возвращает значение, от которого кто-то зависит; все потребители должны читать state через <code>getState</code> и узнавать об изменениях через <code>subscribe</code>.</p>
+      </section>
+      <section>
+      <h2>4. Тест subscribe и отписки</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">it(&#x27;слушатели вызываются при dispatch&#x27;, () =&gt; {
+  const store = createStore((s = 0, a) =&gt; (a.type === &#x27;INC&#x27; ? s + 1 : s));
+  const spy = jest.fn();
+  store.subscribe(spy);
+  store.dispatch({ type: &#x27;INC&#x27; });
+  expect(spy).toHaveBeenCalledTimes(1);
+});
+
+it(&#x27;unsubscribe удаляет слушателя&#x27;, () =&gt; {
+  const store = createStore((s = 0, a) =&gt; (a.type === &#x27;INC&#x27; ? s + 1 : s));
+  const spy = jest.fn();
+  const unsubscribe = store.subscribe(spy);
+  unsubscribe();
+  store.dispatch({ type: &#x27;INC&#x27; });
+  expect(spy).not.toHaveBeenCalled();
+});</code></pre>
+      </section>
+      <section>
+      <h2>5. Комбинирование reducer'ов</h2>
+        <p>Следующая часть статьи — <code>combineReducers</code>, снова начинающаяся с теста: каждый ключ state управляется независимым reducer'ом, и вместе они образуют дерево state. Деталь реализации: при выполнении каждому reducer'у передаётся только <b>его часть</b> state (не весь state), чтобы никакой reducer не знал о других частях:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">export function combineReducers(reducers) {
+  return function combinedReducer(state = {}, action) {
+    const nextState = {};
+    for (const key of Object.keys(reducers)) {
+      nextState[key] = reducers[key](state[key], action);
+    }
+    return nextState;
   };
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Реализовав Redux, вы сможете докручивать его под свои задачи и вести себя уверенно на собеседованиях по state-management.</p>
+      <h2>6. Итоги и уроки</h2>
+        <ul>
+          <li>Весь Redux сводится к функции <code>createStore</code> и функции <code>combineReducers</code> — остальные инструменты это удобство, а не необходимость.</li>
+          <li>Метод TDD отлично подходит этому проекту, потому что контракты (contract) с самого начала ясны: state, action и reducer.</li>
+          <li>После этого учебника откройте настоящий код Redux на GitHub: его <code>createStore.js</code> лишь немного полнее нашей версии (например, валидаторы для защиты от ошибочного использования).</li>
+        </ul>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Давай напишем Redux сами» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Давай напишем Redux сами» принадлежит автору оригинала (Марк Сент-Онж (Marc St. Onge)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Марк Сент-Онж (Marc St. Onge)). Читайте оригинал на
         <a href="https://www.jamasoftware.com/blog/lets-write-redux/" target="_blank" rel="noopener">https://www.jamasoftware.com/blog/lets-write-redux/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Первый рогалик на JavaScript»
+          <b>Оригинальный источник:</b> «How to Make Your First Roguelike»
         </div>
         <a class="btn solid" href="https://gamedevelopment.tutsplus.com/tutorials/how-to-make-your-first-roguelike--gamedev-13677" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-first-roguelike.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,60 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Первый рогалик на JS: генерация карты, движение и бой — жанр для новичков, полный смысла.</p>
+      <h2>Об обучении</h2>
+        <p>Это серия из 8 частей (в оригинальной версии — 4 основных секции), которая строит вашу первую roguelike-игру с нуля. Автор (Фэрон Брейси, создатель RogueSharp) начинает с отображения «@» на экране и доходит до полноценного боя с монстрами, случайного подземелья, поля зрения, предметов и многого другого — с RogueSharp для логики и RLNET/MonoGame для отображения.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы уже проходили официальную серию блога RogueSharp, то эти статьи — более структурированная версия тех же уроков; выбор за вами, содержание одинаковое.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Уроки</h2>
         <ul>
-          <li>Карта и генерация</li>
-          <li>Пошаговый ввод</li>
-          <li>Бой</li>
-          <li>Стены и двери</li>
+          <li>Введение и принципы roguelike-игр</li>
+          <li>Построение подземелья случайной генерацией комнат</li>
+          <li>Движение игрока и обработка ввода</li>
+          <li>Поле зрения (FOV) и тёмные зоны</li>
+          <li>ИИ врагов и поиск пути</li>
+          <li>Бой, предметы и управление очками/здоровьем</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Рогалик — минимальная фэнтези-симуляция: сетка, генерация и пошаговость. На JS можно за вечер.</p>
-        <p>Пошаговое движение — событие клавиши:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>if (key === "left" &amp;&amp; !walls[nextY][nextX]) {
-  player.x--; // каждый ход — одна клетка
+      <h2>Пример кода</h2>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Построение подземелья с RogueSharp
+using RogueSharp;
+using RogueSharp.MapCreation;
+
+IMapCreationStrategy&lt;Map&gt; strategy =
+    new RandomRoomsMapCreationStrategy&lt;Map&gt;(80, 50, 30, 12, 6);
+Map map = Map.Create(strategy);
+
+// Размещение игрока в первой комнате
+foreach (Cell cell in map.GetAllCells())
+{
+    if (cell.IsWalkable) {
+        playerX = cell.X;
+        playerY = cell.Y;
+        break;
+    }
+}
+
+// Безопасное движение игрока: только по проходимым клеткам
+if (map.IsWalkable(newX, newY))
+{
+    playerX = newX;
+    playerY = newY;
+    map.SetIsWalkable(playerX, playerY, false); // игрок занимает место
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Первый рогалик — классический старт: вы почувствуете вкус генерации и пошаговых систем.</p>
+      <h2>Итоги</h2>
+        <p>Эта серия (в формате Tuts+ или официального блога RogueSharp) — самый полный ресурс для старта в roguelike на C#. Результат: рабочая roguelike-игра со всеми главными механиками жанра.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Первый рогалик на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Первый рогалик на JavaScript» принадлежит автору оригинала (Фэрон Брейси (Faron Bracy)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Фэрон Брейси (Faron Bracy)). Читайте оригинал на
         <a href="https://gamedevelopment.tutsplus.com/tutorials/how-to-make-your-first-roguelike--gamedev-13677" target="_blank" rel="noopener">https://gamedevelopment.tutsplus.com/tutorials/how-to-make-your-first-roguelike--gamedev-13677</a>.
       </div>
     </article>

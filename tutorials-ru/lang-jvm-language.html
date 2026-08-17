@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Свой язык на JVM: от AST к байткоду»
+          <b>Оригинальный источник:</b> «Enkel — Building a JVM language»
         </div>
         <a class="btn solid" href="http://jakubdziworski.github.io/categories.html#Enkel-ref" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-jvm-language.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,43 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Язык, компилируемый в байткод JVM: парсер, AST и генерация .class-файлов — ваша программа на Java-машине.</p>
+      <h2>Цель проекта</h2>
+        <p>Enkel — простой язык в стиле Java, который вместо генерации обычного байткода производит напрямую <b>байткод JVM</b>: выход вашего компилятора можно запускать командой <code>java</code>! Изучая байткод JVM, вы превращаете свой компилятор в «безопасную гавань» для выполнения в JVM.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>AST</li>
-          <li>Генерация байткода</li>
-          <li>Классы JVM</li>
-          <li>Запуск на виртуальной машине</li>
-        </ul>
+      <h2>Части серии</h2>
+        <p>Серия состоит из нескольких основных частей: (1) проектирование языка и структура AST; (2) lexer и parser на Apache Antlr или вручную; (3) генерация байткода через ASM (известная Java-библиотека); (4) поддержка переменных, функций, условий, циклов, классов и наследования; (5) обработка ошибок (error reporting).</p>
+        <p>Например, превращение выражения <code>x + 3</code> в байткод с помощью ASM выглядит так:</p>
+        <pre class="code"><span class="lang-tag">java</span><code style="direction:ltr;text-align:left">// Использование библиотеки ASM
+MethodVisitor mv = cw.visitMethod(
+    Opcodes.ACC_PUBLIC, &quot;compute&quot;, &quot;(I)I&quot;, null, null);   // метод compute(int):int
+
+// Загрузка значения переменной x (индекс 1 в локальных переменных)
+mv.visitVarInsn(Opcodes.ILOAD, 1);
+// Загрузка константы 3
+mv.visitIntInsn(Opcodes.BIPUSH, 3);
+// Сложение двух целых
+mv.visitInsn(Opcodes.IADD);
+// Сохранение результата в переменную
+mv.visitVarInsn(Opcodes.ISTORE, 1);</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>JVM — прекрасная цель компилятора: AST превращается в инструкции байткода, и результат исполняется как Java-класс.</p>
-        <p>Генерация инструкции ICONST:</p>
-        <pre class="code"><span class="lang-tag">Java</span><code>class Gen {
-    void emitICONST(int n) { code.add(Bytecode.ICONST + n); }
-}</code></pre>
+      <h2>Почему этот урок особенный?</h2>
+        <p>Большинство уроков выдают ассемблер; то, что здесь делается с байткодом JVM, даёт практические преимущества: (1) итоговый файл <code>.class</code> запускается без линкера; (2) через <code>javap -c</code> можно читать и сравнивать сгенерированный байткод; (3) структура классов, методов и таблицы исключений в самой JVM — целый урок по проектированию виртуальных машин.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Целевая JVM — зрелый путь: ваш язык получает GC и производительность виртуальной машины.</p>
+      <h2>Учебные моменты</h2>
+        <p>В процессе сборки вы знакомитесь с важными концепциями: таблица локальных переменных; <code>invokevirtual</code> против <code>invokespecial</code>; управление стеком операндов; и почему первый аргумент, передаваемый методу, лежит по индексу 0 (это <code>this</code>). Всё это — основа любого JVM-языка вроде Kotlin и Scala.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Если вам нравится Java и хочется понять JVM-языки, Enkel — отличный путь: от построения lexer до исполняемого файла <code>.class</code>. Гибко, запускаемо и полно реальных примеров.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Свой язык на JVM: от AST к байткоду» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Свой язык на JVM: от AST к байткоду» принадлежит автору оригинала (Jakub Dziworski). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Jakub Dziworski). Читайте оригинал на
         <a href="http://jakubdziworski.github.io/categories.html#Enkel-ref" target="_blank" rel="noopener">http://jakubdziworski.github.io/categories.html#Enkel-ref</a>.
       </div>
     </article>

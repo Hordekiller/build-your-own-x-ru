@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Gooact: React на 500 строках»
+          <b>Оригинальный источник:</b> «Gooact: React in 160 lines of JavaScript»
         </div>
         <a class="btn solid" href="https://medium.com/@sweetpalma/gooact-react-in-160-lines-of-javascript-44e0742ad60f" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-gooact.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,171 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Проект Gooact реализует React в 500 строках: JSX без Babel, элементы, рендер и обновления — мини-React, читаемый от начала до конца.</p>
+      <h2>1. Введение: цель и ограничения</h2>
+        <p>Цель статьи — реализовать «минимальный React», способный запускать простые настоящие приложения: <code>React.createElement</code>, класс <code>React.Component</code> с <code>setState</code> и механизм <b>diffing</b> для эффективных обновлений. Автор сознательно отказывается от некоторых возможностей (таких как функциональные компоненты, порталы и продвинутые оптимизации), чтобы код оставался маленьким.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> преимущество этого учебника — краткость; можно прочитать весь код сразу, а затем перейти к более полной версии (например, Didact с Fiber и Hooks).
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>JSX своими руками</li>
-          <li>Элементы и рендер</li>
-          <li>Сравнение и обновление</li>
-          <li>Компоненты-классы</li>
-        </ul>
+      <h2>2. createElement: узлы виртуального дерева</h2>
+        <p>Как и во всех версиях, первая деталь — фабрика узлов. Особенность реализации Gooact: узлы напрямую сопоставляются с именами CSS-классов, а события распознаются по префиксу <code>on</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const TEXT_ELEMENT = &quot;TEXT ELEMENT&quot;;
+
+function createElement(type, config, ...args) {
+  const props = Object.assign({}, config);
+  // дети: текстовые узлы превращаются в TEXT_ELEMENT
+  const hasChildren = args.length &gt; 0;
+  const rawChildren = hasChildren ? [].concat(...args) : [];
+  props.children = rawChildren
+    .filter(c =&gt; c != null &amp;&amp; c !== false)
+    .map(c =&gt; (c instanceof Object ? c : createTextElement(c)));
+  return { type, props };
+}
+
+function createTextElement(value) {
+  return createElement(TEXT_ELEMENT, { nodeValue: value });
+}</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Gooact ограничивает масштаб, чтобы кода хватило: вся технология — 500 строк, и каждая строка на виду.</p>
-        <p>Обновление DOM при сравнении:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function updateDom(node, prevProps, nextProps) {
-  for (const k in nextProps) {
-    node[k] = nextProps[k]; // просто присваиваем
+      <h2>3. render: превращение виртуального дерева в DOM</h2>
+        <p>Функция <code>render</code> рекурсивно создаёт DOM-узлы и навешивает атрибуты; события (с префиксом <code>on</code>) подключаются через <code>addEventListener</code>, остальные ключи становятся атрибутами:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function render(element, parentDom) {
+  const dom =
+    element.type === TEXT_ELEMENT
+      ? document.createTextNode(&quot;&quot;)
+      : document.createElement(element.type);
+
+  const isListener = (name) =&gt; name.startsWith(&quot;on&quot;);
+  const isAttribute = (name) =&gt; !isListener(name) &amp;&amp; name !== &quot;children&quot;;
+
+  // подключение событий
+  Object.keys(element.props || {})
+    .filter(isListener)
+    .forEach((name) =&gt; {
+      const eventType = name.toLowerCase().substring(2);
+      dom.addEventListener(eventType, element.props[name]);
+    });
+
+  // установка атрибутов
+  Object.keys(element.props || {})
+    .filter(isAttribute)
+    .forEach((name) =&gt; {
+      dom[name] = element.props[name];
+    });
+
+  // рекурсивный рендер детей
+  const childElements = element.props.children || [];
+  childElements.forEach((childElement) =&gt; render(childElement, dom));
+
+  parentDom.appendChild(dom);
+  return dom;
+}</code></pre>
+        <p>Обратите внимание, как одно лишь правило именования (префикс <code>on</code>) разделяет события и атрибуты — эта простота повышает читаемость кода.</p>
+      </section>
+      <section>
+      <h2>4. Класс Component и setState</h2>
+        <p>Сердце React — класс <code>Component</code>: каждый экземпляр имеет props, state и <code>__internalInstance</code>, указывающий на собственный DOM-узел. При <code>setState</code> перерисовывается только сам узел и его дети (не вся страница):</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class Component {
+  constructor(props) {
+    this.props = props || {};
+    this.state = null;
+  }
+
+  setState(nextState) {
+    // объединение нового state с прежним
+    this.state = Object.assign({}, this.state, nextState);
+    // перерисовка только этого компонента
+    updateInstance(this.__internalInstance);
+  }
+}
+
+function updateInstance(internalInstance) {
+  const parentDom = internalInstance.dom.parentNode;
+  const element = internalInstance.element;
+  const newElement = getElement(internalInstance);
+  const newInstance = instantiate(newElement);
+  // сравнение деревьев и применение diff между старым и новым DOM
+  diff(parentDom, internalInstance.dom, newInstance.dom, internalInstance.dom);
+  internalInstance.dom = newInstance.dom;
+}
+
+function instantiate(element) {
+  const { type, props } = element;
+  // компоненты: создаём экземпляр и заполняем через метод render
+  const isDomElement = typeof type === &quot;string&quot;;
+  if (isDomElement) {
+    const isTextElement = type === TEXT_ELEMENT;
+    const dom = isTextElement ? document.createTextNode(&quot;&quot;) : document.createElement(type);
+    updateDomProperties(dom, [], props);
+    const childElements = props.children || [];
+    const childInstances = childElements.map(instantiate);
+    const childDoms = childInstances.map((ci) =&gt; ci.dom);
+    childDoms.forEach((childDom) =&gt; dom.appendChild(childDom));
+    return { dom, element, childInstances };
+  } else {
+    // класс-компонент: создаём экземпляр и рендерим
+    const instance = new type(props);
+    const childElement = instance.render();
+    const childInstance = instantiate(childElement);
+    const dom = childInstance.dom;
+    // привязываем внутренний экземпляр для последующих обновлений
+    Object.assign(instance, { __internalInstance: { dom, element, childInstance } });
+    return { dom, element, childInstance, instance };
   }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Полноценный мини-React — ценный актив: после Gooact вы сможете экспериментировать с React-архитектурой без лишней массы.</p>
+      <h2>5. diffing: умное обновление узлов</h2>
+        <p>Функция <code>diff</code> охватывает четыре случая: перемещение узла (через <code>insertBefore</code>), удаление, замену новым узлом и «тот же узел» — в этом случае сравниваются и применяются только атрибуты и дети:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function diff(parentDom, instance, newInstance, referenceDom) {
+  const oldDom = instance.dom;
+  const newDom = newInstance.dom;
+
+  if (instance.element.type === newInstance.element.type) {
+    // тот же тип: обновляем только props
+    updateDomProperties(oldDom, instance.element.props, newInstance.element.props);
+    const oldChildInstances = instance.childInstances;
+    const newChildElements = newInstance.element.props.children || [];
+    // diff новых детей по количеству прежних
+    const newChildInstances = [];
+    const count = Math.max(oldChildInstances.length, newChildElements.length);
+    for (let i = 0; i &lt; count; i++) {
+      const newChildElement = newChildElements[i];
+      const oldChildInstance = oldChildInstances[i];
+      if (oldChildInstance &amp;&amp; newChildElement) {
+        // есть оба: рекурсивный diff
+        newChildInstances.push(diff(parentDom, oldChildInstance, instantiate(newChildElement), oldChildInstance.dom));
+      } else if (oldChildInstance) {
+        // было и исчезло: удаляем
+        parentDom.removeChild(oldChildInstance.dom);
+      } else {
+        // новое: добавляем
+        parentDom.appendChild(instantiate(newChildElement).dom);
+      }
+    }
+    instance.childInstances = newChildInstances;
+    return instance;
+  }
+  // тип изменился: полная замена
+  parentDom.replaceChild(newDom, oldDom);
+  return newInstance;
+}</code></pre>
+        <p>Обратите внимание: поскольку дети сравниваются «по индексу», эта версия не поддерживает ключи (key) — одну из оптимизаций, которые добавляет в сравнение настоящий React.</p>
+      </section>
+      <section>
+      <h2>6. Итоги</h2>
+        <ul>
+          <li>Ядро React (element ← render ← setState ← diff) реализуемо в 160 строках чистого JavaScript без каких-либо накладных расходов.</li>
+          <li>Разделение «DOM-узла» и «внутреннего экземпляра» — именно то, что позволяет обновлять часть дерева без полного перерендера страницы.</li>
+          <li>Diff работает по «типу узла» и «индексу ребёнка»; ключи (key) — способ улучшить это сравнение в настоящем React.</li>
+        </ul>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Gooact: React на 500 строках» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Gooact: React на 500 строках» принадлежит автору оригинала (Миколай Палкевич (Mikołaj Palkiewicz)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Миколай Палкевич (Mikołaj Palkiewicz)). Читайте оригинал на
         <a href="https://medium.com/@sweetpalma/gooact-react-in-160-lines-of-javascript-44e0742ad60f" target="_blank" rel="noopener">https://medium.com/@sweetpalma/gooact-react-in-160-lines-of-javascript-44e0742ad60f</a>.
       </div>
     </article>

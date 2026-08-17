@@ -53,40 +53,42 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Видео по эмулятору NES на C++: процессор 6502, графика PPU, звук и контроллеры — полноценная консоль, построенная на видео.</p>
+      <h2>Об этом курсе</h2>
+        <p>В этой видео-серии вы научитесь с нуля создавать эмулятор консоли NES (Nintendo). Работа шаг за шагом охватывает: симуляцию процессора 6502, разбор и исполнение опкодов, реализацию памяти и картриджа (Mapper) и, наконец, рендеринг изображения и звук — вплоть до того, что эмулятор сможет запускать настоящие игры NES. Этот проект — один из лучших способов узнать, как устроено железо классических игровых консолей.</p>
+        <pre class="code"><span class="lang-tag">C++</span><code style="direction:ltr;text-align:left">// Базовый цикл исполнения инструкций в процессоре 6502
+uint8_t opcode = read(cpu.PC++);              // выборка опкода
+switch (opcode) {
+  case 0xA9:                                  // LDA #imm: загрузка значения
+    cpu.A = read(cpu.PC++);
+    cpu.updateNZ(cpu.A);
+    break;
+  default:
+    cpu.tick();                               // дополнительные циклы прочих опкодов
+}</code></pre>
+        <p>Эмулятор NES начинается именно с этого простого цикла, а затем добавляются отображаемая память (MMC), Mapper картриджа и, наконец, PPU.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/videoseries?list=PLrOv9FMX8xJHqMvSGB_9G9nZZ_4IgteYf" title="Видеоплейлист: эмулятор NES" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/playlist?list=PLrOv9FMX8xJHqMvSGB_9G9nZZ_4IgteYf" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
         <ul>
-          <li>CPU 6502</li>
-          <li>PPU и спрайты</li>
-          <li>Адресация памяти</li>
-          <li>Вход и звук</li>
+          <li>Симуляция CPU процессора 6502 и цикла исполнения инструкций</li>
+          <li>Моделирование памяти, Mapper картриджа и чтение ROM</li>
+          <li>Реализация PPU и рендер изображения (тайлы, спрайты и фон)</li>
+          <li>Звук и элементы управления</li>
+          <li>Запуск настоящих игр NES на эмуляторе</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>NES объединяет 6502, PPU и APU: видео показывает, как эти части интегрируются в работающую консоль.</p>
-        <p>Выборка инструкции 6502:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>uint8_t opcode = read(pc++);
-// таблица операций: адресация и такты
-const auto &amp;op = ops[opcode];
-(execute.*op.fn)(op.addr_mode);</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>NES-эмуляторы — инженерная классика: видео-курс даст полный стек от CPU до пикселей.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Эмулятор NES (видео-курс на C++)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLrOv9FMX8xJHqMvSGB_9G9nZZ_4IgteYf" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLrOv9FMX8xJHqMvSGB_9G9nZZ_4IgteYf</a>.
       </div>
     </article>

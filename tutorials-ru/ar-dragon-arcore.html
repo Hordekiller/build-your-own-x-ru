@@ -53,41 +53,37 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок помещает 3D-дракона с анимацией в реальный мир: сессия ARCore, определение плоскости, размещение объекта и запуск его анимации при прикосновении.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>ARCore: сессия и определение плоскостей</li>
-          <li>Обработка касания: трансляция экрана в мировые координаты</li>
-          <li>Размещение 3D-персонажа на плоскости</li>
-          <li>Запуск анимации и взаимодействие</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Секрет — слой за слоем: ARCore находит плоскость, касание переводится в точку на ней, а Unity ставит туда персонажа. Анимация делает его живым.</p>
-        <p>Размещение по точке касания:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>if (arFrame.Raycast(touchPos, hits, TrackableType.PlaneWithinPolygon)) {
-    var pose = hits[0].pose;
-    dragon.transform.position = pose.position; // дракон на полу
-    dragon.GetComponent&lt;Animator&gt;().SetTrigger("roar");
+      <h2>Об этом учебнике</h2>
+        <p>Занимательный практический урок: разместите 3D-дракона на реальных поверхностях с помощью Unity и ARCore и посмотрите его анимацию и взаимодействие.</p>
+        <p>Подходит для закрепления базовых навыков ARCore на интересном проекте.</p>
+        <pre class="code"><span class="lang-tag">C#</span><code style="direction:ltr;text-align:left">// Размещение дракона на распознанной поверхности (Unity + AR Foundation)
+public void OnPlaneHit(ARRaycastHit hit) {
+    dragon.transform.position = hit.pose.position;   // точка пересечения луча
+    dragon.transform.rotation = hit.pose.rotation;
+    dragon.SetActive(true);                          // активируем модель
 }</code></pre>
+        <p>Эти две строки позиционирования — основа сенсорного взаимодействия, которое в видео доводится до конца.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>После урока вы сможете «оживлять» любые 3D-модели в вашей комнате: тот же пайплайн (плоскость → место → анимация) используют тысячи AR-приложений.</p>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/qTSDPkPyPqs" title="Видеоурок: дракон в дополненной реальности" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/watch?v=qTSDPkPyPqs" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
+        <ul>
+          <li>Настройка сцены ARCore</li>
+          <li>Импорт модели дракона и анимаций</li>
+          <li>Сенсорное взаимодействие с моделью</li>
+        </ul>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Как разместить анимированного дракона в дополненной реальности (Unity ARCore)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=qTSDPkPyPqs" target="_blank" rel="noopener">https://www.youtube.com/watch?v=qTSDPkPyPqs</a>.
       </div>
     </article>

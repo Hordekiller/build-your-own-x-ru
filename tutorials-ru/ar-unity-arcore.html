@@ -53,40 +53,38 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство настраивает дополненную реальность на Android через Unity и ARCore: сессия AR, распознавание плоскостей и размещение объектов на реальной поверхности.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>ARCore: сессия, камера и понимание сцены</li>
-          <li>Распознавание горизонтальных поверхностей</li>
-          <li>Размещение объектов на плоскости</li>
-          <li>Движение, тени и реалистичность</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>ARCore наблюдает за камерой и строит карту плоскости: находит пол и столы, на которых можно размещать объекты. Unity рисует их так, будто они часть мира.</p>
-        <p>Ожидание плоскости под объектом:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>// Пока не найдена плоскость - ждём пользователя
-while (!hitPose.HasValue) {
-    hitPose = TrackableHitPlane(camera); // ищем плоскость
+      <h2>Об этом учебнике</h2>
+        <p>Полный плейлист для изучения Google ARCore в Unity: от базовых понятий дополненной реальности на Android до практических проектов, таких как распознавание поверхностей и размещение объектов.</p>
+        <p>Видео выстроены по порядку; лучше смотреть с самого начала.</p>
+        <pre class="code"><span class="lang-tag">C#</span><code style="direction:ltr;text-align:left">// Raycast по распознанным поверхностям и размещение объекта (AR Foundation)
+if (arRaycastManager.Raycast(touchPos, hits,
+        TrackableType.PlaneWithinPolygon)) {
+    var pose = hits[0].pose;                    // точка пересечения луча
+    Instantiate(prefab, pose.position, pose.rotation);
 }</code></pre>
+        <p>Распознавание поверхности и raycast — два ключевых навыка плейлиста; остальные проекты строятся на этой основе.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Путь от идеи к AR: вы поймёте, как телефон находит «невидимую» геометрию и держит объекты на столе, и сможете строить свои AR-сцены на современном Android.</p>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/videoseries?list=PLKIKuXdn4ZMjuUAtdQfK1vwTZPQn_rgSv" title="Видеоплейлист: Unity ARCore" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/playlist?list=PLKIKuXdn4ZMjuUAtdQfK1vwTZPQn_rgSv" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
+        <ul>
+          <li>Введение в ARCore и концепции Tracking</li>
+          <li>Распознавание горизонтальных и вертикальных поверхностей</li>
+          <li>Размещение объектов и raycast</li>
+          <li>Практические проекты в Unity</li>
+        </ul>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «AR в Unity с ARCore: ключевые компоненты» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLKIKuXdn4ZMjuUAtdQfK1vwTZPQn_rgSv" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLKIKuXdn4ZMjuUAtdQfK1vwTZPQn_rgSv</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Sol — MQTT-брокер с нуля на C»
+          <b>Оригинальный источник:</b> «Sol — an MQTT broker from scratch»
         </div>
         <a class="btn solid" href="https://codepr.github.io/posts/sol-mqtt-broker" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-mqtt-broker.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,50 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Проект Sol реализует MQTT-брокер на C с нуля: приём подключений клиентов, разбор пакетов протокола CONNECT, PUBLISH, SUBSCRIBE и доставку сообщений подписчикам в реальном времени.</p>
+      <h2>MQTT и роль брокера</h2>
+        <p>MQTT — лёгкий протокол обмена сообщениями для IoT, работающий по модели publish/subscribe. В этой модели устройства (клиенты) подписываются на темы (topics), а брокер обязан доставлять опубликованные сообщения нужным подписчикам. Брокер — «сердце» системы: без него ни одно сообщение не сдвинется с места.</p>
+        <p>Реализация брокера учит понимать двоичный протокол: каждое MQTT-сообщение — это фиксированный заголовок с байтом типа и флагами, а за ним — остаток тела с длиной переменной величины (2 байта LSB).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Протокол MQTT 3.1.1: типы пакетов и заголовки</li>
-          <li>Приём подключения: CONNECT и подтверждение CONNACK</li>
-          <li>Темы, подписки и доставка публикаций</li>
-          <li>Обработка отключений и поддержание сессий</li>
-        </ul>
+      <h2>Отправка и получение: структура протокола</h2>
+        <p>Первый шаг — определение структуры заголовка и его разбор. Например, сообщение CONNECT несёт <code>protocol level</code> и <code>client id</code>, а SUBSCRIBE должен нести <code>packet identifier</code> и topic-filter:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">typedef struct {
+    uint8_t type: 4;      // тип сообщения (1=CONNECT, 3=PUBLISH, ...)
+    uint8_t flags: 4;
+    uint8_t remaining_len; // длина Variable Byte Integer
+} mqtt_fixed_header;
+
+// Простая функция построения сообщения PUBLISH
+int build_publish(uint8_t* buf, const char* topic,
+                  const char* payload, int payload_len) {
+    int off = 0;
+    buf[off++] = 0x30;                    // PUBLISH QOS0
+    int rem = 2 + strlen(topic) + payload_len;
+    buf[off++] = (uint8_t)rem;
+    buf[off++] = (strlen(topic) &gt;&gt; 8) &amp; 0xff;
+    buf[off++] = strlen(topic) &amp; 0xff;
+    memcpy(buf + off, topic, strlen(topic));
+    off += strlen(topic);
+    memcpy(buf + off, payload, payload_len);
+    off += payload_len;
+    return off;
+}</code></pre>
+        <p>Этот буфер — полное сообщение publish, которое можно отправить через сокет.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Брокер — это посредник между издателями и подписчиками: сообщения публикуются в темы, а подписчики получают их по своим интересам. MQTT спроектирован для лёгкого устройств IoT, поэтому каждый пакет компактен и чёток.</p>
-        <p>Разбор первого байта пакета MQTT:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>// Старший полубайт — тип пакета, младший — флаги
-uint8_t type  = (packet[0] &gt;&gt; 4) &amp; 0x0F;
-uint8_t flags = packet[0] &amp; 0x0F;</code></pre>
+      <h2>Управление подписками</h2>
+        <p>Сердце брокера — структура данных «topic → list of clients». Когда публикуется сообщение, его нужно доставить всем подписчикам этой темы (или wildcard'ам). Это делается через дерево/хеш-таблицу и несколько параллельных потоков.</p>
+        <p>Главные вызовы: конкурентность (одно сообщение принимают несколько клиентов), обеспечение QoS и поведение с отвечающими-не-вовремя клиентами (keep-alive). Для начала достаточно однопоточной реализации, а затем добавления pthread.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>MQTT — протокол «умного дома» и IoT-сенсоров: написав брокера, вы поймёте, как строятся масштабируемые pub/sub системы, от Mosquitto до внутренностей облачных шин.</p>
+      <h2>Итог</h2>
+        <p>Постройка MQTT-брокера — реальный и увлекательный проект: в нём вместе задействованы протокол обмена сообщениями, сеть и конкурентность. После этого проекта вы глубоко познакомитесь с понятиями pub/sub и с тем, как работают коммерческие брокеры (например, Mosquitto).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Sol — MQTT-брокер с нуля на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Sol — MQTT-брокер с нуля на C» принадлежит автору оригинала (codepr). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (codepr). Читайте оригинал на
         <a href="https://codepr.github.io/posts/sol-mqtt-broker" target="_blank" rel="noopener">https://codepr.github.io/posts/sol-mqtt-broker</a>.
       </div>
     </article>

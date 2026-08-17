@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игровое программирование на Pygame»
+          <b>Оригинальный источник:</b> «Making Games with Python &amp; Pygame»
         </div>
         <a class="btn solid" href="https://inventwithpython.com/makinggames.pdf" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-python-pygame.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,64 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия по полным играм на Pygame: аркады, физика и меню — полноценные проекты на Python.</p>
+      <h2>О книге</h2>
+        <p>Ал Свейгарт — автор известных книг «Invent Your Own Computer Games with Python» и «Automate the Boring Stuff» — написал эту книгу для тех, кто уже выучил Python и хочет перейти к разработке игр. Книга полностью бесплатна (PDF скачивается с inventwithpython.com), а её уровень «средний»: предпосылка — основы Python (из его предыдущей книги).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Игры книги</h2>
+        <p>Книга строит игры с полным кодом и построчными пояснениями:</p>
         <ul>
-          <li>Аркада с нуля</li>
-          <li>Физика и коллизии</li>
-          <li>Меню и сцены</li>
-          <li>Звук</li>
+          <li><b>Flippy</b> (головоломка реверси/отэлло)</li>
+          <li><b>Ink Spill</b> (пятиминутная игра)</li>
+          <li><b>Gemgem</b> (игра на совпадение самоцветов)</li>
+          <li><b>Slide Puzzle</b> и <b>Simon</b></li>
+          <li><b>Star Pusher</b> (сокобан)</li>
+          <li><b>Four in a Row</b>, <b>Memory Puzzle</b> и <b>Pong</b></li>
+          <li>и другие</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Стиль обучения</h2>
+        <p>Пример структуры кода книги — игровой цикл с событиями и рендером:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Общий паттерн игр книги
+import pygame, sys
+from pygame.locals import *
+
+pygame.init()
+FPS = 60
+fpsClock = pygame.time.Clock()
+DISPLAYSURF = pygame.display.set_mode((400, 300))
+pygame.display.set_caption(&#x27;Пример игры&#x27;)
+
+WHITE = (255, 255, 255)
+
+while True:
+    for event in pygame.event.get():
+        if event.type == QUIT:
+            pygame.quit()
+            sys.exit()
+
+    # Отрисовка сцены
+    DISPLAYSURF.fill(WHITE)
+    # ... рисование игровых объектов ...
+
+    pygame.display.update()
+    fpsClock.tick(FPS)</code></pre>
+        <p>Фишка книги: каждая игра полная и запускается сразу; упражнения после каждой главы развивают креативность.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Бесплатно, скачиваемо и полностью практично — десять полных игр с полным кодом.</li>
+          <li>Подходит после основ Python; хороший мост к настоящей разработке игр.</li>
+          <li>Код игр работает на любой платформе (Windows, Linux, Mac).</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Серия ведёт от идеи к игре: каждый проект — законченная игра с меню, физикой и звуком.</p>
-        <p>Проверка коллизии через rect:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>if player_rect.colliderect(coin_rect):
-    score += 1         # собрали монету
-    coin_rect = new_coin()</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Полные игры — лучший портфель: после серии у вас будет несколько игр на Python.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игровое программирование на Pygame» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игровое программирование на Pygame» принадлежит автору оригинала (Ал Свейгарт (Al Sweigart)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ал Свейгарт (Al Sweigart)). Читайте оригинал на
         <a href="https://inventwithpython.com/makinggames.pdf" target="_blank" rel="noopener">https://inventwithpython.com/makinggames.pdf</a>.
       </div>
     </article>

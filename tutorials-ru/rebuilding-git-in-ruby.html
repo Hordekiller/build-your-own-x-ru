@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пересобираем Git на Ruby»
+          <b>Оригинальный источник:</b> «Rebuilding Git in Ruby»
         </div>
         <a class="btn solid" href="https://robots.thoughtbot.com/rebuilding-git-in-ruby" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/rebuilding-git-in-ruby.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,207 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок воссоздаёт git на Ruby: объекты, коммиты, ветки и merge — полный цикл на точном классическом языке.</p>
+      <h2>Зачем пересобирать Git на Ruby</h2>
+        <p>Git — мощный инструмент, которым мы пользуемся каждый день, но задумывались ли вы, как работает его «магия»? Внутренняя документация Git пугающая, неполная и без примеров; а изучение реальной реализации сложно, если вы не знаете C. Разборка и повторная сборка системы — один из лучших способов её понять. Статья делает это на Ruby: реализует Git для Rails-разработчиков, которые знают Ruby лучше, чем C.</p>
+        <p>Результат — RGit, который: выполняет команды через собственную <code>rgit</code>, инициализирует репозиторий (<code>init</code>), индексирует файлы (<code>add</code>) и снимает снапшоты (<code>commit</code>).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Шаг 1 — команды Git и философия Unix</h2>
+        <p>Git построен модульно и следует «философии Unix»: маленькие острые инструменты. Каждая команда — отдельный файл-скрипт, а высокоуровневая команда лишь проксирует к ним. Достаточно соблюдать соглашение об именах, чтобы создать свою команду:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">#!/usr/bin/env ruby
+# bin/rgit
+command, *args = ARGV
+
+if command.nil?
+  $stderr.puts &quot;Usage: rgit &lt;command&gt; [&lt;args&gt;]&quot;
+  exit 1
+end
+
+path_to_command = File.expand_path(&quot;../rgit-#{command}&quot;, __FILE__)
+if !File.exist? path_to_command
+  $stderr.puts &quot;No such command&quot;
+  exit 1
+end
+
+exec path_to_command, *args</code></pre>
+        <p>Этот скрипт делает одно из трёх: показывает справку, если подкоманда не передана; выдаёт ошибку, если скрипта подкоманды нет; или запускает подкоманду. Как добропорядочный гражданин Unix, сообщения об ошибках идут в <code>stderr</code>, а код выхода ненулевой.</p>
+      </section>
+      <section>
+      <h2>Шаг 2 — инициализация репозитория (init)</h2>
+        <p>Git хранит все данные и метаданные в папке <code>.git</code> в корне репозитория. Целевая структура:</p>
+        <pre class="code"><span class="lang-tag">терминал</span><code style="direction:ltr;text-align:left">.rgit
+├── HEAD
+├── config
+├── objects
+│   ├── info
+│   └── pack
+└── refs
+    ├── heads
+    └── tags</code></pre>
+        <p><code>HEAD</code> — файл с фиксированным значением <code>ref: refs/heads/master</code>, а остальное дерево — пустые папки. «Большую часть этой структуры составляют последовательные вызовы <code>Dir.mkdir</code>»:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">#!/usr/bin/env ruby
+# bin/rgit-init
+RGIT_DIRECTORY = &quot;.rgit&quot;.freeze
+OBJECTS_DIRECTORY = &quot;#{RGIT_DIRECTORY}/objects&quot;.freeze
+REFS_DIRECTORY = &quot;#{RGIT_DIRECTORY}/refs&quot;.freeze
+
+if Dir.exists? RGIT_DIRECTORY
+  $stderr.puts &quot;Existing RGit project&quot;
+  exit 1
+end
+
+def build_objects_directory
+  Dir.mkdir OBJECTS_DIRECTORY
+  Dir.mkdir &quot;#{OBJECTS_DIRECTORY}/info&quot;
+  Dir.mkdir &quot;#{OBJECTS_DIRECTORY}/pack&quot;
+end
+
+def build_refs_directory
+  Dir.mkdir REFS_DIRECTORY
+  Dir.mkdir &quot;#{REFS_DIRECTORY}/heads&quot;
+  Dir.mkdir &quot;#{REFS_DIRECTORY}/tags&quot;
+end
+
+def initialize_head
+  File.open(&quot;#{RGIT_DIRECTORY}/HEAD&quot;, &quot;w&quot;) do |file|
+    file.puts &quot;ref: refs/heads/master&quot;
+  end
+end
+
+Dir.mkdir RGIT_DIRECTORY
+build_objects_directory
+build_refs_directory
+initialize_head
+
+$stdout.puts &quot;RGit initialized in #{RGIT_DIRECTORY}&quot;</code></pre>
+      </section>
+      <section>
+      <h2>Шаг 3 — добавление в область индекса (add)</h2>
+        <p>Индексация файла состоит из нескольких шагов: вычисление SHA из содержимого файла, создание блоба со сжатием контента, сохранение блоба в <code>objects/&lt;первые два символа sha&gt;/&lt;остаток sha&gt;</code> и запись sha с путём в индекс.</p>
+        <p>Настоящий индекс Git — бинарный файл с заголовком <code>DIRC</code> и кучей метаданных (ctime, mtime, mode, uid, gid и т.д.), поэтому он выглядит как «набор бессмысленных символов». Статья ради простоты и читаемости выбирает простой текстовый формат:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Формат индекса RGit
+&lt;SHA&gt; &lt;path&gt;
+&lt;SHA&gt; &lt;path&gt;
+&lt;SHA&gt; &lt;path&gt;</code></pre>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">#!/usr/bin/env ruby
+# bin/rgit-add
+require &quot;digest&quot;
+require &quot;zlib&quot;
+require &quot;fileutils&quot;
+
+RGIT_DIRECTORY = &quot;.rgit&quot;.freeze
+OBJECTS_DIRECTORY = &quot;#{RGIT_DIRECTORY}/objects&quot;.freeze
+INDEX_PATH = &quot;#{RGIT_DIRECTORY}/index&quot;
+
+path = ARGV.first
+if path.nil?
+  $stderr.puts &quot;No path specified&quot;
+  exit 1
+end
+
+file_contents = File.read(path)
+sha = Digest::SHA1.hexdigest file_contents
+blob = Zlib::Deflate.deflate file_contents
+object_directory = &quot;#{OBJECTS_DIRECTORY}/#{sha[0..1]}&quot;
+FileUtils.mkdir_p object_directory
+blob_path = &quot;#{object_directory}/#{sha[2..-1]}&quot;
+
+File.open(blob_path, &quot;w&quot;) { |file| file.print blob }
+File.open(INDEX_PATH, &quot;a&quot;) { |file| file.puts &quot;#{sha} #{path}&quot; }</code></pre>
+        <p>После <code>rgit add bin/rgit</code> в хранилище объектов есть сжатый блоб, а в индексе — строка вроде <code>b302dd6f8cd2b385b170e78c14503342c0ba6ae8 bin/rgit</code>.</p>
+      </section>
+      <section>
+      <h2>Шаг 4 — снятие снапшота (commit)</h2>
+        <p>Блобы — это содержимое одного файла в определённый момент времени. Чтобы снять снапшот всего проекта, Git для каждой папки создаёт объект «tree»: деревья представляют папки, блобы — файлы, а вся структура завязывается на объект «commit». Команда commit делает три дела:</p>
         <ul>
-          <li>Модель объектов</li>
-          <li>Коммиты</li>
-          <li>Ветки</li>
-          <li>Merge и resolve</li>
+          <li>построение структуры tree/blob</li>
+          <li>создание объекта commit, указывающего на эту структуру</li>
+          <li>обновление текущей ветки, чтобы указывать на этот commit</li>
         </ul>
-      </section>
+        <p>Так как создание объектов — частая операция, она вынесена во вспомогательный класс:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># lib/rgit/object
+require &quot;fileutils&quot;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Ruby-реализация показывает ясность алгоритмов: структуры гита перестают быть пугающими.</p>
-        <p>Класс Commit на Ruby:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code>class Commit
-  attr_reader :tree, :parent, :message
-  def initialize(tree:, parent:, message:)
-    @tree, @parent, @message = tree, parent, message
+module RGit
+  class Object
+    def initialize(sha)
+      @sha = sha
+    end
+
+    def write(&amp;block)
+      object_directory = &quot;#{OBJECTS_DIRECTORY}/#{sha[0..1]}&quot;
+      FileUtils.mkdir_p object_directory
+      object_path = &quot;#{object_directory}/#{sha[2..-1]}&quot;
+      File.open(object_path, &quot;w&quot;, &amp;block)
+    end
+
+    private
+    attr_reader :sha
   end
 end</code></pre>
-      </section>
+        <p>Затем сама команда commit: сначала индекс превращается в хеш-структуру дерева, потом эта структура рекурсивно превращается в tree-объекты на диске, а sha каждого записывается в родителя; сообщение коммита берётся из редактора пользователя (<code>$VISUAL</code>); в конце текущая ветка (читается из <code>HEAD</code>) указывает на новый commit, а индекс очищается:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">#!/usr/bin/env ruby
+# bin/rgit-commit — сокращённо
+def index_tree
+  index_files.each_with_object({}) do |line, obj|
+    sha, _, path = line.split
+    segments = path.split(&quot;/&quot;)
+    segments.reduce(obj) do |memo, s|
+      if s == segments.last
+        memo[segments.last] = sha
+        memo
+      else
+        memo[s] ||= {}
+        memo[s]
+      end
+    end
+  end
+end
 
+def build_tree(name, tree)
+  sha = Digest::SHA1.hexdigest(Time.now.iso8601 + name)
+  object = RGit::Object.new(sha)
+  object.write do |file|
+    tree.each do |key, value|
+      if value.is_a? Hash
+        dir_sha = build_tree(key, value)
+        file.puts &quot;tree #{dir_sha} #{key}&quot;
+      else
+        file.puts &quot;blob #{value} #{key}&quot;
+      end
+    end
+  end
+  sha
+end
+
+def build_commit(tree:)
+  # Сообщение берётся через редактор $VISUAL
+  sha = Digest::SHA1.hexdigest(Time.now.iso8601 + &quot;user&quot;)
+  object = RGit::Object.new(sha)
+  object.write do |file|
+    file.puts &quot;tree #{tree}&quot;
+    file.puts &quot;author user&quot;
+    file.puts
+    file.puts message
+  end
+  sha
+end</code></pre>
+        <p>Итог: чтобы найти текущее состояние, из <code>HEAD</code> находим текущую ветку; ветка указывает на последний commit; commit указывает на корневой tree-объект; а тот — на деревья подпапок и блобы файлов. Эта структура взаимосвязанных объектов-указателей и есть то, что делает Git мощным: меняя несколько файлов-указателей, мы перемещаемся в любую точку истории.</p>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Пересборка git на втором языке закрепляет модель: вы поймёте git на уровне, который не даёт ни одна шпаргалка.</p>
+      <h2>Зачем это стоит того</h2>
+        <ul>
+          <li>Вы видите реальную структуру <code>.git</code>, индекса и объектов на настоящих примерах Ruby — не просто теорию</li>
+          <li>Вы испытываете на практике философию «маленьких острых инструментов» Git</li>
+          <li>Вы понимаете, почему Git может перемещаться по истории, меняя несколько файлов-указателей</li>
+        </ul>
+        <p>Если хотите пойти глубже, полный код RGit доступен на <a href="https://github.com/JoelQ/rgit" target="_blank" rel="noopener">github.com/JoelQ/rgit</a>.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пересобираем Git на Ruby» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пересобираем Git на Ruby» принадлежит автору оригинала (Жоэль Кенневиль (Joël Quenneville)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Жоэль Кенневиль (Joël Quenneville)). Читайте оригинал на
         <a href="https://robots.thoughtbot.com/rebuilding-git-in-ruby" target="_blank" rel="noopener">https://robots.thoughtbot.com/rebuilding-git-in-ruby</a>.
       </div>
     </article>

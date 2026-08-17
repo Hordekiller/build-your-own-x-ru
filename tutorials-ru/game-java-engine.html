@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игровой движок на Java»
+          <b>Оригинальный источник:</b> «Code a 2D Game Engine using Java»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=025QFeZfeyM" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-java-engine.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,61 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Игровой движок на Java: компоненты, сцены и цикл обновления — свой движок кроссплатформенно.</p>
+      <h2>О курсе</h2>
+        <p>Этот многочасовой курс (выпущенный freeCodeCamp) строит <b>2D-игровой движок</b> с нуля на Java, а затем на этом движке разрабатывает <b>полноценную игру в духе Super Mario</b> (клон). В конце игра упаковывается в <b>исполняемый jar-пакет</b> — настоящая игра, которую можно запустить на любой системе.</p>
+        <div class="callout note">
+          <strong>Замечание:</strong> курс рассчитан на новичков: в начале видео показывается даже установка JDK и настройка окружения.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Смотреть видео</h2>
+        <p>Это видеоурок, и его содержание на этой странице не размещается; переходите на YouTube напрямую по ссылке:</p>
+        <p><a class="btn solid" href="https://www.youtube.com/watch?v=025QFeZfeyM" target="_blank" rel="noopener">▶ Курс «Code a 2D Game Engine using Java»</a></p>
+      </section>
+      <section>
+      <h2>Содержание курса</h2>
         <ul>
-          <li>Компоненты и сущности</li>
-          <li>Сцены</li>
-          <li>Цикл и рендер</li>
-          <li>Ввод и события</li>
+          <li>Создание <b>окна игры</b> и главного цикла (Game Loop) на Java Swing/AWT</li>
+          <li>Система <b>GameObject</b>: рендеримые сущности с позицией и размером</li>
+          <li><b>Базовая физика</b>: гравитация, скорость и столкновения с платформами</li>
+          <li><b>Анимация спрайтов</b>: управление кадрами для ходьбы и прыжков</li>
+          <li><b>Камера и сцена</b>: движение между уровнями и скролл</li>
+          <li><b>Редактор уровней</b>: создание и дизайн этапов инструментом из курса</li>
+          <li>Финальная упаковка в <code>jar</code></li>
         </ul>
-      </section>
+        <p>Пример структуры классов:</p>
+        <pre class="code"><span class="lang-tag">java</span><code style="direction:ltr;text-align:left">// Базовая сущность движка
+public class GameObject {
+    public float x, y;          // позиция
+    public float width, height; // размер
+    public int animationIndex = 0;
+    public boolean isActive = true;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Движок — это архитектура: сущность, компонент, сцена и цикл. На Java вы построите её чисто и расширяемо.</p>
-        <p>Цикл обновления движка:</p>
-        <pre class="code"><span class="lang-tag">Java</span><code>while (running) {
-    input.poll();
-    scene.update(dt);
-    renderer.render(scene);
+    public void draw(Graphics2D g) {
+        // рисование текущего кадра анимации в позиции сущности
+    }
+}
+
+// Главный игровой цикл: 60 кадров в секунду
+public class GameWindow implements Runnable {
+    public void run() {
+        while (running) {
+            update();        // логика: движение, физика, столкновения
+            render();        // отрисовка всех GameObject
+            Thread.sleep(16); // ~60 кадров в секунду
+        }
+    }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Свой движок на Java — полноценный опыт архитектуры ПО: он научит вас компонентам, циклам и чистым интерфейсам.</p>
+      <h2>Итог</h2>
+        <p>Результат курса — набор инструментов (движок) и полная игра (клон Mario); это лучший способ понять, что такое «игровые движки» на самом деле и как логика, рендер и физика сплетаются вместе.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игровой движок на Java» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игровой движок на Java» принадлежит автору оригинала (freeCodeCamp.org). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (freeCodeCamp.org). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=025QFeZfeyM" target="_blank" rel="noopener">https://www.youtube.com/watch?v=025QFeZfeyM</a>.
       </div>
     </article>

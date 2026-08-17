@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем шелл на C»
+          <b>Оригинальный источник:</b> «Write a Shell in C»
         </div>
         <a class="btn solid" href="https://brennan.io/2015/01/16/write-a-shell-in-c/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/write-a-shell-in-c.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,123 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок создаёт собственный шелл на C: parsing, fork/exec, пайпы и перенаправление — командная строка без мозга.</p>
+      <h2>Введение — что такое шелл?</h2>
+        <p>Шелл запускает процессы и объясняет им, где находятся их stdin и stdout. А для этого у него есть (скриптовый) язык. Значит, шелл делает две вещи: <strong>запускает программы</strong> через <code>fork()</code> и <code>execvp()</code> и <strong>создаёт язык</strong> — то есть «операторы» (statements) и «токены» (tokens).</p>
+        <p>В этом уроке мы построим минимальный шелл на C: чтение строки (read_line), разбор строки на аргументы (split_line), выполнение команды (execute — эту трудную часть делаем сразу, а потом переходим к структурам) и главный цикл, сшивающий всё вместе. Затем по порядку: встроенные команды, поиск пути (PATH), <code>cd</code>, фоновые процессы и <code>Ctrl-C</code>, и наконец полный запуск — и на каждом шаге проверяем через <code>valgrind --leak-check=yes</code>, что память не течёт.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Чтение и разбор команд</li>
-          <li>fork и exec</li>
-          <li>Пайпы и редиректы</li>
-          <li>Фоновые задания</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Шелл — это цикл: прочитать строку, разбить, fork+exec, дождаться. Урок добавляет пайпы и сигналы, и получается настоящий shell.</p>
-        <p>Запуск команды — сердце шелла:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>pid_t pid = fork();
-if (pid == 0) {
-    execvp(args[0], args); // ребёнок становится программой
-} else {
-    waitpid(pid, &amp;status, 0);
+      <h2>Чтение строки команды</h2>
+        <p>Сначала используем <code>getline()</code>, но позже при изучении токенизатора строим специальную структуру, которая хранит отдельно не только всю строку, но и каждый токен, чтобы в итоге стали возможны встроенные команды и фон:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* Структура командной строки и её частей */
+typedef struct {
+    char *buffer;
+    size_t buf_len;
+    int argc;
+    char **argv;
+    char *program_name; /* argv[0] без слешей, для сообщений об ошибках */
+    int background;     /* должна ли эта команда выполняться в фоне? */
+    int stdin, stdout;  /* перенаправление? */
+} lsh_cmd;</code></pre>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* Простейший случай: читаем строку из stdin */
+char *lsh_read_line(void) {
+    char *line = NULL;
+    ssize_t bufsize = 0;
+    if (getline(&amp;line, &amp;bufsize, stdin) == -1) {
+        if (feof(stdin)) exit(EXIT_SUCCESS); /* Ctrl-D */
+        else { perror(&quot;readline&quot;); exit(EXIT_FAILURE); }
+    }
+    return line;
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Поняв связку fork/exec, вы поймёте, почему шеллы такие мощные, и сможете строить свои воркфлоу на любом языке.</p>
+      <h2>Разбор строки на аргументы</h2>
+        <p>Простой случай — разделитель-пробел и токенизация через <code>strtok</code>:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#define LSH_TOK_BUFSIZE 64
+#define LSH_TOK_DELIM &quot; \t\r\n\a&quot;
+
+char **lsh_split_line(char *line) {
+    int bufsize = LSH_TOK_BUFSIZE, position = 0;
+    char **tokens = malloc(bufsize * sizeof(char*));
+    char *token;
+
+    if (!tokens) { fprintf(stderr, &quot;lsh: allocation error\n&quot;); exit(EXIT_FAILURE); }
+
+    token = strtok(line, LSH_TOK_DELIM);
+    while (token != NULL) {
+        tokens[position] = token;
+        position++;
+        if (position &gt;= bufsize) { /* рост буфера */ }
+        token = strtok(NULL, LSH_TOK_DELIM);
+    }
+    tokens[position] = NULL;
+    return tokens;
+}</code></pre>
+        <p>А в финальной версии — токенизатор с выделением специальных символов <code>&gt;</code>, <code>&gt;&gt;</code>, <code>&lt;</code>, <code>|</code>, <code>&amp;</code> (фон) и построением объекта <code>lsh_cmd</code>, который охватывает и перенаправление, и фон.</p>
+      </section>
+      <section>
+      <h2>Выполнение — сердце шелла</h2>
+        <p>Дочерний процесс создаётся через <code>fork()</code>; дочерний применяет перенаправление и запускает программу через <code>execvp</code>; если шелл в обычном режиме, <code>waitpid</code> ожидает (это и есть «приглашение возвращается»), а если фон — шелл немедленно печатает следующее приглашение:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">int lsh_launch(char **args) {
+    pid_t pid, wpid;
+    int status;
+
+    pid = fork();
+    if (pid == 0) {
+        /* Дочерний: exec не возвращается, кроме случая ошибки */
+        if (execvp(args[0], args) == -1) perror(&quot;lsh&quot;);
+        exit(EXIT_FAILURE);
+    } else if (pid &lt; 0) {
+        perror(&quot;lsh&quot;);
+    } else {
+        do {
+            wpid = waitpid(pid, &amp;status, WUNTRACED);
+        } while (!WIFEXITED(status) &amp;&amp; !WIFSIGNALED(status));
+    }
+    return 1;
+}</code></pre>
+      </section>
+      <section>
+      <h2>Встроенные команды и поиск программ</h2>
+        <p>Задачи шелла (вроде <code>cd</code>, <code>exit</code>, <code>help</code>) должны выполняться без создания процесса; поэтому храним список имён с соответствующими функциями (<code>lsh_builtin_str[]</code> и <code>lsh_builtin_func[]</code>). Для поиска программ ходим по путям <code>PATH</code>; сначала проверяем, содержит ли имя <code>/</code>; если нет, через <code>strchr</code> строим для каждого пути PATH вариант <code>/name</code> и проверяем существование через <code>stat</code>. <code>execvp</code> делает это за нас, но чтение кода поиска PATH помогает понять глубже: отделите пути через <code>:</code> из <code>getenv("PATH")</code>, соберите их и инкапсулируйте через <code>strdup</code>.</p>
+        <p>Реализация <code>cd</code> — занятная конструкция: <code>chdir()</code> действует только в текущем процессе, поэтому это должна быть встроенная команда — обычной программой она быть не может, ведь <code>chdir</code> меняет каталог дочернего процесса, а не самого шелла!</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">int lsh_cd(char **args) {
+    if (args[1] == NULL) {
+        fprintf(stderr, &quot;lsh: expected argument to \&quot;cd\&quot;\n&quot;);
+    } else if (chdir(args[1]) != 0) {
+        perror(&quot;lsh&quot;);
+    }
+    return 1;
+}</code></pre>
+      </section>
+      <section>
+      <h2>Фоновые процессы и Ctrl-C</h2>
+        <p>Фон означает: если команда заканчивается на <code>&amp;</code> (<code>lsh-&gt;background</code>), для дочернего вызываем <code>setpgid(0,0)</code>, чтобы он стал независимым от терминала (нажатие Ctrl-C не убивает шелл, ведь сигнал уходит только процессам той же группы), и <code>waitpid(pid, &amp;status, WNOHANG)</code> определяет, жив ли ещё процесс. Утечки ищет <code>valgrind --leak-check=yes ./lsh</code>, запускаемый на каждом шаге; убеждаемся, что все malloc освобождаются (free_list для структур команд).</p>
+      </section>
+      <section>
+      <h2>Полный код и основной цикл</h2>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">int main(int argc, char **argv) {
+    /* загрузка конфигурации и выполнение команд запуска */
+    lsh_loop();
+    return EXIT_SUCCESS;
+}
+
+void lsh_loop(void) {
+    char *line; char **args; int status;
+    do {
+        printf(&quot;&gt; &quot;);
+        line = lsh_read_line();
+        args = lsh_split_line(line);
+        status = lsh_execute(args);
+        free(line); free(args);
+    } while (status);
+}</code></pre>
+        <p>(В полной версии <code>lsh_execute</code> распознаёт встроенные команды и вызывает <code>lsh_launch</code>; цикл работает со структурой <code>lsh_cmd</code>.) Весь код — около 500 строк чистого C — доступен на <a href="https://github.com/brenns10/lsh" target="_blank" rel="noopener">github.com/brenns10/lsh</a>. Для дальнейшего изучения продолжением этой статьи служит её вторая часть.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем шелл на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем шелл на C» принадлежит автору оригинала (Стивен Бреннан (Stephen Brennan)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Стивен Бреннан (Stephen Brennan)). Читайте оригинал на
         <a href="https://brennan.io/2015/01/16/write-a-shell-in-c/" target="_blank" rel="noopener">https://brennan.io/2015/01/16/write-a-shell-in-c/</a>.
       </div>
     </article>

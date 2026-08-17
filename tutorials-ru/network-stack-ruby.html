@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Сетевой стек на Ruby»
+          <b>Оригинальный источник:</b> «Building a network stack in Ruby»
         </div>
         <a class="btn solid" href="https://medium.com/geckoboard-under-the-hood/how-to-build-a-network-stack-in-ruby-f73aeb1b661b" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/network-stack-ruby.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,101 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок пишет сетевой клиент на Ruby: сокеты, HTTP-запросы и разбор ответов — сеть на уровне объектов.</p>
+      <h2>Идея: зачем строить свой сетевой стек</h2>
+        <p>Каждый день мы работаем с сетью, но её слои обычно скрыты от нас. Эта статья — путешествие «под капот»: построение <b>сетевого стека — да, на сырых сокетах</b> — от битов на проводе до <code>puts "Hello"</code>. Начинается с того, как сырой сокет Linux открывается в Ruby двумя строками:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Как TCP — но сырой, без обработки сетевым стеком; &#x27;INET&#x27; берёт пакет сам!
+socket = Socket.open(Socket::AF_INET, Socket::SOCK_RAW, Socket::IPPROTO_UDP)
+# socket() / bind() / recvfrom() / sendto() — всё отсюда доступно.</code></pre>
+        <p>Почему UDP? Потому что без возни со сложными соединениями он упрощает структуру пакета: ядро не строит за вас IP-заголовок — это облегчает работу с исходными данными. Следствие: каждый принятый пакет мы должны анализировать сами, потому что ядро за нас ничего не решает.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Сокеты в Ruby</li>
-          <li>HTTP-запрос своими руками</li>
-          <li>Разбор ответов</li>
-          <li>Высокоуровневые обёртки</li>
-        </ul>
+      <h2>Ethernet-кадр: вход байтов</h2>
+        <p>Первое, что мы получаем из сокета, — <b>Ethernet-кадр</b>, в котором «утоплены» заголовки IP и UDP. Определяем его положение (байты 0–13) вручную:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">class EthernetFrame
+  ETH_P_IP = 0x0800          # тип пакета: IPv4
+
+  def initialize(raw)
+    @raw = raw
+    @dst_mac = raw[0, 6].unpack(&quot;H*&quot;).first
+    @src_mac = raw[6, 6].unpack(&quot;H*&quot;).first
+    @ethertype = raw[12, 2].unpack(&quot;n&quot;).first
+  end
+
+  def ipv4?   # это IP-пакет?
+    @ethertype == ETH_P_IP
+  end
+end</code></pre>
+        <p>Эта структура в Ruby переходит к <code>ipv4_packet</code>, пропустив начало Ethernet.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Модуль socket Ruby делает сеть чистой: TCP-клиент, HTTP вручную, парсер. Урок миновает «магию библиотек».</p>
-        <p>Простейший HTTP-запрос на Ruby:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code>require "socket"
-s = TCPSocket.new("example.com", 80)
-s.write("GET / HTTP/1.1\r\nHost: example.com\r\n\r\n")
-puts s.read</code></pre>
+      <h2>Заголовок IPv4: побитово</h2>
+        <p>IP-заголовок — каркас, на котором держится всё остальное: версия протокола, IHL (длина заголовка в 32-битных словах), TTL, вышележащий протокол и, конечно, адреса источника и назначения. В Ruby биты отделяются распаковкой строки байтов:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">class IPv4Packet
+  IPPROTO_UDP = 17
+
+  def initialize(raw)
+    @raw = raw
+    version_and_ihl = raw[0].unpack(&quot;C&quot;).first
+    @version = (version_and_ihl &gt;&gt; 4) &amp; 0x0F   # четыре старших бита
+    @ihl     = version_and_ihl &amp; 0x0F           # четыре младших бита
+    @protocol = raw[9].unpack(&quot;C&quot;).first
+    @src_ip = raw[12, 4].unpack(&quot;C4&quot;).join(&quot;.&quot;)
+    @dst_ip = raw[16, 4].unpack(&quot;C4&quot;).join(&quot;.&quot;)
+  end
+
+  def udp?; @protocol == IPPROTO_UDP; end
+end</code></pre>
+        <p>И особенно важно: <code>@ihl</code> говорит нам, где начинается payload (байт <code>ihl * 4</code>) — ведь только стандартный заголовок мы и разбираем. Самое забавное: это те самые биты, которые настоящий стек ядра всегда обрабатывает не задумываясь!</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Знать, что за библиотеками спрятан сокет и строка протокола, — золото: урок Ruby это гарантирует.</p>
+      <h2>Дейтаграмма UDP</h2>
+        <p>Следующий шаг: дейтаграмма UDP — 8-байтовый заголовок с портами источника/назначения, длиной и контрольной суммой:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">class UDPDatagram
+  def initialize(raw)
+    @src_port = raw[0, 2].unpack(&quot;n&quot;).first
+    @dst_port = raw[2, 2].unpack(&quot;n&quot;).first
+    @length   = raw[4, 2].unpack(&quot;n&quot;).first
+    @checksum = raw[6, 2].unpack(&quot;n&quot;).first
+    @payload  = raw[8, @length - 8]     # длина включает сам заголовок!
+  end
+end</code></pre>
+        <p>Теперь полная модель из трёх слоёв: <code>EthernetFrame</code> ← <code>IPv4Packet</code> ← <code>UDPDatagram</code> — и нужен ещё «нисходящий» путь для отправки: упаковываем (pack) UDP-дейтаграмму, добавляем спереди IP-заголовок, затем Ethernet-кадр — и «выкрикиваем» через <code>sendto</code> из сырого сокета.</p>
+      </section>
+      <section>
+      <h2>Связываем структуры: «upper-сервер»</h2>
+        <p>Теперь, когда есть обе стороны, выводим «модели» наружу: беззаботный сервер, который берёт каждую UDP-дейтаграмму, переводит строку внутри в <b>ВЕРХНИЙ РЕГИСТР (uppercase)</b> и возвращает ответ. Это та самая настоящая сетевая цепочка, которую проходят браузеры — но теперь линии анализа и сборки целиком под нашими пальцами:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">socket = Socket.open(Socket::AF_INET, Socket::SOCK_RAW, Socket::IPPROTO_UDP)
+
+puts &quot;listening for raw frames on #{packet socket…}&quot;
+
+loop do
+  frame = EthernetFrame.new(socket.recvfrom(65535).first)
+  next unless frame.ipv4?
+
+  packet = IPv4Packet.new(frame.payload)
+  next unless packet.udp?
+
+  datagram = UDPDatagram.new(packet.payload)
+  puts &quot;RX #{datagram.payload.inspect} from #{packet.src_ip}:#{datagram.src_port}&quot;
+
+  # просто: возвращаем ответ в ВЕРХНЕМ регистре
+  reply = UDPDatagram.to_bytes(
+    src_port: datagram.dst_port, dst_port: datagram.src_port,
+    payload: datagram.payload.upcase)
+  packet.send_ipv4(socket, packet.src_ip, reply)
+end</code></pre>
+        <p>Чтобы увидеть результат: из отдельного файла отправьте UDP-дейтаграмму на тот же интерфейс loopback — одной строкой <code>ruby -rsocket -e 'u = UDPSocket.new; u.bind("127.0.0.1", 0); u.send("hello", 0, "127.0.0.1", 1337)'</code> — и наш сервер вернёт ответ «HELLO». Открытие и в объёме работы: почти ноль строк для реальной работы; большая часть кода — описание структур.</p>
+      </section>
+      <section>
+      <h2>Уроки и следующие шаги</h2>
+        <p>Главный вывод упражнения — образное понимание «стека» как сборочной линии: каждый слой работает только со своим «payload», не больше. Следующие шаги для вас — на уровне настоящих сетей: <b>разбор TCP</b> (с конечным автоматом и порядком байтов — сложнее), вычисление <b>контрольной суммы</b> для UDP/IPv4, реализация <b>ARP</b> для поиска MAC соседа и, наконец, «роутер» с несколькими интерфейсами и таблицей маршрутизации. Полный код проекта (стек <b>RUDP</b>) на GitHub: <a href="https://github.com/geckoboard/RUDP" target="_blank" rel="noopener">geckoboard/RUDP</a>.</p>
+        <p>Инженерный постскриптум: IP-заголовок, создаваемый ядром (в IPPROTO_RAW), может немного отличаться — но пока модель ясна, это приемлемая отправная точка.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Сетевой стек на Ruby» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Сетевой стек на Ruby» принадлежит автору оригинала (Daniel Upton). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Daniel Upton). Читайте оригинал на
         <a href="https://medium.com/geckoboard-under-the-hood/how-to-build-a-network-stack-in-ruby-f73aeb1b661b" target="_blank" rel="noopener">https://medium.com/geckoboard-under-the-hood/how-to-build-a-network-stack-in-ruby-f73aeb1b661b</a>.
       </div>
     </article>

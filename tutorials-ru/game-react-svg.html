@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игра на React и SVG»
+          <b>Оригинальный источник:</b> «Developing Games with React, Redux and SVG»
         </div>
         <a class="btn solid" href="https://auth0.com/blog/developing-games-with-react-redux-and-svg-part-1/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-react-svg.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,72 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Игра в браузере на React и SVG: компоненты-спрайты, коллизии и состояния — фронтенд играет в игру.</p>
+      <h2>Об обучении</h2>
+        <p>Этот урок показывает, как строится настоящая игра — без игрового движка! — на <b>React + Redux + SVG</b>. Игра «Aliens, Go Home!» проста: пушка (cannon) внизу экрана, в которую вы целитесь мышью и стреляете по летающим тарелкам. Проект бутстрапится через <code>create-react-app</code>, а полный код доступен на GitHub (вместе с пошаговыми версиями).</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы уже уверенно работаете с Redux, этот урок отлично подойдёт: архитектура игры (state в виде чистых объектов, actions и reducers) спроектирована очень аккуратно.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Архитектура: игра в стиле React</h2>
         <ul>
-          <li>SVG-сцена</li>
-          <li>React и state</li>
-          <li>Анимация и фреймы</li>
-          <li>Механика игры</li>
+          <li><b>Центральный state в Redux</b>: позиции тарелок, пуль и пушки; всё в одном store.</li>
+          <li><b>Рендеринг через SVG</b>: каждый элемент игры (пушка, тарелка, пуля) — SVG-компонент.</li>
+          <li><b>Обновление через requestAnimationFrame</b>: цикл, который каждый кадр диспатчит action и двигает state.</li>
+          <li><b>Столкновения и простая физика</b>: вычисления внутри reducer'а или чистых хелперов.</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Пример кода: игровой компонент</h2>
+        <pre class="code"><span class="lang-tag">jsx</span><code style="direction:ltr;text-align:left">// Компонент пушки: позиция берётся из state
+const Cannon = ({ x, y }) =&gt; (
+  &lt;g&gt;
+    &lt;polygon
+      points=&quot;0,32 0,60 20,60 20,32&quot;
+      transform={`translate(${x}, ${y}) rotate(180)`}
+      style={{ fill: &#x27;#000&#x27; }}
+    /&gt;
+  &lt;/g&gt;
+);
+
+// Игровой цикл: каждый кадр диспатчит игровой тик
+const Game = ({ shots, aliens, cannon }) =&gt; (
+  &lt;svg width=&quot;1000&quot; height=&quot;600&quot;&gt;
+    &lt;Cannon x={cannon.x} y={cannon.y} /&gt;
+    {shots.map((shot) =&gt; (
+      &lt;circle key={shot.id} cx={shot.x} cy={shot.y} r=&quot;4&quot; /&gt;
+    ))}
+    {aliens.map((alien) =&gt; (
+      &lt;circle key={alien.id} cx={alien.x} cy={alien.y} r=&quot;15&quot; /&gt;
+    ))}
+  &lt;/svg&gt;
+);
+
+// В componentDidMount запускается цикл кадров requestAnimationFrame
+componentDidMount() {
+  this.loopId = requestAnimationFrame(this.tick);
+}
+tick = () =&gt; {
+  const { dispatch } = this.props;
+  dispatch(moveAliensDown());   // движение тарелок
+  dispatch(moveShotsUp());      // движение пуль
+  dispatch(checkCollisions());  // столкновения
+  this.loopId = requestAnimationFrame(this.tick);
+};</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Полноценная игра без игровой библиотеки — только React, Redux и SVG.</li>
+          <li>Чистая архитектура: вся логика чистая и тестируемая (reducers).</li>
+          <li>GitHub-репозиторий (Aliens Go Home — Part 1) для пошагового следования.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>React + SVG — чуть необычный, но рабочий стек: интерфейс — компоненты, игровой мир — SVG-элементы.</p>
-        <p>Обновление состояния каждый кадр:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function useGameLoop() {
-  useEffect(() =&gt; {
-    const id = requestAnimationFrame(() =&gt; setTick(t =&gt; t + 1));
-    return () =&gt; cancelAnimationFrame(id);
-  });
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Фронтендеры тоже делают игры: этот стек научит вас играм без единого движка.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игра на React и SVG» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игра на React и SVG» принадлежит автору оригинала (Блог Auth0). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Блог Auth0). Читайте оригинал на
         <a href="https://auth0.com/blog/developing-games-with-react-redux-and-svg-part-1/" target="_blank" rel="noopener">https://auth0.com/blog/developing-games-with-react-redux-and-svg-part-1/</a>.
       </div>
     </article>

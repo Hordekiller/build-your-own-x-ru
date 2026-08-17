@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Рогалик на Python (полный проект)»
+          <b>Оригинальный источник:</b> «Роуглайк-туториал на python-tcod»
         </div>
         <a class="btn solid" href="http://rogueliketutorials.com/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-roguelike-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,87 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Полный рогалик на Python: подземелья, монстры, FOV и инвентарь — крупный проект в учебном темпе.</p>
+      <h2>Об обучении</h2>
+        <p>Этот сайт — дом одного из самых известных roguelike-туториалов: раньше он был основан на <code>libtcod</code>, а в 2019 году был переписан под <b>python-tcod</b>. Новая версия отличается чистой архитектурой (выделение зависимостей, отдельные файлы вроде <code>engine.py</code>) и в последовательных частях строит полный roguelike: от отрисовки «@» в терминале до сложных систем.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> первая часть обеих версий (старой и новой) — «отрисовка @»; дальше движение, ввод, FOV и далее — лучшая отправная точка для первого roguelike на Python.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта частей</h2>
         <ul>
-          <li>Генерация уровней</li>
-          <li>Поле зрения</li>
-          <li>Монстры и бой</li>
-          <li>Инвентарь и опыт</li>
+          <li>Отрисовка символа «@» и движение клавишами</li>
+          <li>Терминал и ввод (с tcod и keydown)</li>
+          <li>Генерация подземелья с комнатами и коридорами</li>
+          <li>Поле зрения (FOV) и исследование</li>
+          <li>Столкновения, пошаговый цикл и управление игроком</li>
+          <li>Монстры, атака и урон</li>
+          <li>Глубокие игровые системы: инвентарь, снаряжение, заклинания</li>
+          <li>Сохранение, уровни и далее</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Пример кода первой части</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># engine.py — ядро игры (новая версия)
+import tcod
+
+from input_handlers import EventHandler
+
+class Engine:
+    def __init__(self, event_handler: EventHandler):
+        self.event_handler = event_handler
+
+    def handle_events(self, events) -&gt; None:
+        for event in events:
+            action = self.event_handler.dispatch(event)
+            if action is None:
+                continue
+            action.perform(self, self.player)
+            # ...
+
+def main() -&gt; None:
+    screen_width = 80
+    screen_height = 50
+
+    tileset = tcod.tileset.load_tilesheet(
+        &quot;dejavu10x10_gs_tc.png&quot;, 32, 8, tcod.tileset.CHARMAP_TCOD
+    )
+
+    with tcod.context.new_terminal(
+        columns=screen_width,
+        rows=screen_height,
+        tileset=tileset,
+        title=&quot;Мой Roguelike&quot;,
+    ) as context:
+
+        event_handler = EventHandler()
+        engine = Engine(event_handler)
+
+        while True:
+            root_console = tcod.console.Console(screen_width, screen_height)
+            # ... отрисовка сцены на консоли ...
+
+            context.present(root_console)  # показ
+            events = tcod.event.wait()     # ожидание события
+            root_console.clear()
+            engine.handle_events(events)
+
+if __name__ == &quot;__main__&quot;:
+    main()</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Самый свежий и чистый roguelike-туториал на Python (python-tcod).</li>
+          <li>Части полные и проходимые; код каждой части — на GitHub.</li>
+          <li>В конце — продвинутые возможности: инвентарь, снаряжение и деревья навыков.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Рогалик-проект объединяет всё: генерация, зрение, ИИ, инвентарь. Python делает его читаемым и завершаемым.</p>
-        <p>Пошаговое обновление мира:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>for monster in monsters:
-    if monster.sees_fov(player_pos):
-        monster.step_towards(player_pos)  # ход монстра</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Полноценный рогалик — посильный вызов: после него вы сможете строить большие сложные игры.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Рогалик на Python (полный проект)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Рогалик на Python (полный проект)» принадлежит автору оригинала (Тайлер и Неро (Tyler, Nero)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Тайлер и Неро (Tyler, Nero)). Читайте оригинал на
         <a href="http://rogueliketutorials.com/" target="_blank" rel="noopener">http://rogueliketutorials.com/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем TCP/IP-стек с нуля на C»
+          <b>Оригинальный источник:</b> «Let's code a TCP/IP stack, 1: Ethernet &amp; ARP»
         </div>
         <a class="btn solid" href="http://www.saminiir.com/lets-code-tcp-ip-stack-1-ethernet-arp/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/network-lets-code-tcp-ip.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,145 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия строит TCP/IP: Ethernet, ARP, IP, ICMP, TCP — собственный стек протоколов поверх сокетов raw.</p>
+      <h2>Введение в серию</h2>
+        <p>Написать собственный TCP/IP-стек на первый взгляд страшно: за тридцать лет жизни TCP накопил множество спецификаций. Но ядро спецификации довольно компактно — важные части: разбор TCP-заголовка, машина состояний, контроль перегрузки и вычисление Retransmission Timeout. Протоколы Ethernet (уровень 2) и IP (уровень 3) по сравнению со сложностью TCP гораздо проще.</p>
+        <p>В этой серии блог-постов мы реализуем <b>минимальный TCP/IP-стек в пространстве пользователя (userspace) для Linux</b>. Цель чисто учебная: глубже понять сети и системное программирование. Полный код проекта на GitHub: <a href="https://github.com/saminiir/level-ip" target="_blank" rel="noopener">saminiir/level-ip</a>.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Устройства TUN/TAP</h2>
+        <p>Чтобы перехватывать низкоуровневый трафик из ядра Linux, мы используем <b>устройство TAP</b>. Одним словом, устройства TUN/TAP позволяют сетевым программам напрямую манипулировать трафиком уровня L3 (TUN) и L2 (TAP). Известный практический пример — туннелирование, где один пакет упаковывается внутрь payload другого (как в OpenVPN). Так как мы строим стек с уровня 2 и выше, нам нужен TAP:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* Из Kernel Documentation/networking/tuntap.txt */
+int tun_alloc(char *dev)
+{
+    struct ifreq ifr;
+    int fd, err;
+
+    if( (fd = open(&quot;/dev/net/tap&quot;, O_RDWR)) &lt; 0 ) {
+        print_error(&quot;Cannot open TUN/TAP dev&quot;);
+        exit(1);
+    }
+
+    CLEAR(ifr);
+
+    /* Флаги:
+     *   IFF_TUN - устройство TUN (без ethernet-заголовка)
+     *   IFF_TAP - устройство TAP          ← нам нужно это
+     *   IFF_NO_PI - не добавлять информацию о пакете впереди */
+    ifr.ifr_flags = IFF_TAP | IFF_NO_PI;
+    if( *dev ) {
+        strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+    }
+
+    if( (err = ioctl(fd, TUNSETIFF, (void *) &amp;ifr)) &lt; 0 ){
+        print_error(&quot;ERR: Could not ioctl tun: %s\n&quot;, strerror(errno));
+        close(fd);
+        return err;
+    }
+
+    strcpy(dev, ifr.ifr_name);
+    return fd;
+}</code></pre>
+        <p>После этого возвращённый дескриптор файла <code>fd</code> можно использовать для чтения и записи в буфер ethernet виртуального устройства. Флаг <code>IFF_NO_PI</code> критичен — без него перед ethernet-кадром добавляется лишняя информация о пакете (это можно проверить и в исходниках драйвера tun в ядре).</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* Чтение и разбор кадра, полученного с устройства TAP */
+if (tun_read(buf, BUFLEN) &lt; 0) {
+    print_error(&quot;ERR: Read from tun_fd: %s\n&quot;, strerror(errno));
+}
+
+struct eth_hdr *hdr = init_eth_hdr(buf);
+
+handle_frame(&amp;netdev, hdr);</code></pre>
+      </section>
+      <section>
+      <h2>Формат ethernet-кадра</h2>
+        <p>Разнообразные технологии Ethernet — опора связи компьютеров в локальных сетях (LAN). Стандарт Ethernet сильно эволюционировал с первой версии, выпущенной Digital Equipment Corporation, Intel и Xerox в 1980 году. Первая версия работала на 10 Мбит/с и полудуплексной связи; поэтому понадобился протокол доступа MAC под названием <b>CSMA/CD</b> для упорядочивания потока данных. Позже 100BASE-T с витой парой сделал возможной полнодуплексную связь и большие скорости, а распространение ethernet-коммутаторов во многом устарело CSMA/CD. Стандарты Ethernet поддерживаются рабочей группой IEEE 802.3.</p>
+        <p>Заголовок ethernet-кадра можно структурировать на C следующим образом:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#include &lt;linux/if_ether.h&gt;
+
+struct eth_hdr
+{
+    unsigned char dmac[6];      /* MAC назначения */
+    unsigned char smac[6];      /* MAC источника */
+    uint16_t ethertype;         /* тип или длина payload */
+    unsigned char payload[];    /* в нашем случае: IPv4 или ARP */
+} __attribute__((packed));</code></pre>
         <ul>
-          <li>Кадры Ethernet и ARP</li>
-          <li>IP и фрагментация</li>
-          <li>TCP: рукопожатие и окна</li>
-          <li>Реализация на raw-сокетах</li>
+          <li><b><code>dmac</code> и <code>smac</code></b>: MAC-адреса сторон соединения.</li>
+          <li><b><code>ethertype</code></b>: двухбайтовое поле «нагрузки»: если значение больше или равно 1536 — говорит тип payload (например, IPv4 или ARP), если меньше — длину payload.</li>
+          <li>После поля типа могут быть теги VLAN и QoS — в этой реализации опущены.</li>
+          <li>Если длина payload меньше минимальных 46 байтов, добавляются pad-байты.</li>
+          <li>В конце кадра — поле FCS для проверки корректности по CRC — в этой реализации игнорируется.</li>
         </ul>
+        <p>Атрибут <code>packed</code> говорит gcc не добавлять pad-байты для выравнивания данных. Причина — наш стиль разбора: простой каст типа на буфер:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">struct eth_hdr *hdr = (struct eth_hdr *) buf;</code></pre>
+        <p>Более переносимый (и более хлопотный) способ — «ручная сериализация» полей, чтобы компилятор не добавлял padding под выравнивание разных процессоров. Общий поток обработки входящего кадра прост: прочитать ← скастовать в <code>eth_hdr</code> ← <code>handle_frame</code>, который смотрит только на <code>ethertype</code> и по нему выбирает действие.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Стек протоколов — это слои: каждый слой инкапсулирует данные и добавляет свой заголовок. Серия делает каждый слой руками.</p>
-        <p>Заголовок IP — структура:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>struct iphdr {
-    uint8_t  ihl:4, version:4;
-    uint8_t  tos; uint16_t tot_len;
-    uint16_t id; uint16_t frag_off;
-    uint8_t  ttl; uint8_t  protocol;
-    uint16_t check;
-    uint32_t saddr, daddr;
-};</code></pre>
+      <h2>Протокол ARP и формат его сообщения</h2>
+        <p><b>Протокол разрешения адресов (ARP)</b> служит для динамического сопоставления 48-битного ethernet-адреса (MAC) с адресом протокола (например, IPv4). Ключевой момент: с ARP работают любые протоколы уровня L3 — не только IPv4; даже CHAOS с 16-битным адресом! Обычный сценарий: вы знаете IP-адрес сервиса в LAN, но для реальной связи нужен и аппаратный адрес (MAC); поэтому ARP вещает в сеть: «кто владеет этим IP, пусть объявит свой аппаратный адрес?»</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">struct arp_hdr
+{
+    uint16_t hwtype;    /* тип канального уровня; Ethernet = 0x0001 */
+    uint16_t protype;   /* тип протокола; IPv4 = 0x0800 */
+    unsigned char hwsize;   /* длина аппаратного адреса; 6 байт для MAC */
+    unsigned char prosize;  /* длина адреса протокола; 4 байта для IP */
+    uint16_t opcode;    /* 1=ARP request, 2=ARP reply, 3/4=RARP */
+    unsigned char data[];   /* payload для IPv4 */
+} __attribute__((packed));
+
+struct arp_ipv4
+{
+    unsigned char smac[6];      /* MAC отправителя */
+    uint32_t sip;               /* IP отправителя */
+    unsigned char dmac[6];      /* MAC получателя */
+    uint32_t dip;               /* IP получателя */
+} __attribute__((packed));</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Понимание TCP/IP изнутри — суперсила: после этой серии трассировка пакетов становится чтением знакомого кода.</p>
+      <h2>Алгоритм разрешения адреса</h2>
+        <p>Оригинальная спецификация (RFC 826) задаёт этот простой алгоритм:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">Есть ли у меня тип оборудования ar$hrd?
+Да:
+  [Опционально: проверить и длину оборудования ar$hln]
+  Говорю ли я по протоколу ar$pro?
+  Да:
+    [Опционально: проверить длину протокола ar$pln]
+    Если пара &lt;тип протокола, адрес протокола отправителя&gt;
+    уже есть в таблице перевода, обнови аппаратный адрес
+    записи в соответствии с новой информацией.
+    Я ли адрес протокола назначения (ar$tpa)?
+    Да:
+      Если запись новая, добавь тройку &lt;тип протокола,
+      адрес протокола отправителя, аппаратный адрес отправителя&gt;
+      в таблицу перевода.
+      Является ли opcode запросом?  (теперь смотрим на opcode!)
+      Да:
+        Поменяй местами поля оборудования и протокола и
+        помести локальные адреса в поля отправителя.
+        Поменяй ar$op на REPLY
+        Отправь пакет по (новому) адресу назначения.</code></pre>
+        <p>Таблица перевода хранит результаты ARP, чтобы хосты могли напрямую проверять, есть ли запись, — это предотвращает заваливание сети повторными ARP-запросами. Полная реализация алгоритма — в файле <code>arp.c</code> проекта.</p>
+        <h3>Финальный тест: отвечаем ли мы на ARP-запрос?</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">[saminiir@localhost lvl-ip]$ arping -I tap0 10.0.0.4
+ARPING 10.0.0.4 from 192.168.1.32 tap0
+Unicast reply from 10.0.0.4 [00:0C:29:6D:50:25]  3.170ms
+Unicast reply from 10.0.0.4 [00:0C:29:6D:50:25]  13.309ms
+
+[saminiir@localhost lvl-ip]$ arp
+Address         HWtype  HWaddress           Flags Mask  Iface
+10.0.0.4        ether   00:0c:29:6d:50:25   C           tap0</code></pre>
+        <p>Сетевой стек ядра распознал ARP-ответ нашего кастомного стека и записал запись виртуального сетевого устройства в свой ARP-кэш — полный успех!</p>
+      </section>
+      <section>
+      <h2>Итоги и следующий пост</h2>
+        <p>Минимальная реализация обработки ethernet-кадров и ARP сравнительно проста и укладывается в несколько строк кода; при этом награда велика: вы заполняете ARP-кэш реального хоста Linux вашим «синтетическим ethernet-устройством»! Следующий шаг серии (часть 2): <b>разбор IPv4-пакета и ICMP echo/reply (ping)</b>.</p>
+        <p>Благодарности: Сяочэнь Ван (Xiaochen Wang), чья похожая реализация (проект <code>tapip</code>) бесконечно помогла на старте с программированием сетей на C и обработкой протоколов; некоторые наши дизайнерские решения напрямую взяты из его реализации.</p>
+        <p>Ресурсы: <a href="https://tools.ietf.org/html/rfc7414" target="_blank" rel="noopener">RFC 7414</a>, <a href="http://ethernethistory.typepad.com/papers/EthernetSpec.pdf" target="_blank" rel="noopener">первоначальные спецификации Ethernet</a>, <a href="https://en.wikipedia.org/wiki/IEEE_802.3" target="_blank" rel="noopener">IEEE 802.3</a> и <a href="https://github.com/chobits/tapip" target="_blank" rel="noopener">tapip (Чен)</a>.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем TCP/IP-стек с нуля на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем TCP/IP-стек с нуля на C» принадлежит автору оригинала (Сами Нииранен (Sami Niiranen)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Сами Нииранен (Sami Niiranen)). Читайте оригинал на
         <a href="http://www.saminiir.com/lets-code-tcp-ip-stack-1-ethernet-arp/" target="_blank" rel="noopener">http://www.saminiir.com/lets-code-tcp-ip-stack-1-ethernet-arp/</a>.
       </div>
     </article>

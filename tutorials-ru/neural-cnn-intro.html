@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Введение в CNN на Python»
+          <b>Оригинальный источник:</b> «CNNs, Part 1: An Introduction to Convolutional Neural Networks»
         </div>
         <a class="btn solid" href="https://victorzhou.com/blog/intro-to-cnns-part-1/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-cnn-intro.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,92 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Введение в свёрточные сети: свёртки, пулинг и обучение на изображениях — фундамент глубокого зрения.</p>
+      <h2>Почему CNN для изображений?</h2>
+        <p>Для классификации изображений «привет, мир компьютерного зрения» — это задача MNIST: распознать рукописную цифру на изображении 28×28. Обычная полносвязная сеть имеет большой недостаток: изображение 28×28 = 784 пикселя; при скрытом слое из 784 нейронов весов уже 600 тысяч, а пространственная структура изображения (близость пикселей) игнорируется. <b>CNN</b> решает эту проблему двумя ключевыми идеями: <b>свёрткой</b> (скольжение фильтра по изображению) и <b>сдвиговой инвариантностью</b> — где бы в изображении ни находился паттерн, он находится тем же фильтром.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Свёртки</li>
-          <li>Пулинг</li>
-          <li>Архитектура</li>
-          <li>Обучение</li>
-        </ul>
+      <h2>Свёртка: детектор признаков</h2>
+        <p>Фильтр (например, 3×3) скользит по небольшим участкам изображения и для каждого участка даёт скалярное произведение с пикселями. Результат — «карта признаков», показывающая интенсивность присутствия паттерна в каждой точке. Например, один фильтр может распознавать горизонтальное ребро: −1 в одной строке и 1 в другой:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import numpy as np
+
+class Conv3x3:
+    # Свёрточный слой с фильтрами 3x3
+
+    def __init__(self, num_filters):
+        self.num_filters = num_filters
+        # фильтры: 3D-массив (число фильтров, 3, 3); деление на 9 для малой дисперсии
+        self.filters = np.random.randn(num_filters, 3, 3) / 9
+
+    def forward(self, input):
+        # выход: карта признаков размером (h-2, w-2, num_filters)
+        h, w = input.shape
+        output = np.zeros((h - 2, w - 2, self.num_filters))
+        for i in range(h - 2):
+            for j in range(w - 2):
+                im_region = input[i:(i + 3), j:(j + 3)]  # участок 3x3
+                output[i, j] = np.sum(im_region * self.filters, axis=(1, 2))
+        return output</code></pre>
+        <p>В сети-примере первый слой имеет 8 фильтров и превращает изображение 28×28 в объём <code>26×26×8</code>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>CNN учат иерархию признаков: линии → формы → объекты. Урок объясняет каждый элемент.</p>
-        <p>Одна свёртка на NumPy:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import numpy as np
-def conv2d(img, kernel):
-    out = np.zeros((img.shape[0]-2, img.shape[1]-2))
-    for i in range(out.shape[0]):
-        for j in range(out.shape[1]):
-            out[i, j] = np.sum(img[i:i+3, j:j+3] * kernel)
-    return out</code></pre>
+      <h2>Слой Pooling: умное уменьшение</h2>
+        <p>Карты признаков всё ещё велики. Слой <b>Max Pooling</b> сводит каждый блок 2×2 к одному значению (максимальному) — размеры уменьшаются вдвое, важнейшая информация сохраняется, плюс появляется небольшая устойчивость к сдвигам. В примере: <code>26×26×8 ← 13×13×8</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class MaxPool2:
+    # Слой максимизации с окном 2x2 (без перекрытия)
+
+    def forward(self, input):
+        h, w, num_filters = input.shape
+        output = np.zeros((h // 2, w // 2, num_filters))
+        for i in range(h // 2):
+            for j in range(w // 2):
+                im_region = input[(i * 2):(i * 2 + 2), (j * 2):(j * 2 + 2)]
+                output[i, j] = np.amax(im_region, axis=(0, 1))  # максимум по h и w
+        return output</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Введение в CNN — мост к современному CV: свёртки перестанут быть магией после этого урока.</p>
+      <h2>Слой Softmax: финальное решение</h2>
+        <p>Для классификации 10 цифр на выходе должно быть 10 вероятностей. Слой <b>Softmax</b> (полносвязный) распрямляет объём, комбинирует его с весами и смещениями и через функцию softmax превращает в распределение вероятностей. Предсказание сети — цифра с наибольшей вероятностью:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class Softmax:
+    # Полносвязный слой с активацией softmax
+
+    def __init__(self, input_len, nodes):
+        self.weights = np.random.randn(input_len, nodes) / input_len
+        self.biases = np.zeros(nodes)
+
+    def forward(self, input):
+        input = input.flatten()
+        totals = np.dot(input, self.weights) + self.biases
+        exp = np.exp(totals)
+        return exp / np.sum(exp, axis=0)   # распределение вероятностей</code></pre>
+      </section>
+      <section>
+      <h2>Полная компоновка и Forward</h2>
+        <p>Три части вместе образуют сеть. Для каждого изображения выполняется инициализация и Forward, вычисляются потери <b>cross-entropy</b> и точность. Нормализация изображений из [0, 255] в диапазон [−0,5, +0,5] облегчает сети работу:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">conv = Conv3x3(8)                    # 28x28x1 -&gt; 26x26x8
+pool = MaxPool2()                    # 26x26x8 -&gt; 13x13x8
+softmax = Softmax(13 * 13 * 8, 10)   # 13x13x8 -&gt; 10
+
+def forward(image, label):
+    out = conv.forward((image / 255) - 0.5)   # нормализация
+    out = pool.forward(out)
+    out = softmax.forward(out)
+
+    loss = -np.log(out[label])                # потери cross-entropy
+    acc = 1 if np.argmax(out) == label else 0
+    return out, loss, acc</code></pre>
+      </section>
+      <section>
+      <h2>Следующий шаг</h2>
+        <p>В этой статье реализован только <b>Forward</b> (предсказание) — обучение не происходит, веса случайны (точность ~10%, то есть угадывание). Обучение CNN означает взятие производных ошибки по слою softmax, по pooling и по свёрточным фильтрам — тема статьи «Часть 2: обучение свёрточной нейронной сети» того же автора.</p>
+        <div class="callout note">
+          <strong>Дополнительно:</strong> полный код лежит в репозитории <a href="https://github.com/vzhou842/cnn-from-scratch" target="_blank" rel="noopener">vzhou842/cnn-from-scratch</a>; версия на Keras обучает ту же архитектуру с гораздо большей точностью и быстрее.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Введение в CNN на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Введение в CNN на Python» принадлежит автору оригинала (Victor Zhou). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Victor Zhou). Читайте оригинал на
         <a href="https://victorzhou.com/blog/intro-to-cnns-part-1/" target="_blank" rel="noopener">https://victorzhou.com/blog/intro-to-cnns-part-1/</a>.
       </div>
     </article>

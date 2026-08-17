@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Шаблонизатор на JS за 20 строк»
+          <b>Оригинальный источник:</b> «JavaScript template engine in just 20 lines»
         </div>
         <a class="btn solid" href="http://krasimirtsonev.com/blog/article/Javascript-template-engine-in-just-20-line" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/template-engine-js-20-lines.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,121 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Шаблонизатор на JavaScript в 20 строк: подстановка значений, выражения и циклы — максимум смысла в минимуме кода.</p>
+      <h2>1. Предыстория</h2>
+        <p>Автор строил <b>AbsurdJS</b> — JavaScript-препроцессор, который сначала генерировал CSS, а затем CSS/HTML. Раз он генерировал HTML, естественно было выступать ему и в роли шаблонного движка — то есть своего рода «заполнение разметки данными». Но существовавшие движки шаблонов в основном работали только на NodeJS и не годились для браузера. Он наткнулся на пост в блоге Джона Резига (JavaScript Micro-Templating), немного переделал его и уложился в 20 строк. В этой статье тот же движок восстанавливается шаг за шагом.</p>
+        <p>Наша цель — функция, которая принимает шаблон и данные и возвращает итоговый вывод:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var TemplateEngine = function(tpl, data) {
+    // магия вот здесь ...
+}
+var template = &#x27;Hello, my name is &lt;%name%&gt;. I\&#x27;m &lt;%age%&gt; years old.&#x27;;
+console.log(TemplateEngine(template, {
+    name: &quot;Krasimir&quot;,
+    age: 29
+}));
+// вывод: Hello, my name is Krasimir. I&#x27;m 29 years old.</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Подстановка значений</li>
-          <li>Простой парсинг</li>
-          <li>Циклы</li>
-          <li>Рендер из строки</li>
-        </ul>
-      </section>
+      <h2>2. Регулярное выражение и поиск всех плейсхолдеров</h2>
+        <p>Первый шаг — найти динамические куски внутри шаблона. Начнём с регулярного выражения — выражения, которое захватывает все части между <code>&lt;%</code> и <code>%&gt;</code>, а с флагом <code>g</code> (глобальным) — все совпадения, а не только первое:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var re = /&lt;%([^%&gt;]+)?%&gt;/g;
+var match = re.exec(tpl);
+// match содержит: &quot;&lt;%name%&gt;&quot;, &quot;name&quot;, index и input
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Любой шаблонизатор — это функция: шаблон → данные → текст. В 20 строках видны основа и красота идеи.</p>
-        <p>Замена выражений в шаблоне:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function render(tpl, data) {
-  return tpl.replace(/{{(\w+)}}/g, (_, k) =&gt; data[k]);
+// для обработки всех совпадений — в цикле while
+var re = /&lt;%([^%&gt;]+)?%&gt;/g, match;
+while(match = re.exec(tpl)) {
+    console.log(match);   // будут видны и &lt;%name%&gt;, и &lt;%age%&gt;
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Короткие реализации дают базу: вы поймёте, откуда растут Handlebars и EJS.</p>
+      <h2>3. Почему простой замены недостаточно</h2>
+        <p>Самый простой путь — <code>tpl.replace(match[0], data[match[1]])</code> — работает, но только для плоских односторонних данных. Если наши данные вложены, например <code>{ profile: { age: 29 } }</code>, а в шаблоне написано <code>&lt;%profile.age%&gt;</code>, то получается выражение <code>data["profile.age"]</code>, которое даёт <code>undefined</code>. Правильный путь? Помещать между <code>&lt;%</code> и <code>%&gt;</code> <b>настоящий JavaScript-код</b>, выполняющийся на данных; например, <code>&lt;%this.profile.age%&gt;</code>. А для этого нужен <b>new Function</b> — создание функции из строки:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var fn = new Function(&quot;arg&quot;, &quot;console.log(arg + 1);&quot;);
+fn(2); // вывод: 3  — эквивалент fn = function(arg) { console.log(arg + 1); }</code></pre>
+      </section>
+      <section>
+      <h2>4. Сборка тела функции: циклы ломают шаблон</h2>
+        <p>Теперь нужно «собрать» тело функции. Если просто склеивать строки через <code>+</code>, всё ломается, когда пользователь пишет в шаблоне цикл:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var template =
+&#x27;My skills:&#x27; +
+&#x27;&lt;%for(var index in this.skills) {%&gt;&#x27; +
+&#x27;&lt;%this.skills[index]%&gt;&#x27; +
+&#x27;&lt;%}%&gt;&#x27;;</code></pre>
+        <p>Склейка через <code>+</code> даёт <code>return 'My skills:' + for(...) { + ...}</code>, что является синтаксической ошибкой. Решение Джона Резига: складывать все куски в массив и в конце склеивать через <code>join</code> — тогда управляющий код может «напрямую» попасть в тело метода:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var r = [];
+r.push(&#x27;My skills:&#x27;);
+for(var index in this.skills) {
+    r.push(this.skills[index]);
+}
+return r.join(&#x27;&#x27;);</code></pre>
+        <p>Чтобы генерировать такой код, используем переменную <code>cursor</code>, которая показывает «где мы в шаблоне», и функцию <code>add</code>, добавляющую строки в <code>code</code>. Плейсхолдеры — это «код» (их не нужно брать в кавычки), остальной текст — «строка» (его нужно взять в кавычки и экранировать <code>"</code>):</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var TemplateEngine = function(tpl, data) {
+    var re = /&lt;%([^%&gt;]+)?%&gt;/g,
+        code = &#x27;var r=[];\n&#x27;,
+        cursor = 0, match;
+    var add = function(line, js) {
+        js ? code += &#x27;r.push(&#x27; + line + &#x27;);\n&#x27;
+           : code += &#x27;r.push(&quot;&#x27; + line.replace(/&quot;/g, &#x27;\\&quot;&#x27;) + &#x27;&quot;);\n&#x27;;
+    }
+    while(match = re.exec(tpl)) {
+        add(tpl.slice(cursor, match.index));
+        add(match[1], true);            // содержимое плейсхолдера — это код
+        cursor = match.index + match[0].length;
+    }
+    add(tpl.substr(cursor, tpl.length - cursor));
+    code += &#x27;return r.join(&quot;&quot;);&#x27;;
+    return new Function(code.replace(/[\r\t\n]/g, &#x27;&#x27;)).apply(data);
+}</code></pre>
+        <p>Результат <code>new Function</code> создан без аргументов и вызывается через <code>apply(data)</code>; «this» внутри тела функции указывает на наши данные — поэтому <code>&lt;%this.name%&gt;</code> работает.</p>
+      </section>
+      <section>
+      <h2>5. Поддержка логики: if/else и циклы</h2>
+        <p>На том же примере с циклом текущий вывод даёт ошибку <code>Unexpected token for</code>; потому что строку <code>for(...) {</code> не нужно оборачивать в <code>r.push(...)</code> — она должна попадать в скрипт «как есть». Решение — второе регулярное выражение, определяющее, начинается ли код внутри плейсхолдера с управляющих ключевых слов:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var reExp = /(^( )?(if|for|else|switch|case|break|{|}))(.*)?/g;
+
+var add = function(line, js) {
+    js ? code += line.match(reExp) ? line + &#x27;\n&#x27; : &#x27;r.push(&#x27; + line + &#x27;);\n&#x27;
+       : code += &#x27;r.push(&quot;&#x27; + line.replace(/&quot;/g, &#x27;\\&quot;&#x27;) + &#x27;&quot;);\n&#x27;;
+}</code></pre>
+        <p>Теперь в шаблоне можно писать полную логику:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var template =
+&#x27;My skills:&#x27; +
+&#x27;&lt;%if(this.showSkills) {%&gt;&#x27; +
+    &#x27;&lt;%for(var index in this.skills) {%&gt;&#x27; +
+    &#x27;&lt;a href=&quot;#&quot;&gt;&#x27; + &#x27;&lt;%this.skills[index]%&gt;&#x27; + &#x27;&lt;/a&gt;&#x27; +
+    &#x27;&lt;%}%&gt;&#x27; +
+&#x27;&lt;%} else {%&gt;&#x27; +
+    &#x27;&lt;p&gt;none&lt;/p&gt;&#x27; +
+&#x27;&lt;%}%&gt;&#x27;;</code></pre>
+      </section>
+      <section>
+      <h2>6. Финальная версия: всего 15 строк</h2>
+        <p>С парой небольших оптимизаций (возврат <code>add</code> для цепочек и пропуск пустых строк) финальная версия — не то что не 20 строк, а всего 15:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">var TemplateEngine = function(html, options) {
+    var re = /&lt;%([^%&gt;]+)?%&gt;/g, reExp = /(^( )?(if|for|else|switch|case|break|{|}))(.*)?/g,
+        code = &#x27;var r=[];\n&#x27;, cursor = 0, match;
+    var add = function(line, js) {
+        js ? (code += line.match(reExp) ? line + &#x27;\n&#x27; : &#x27;r.push(&#x27; + line + &#x27;);\n&#x27;)
+           : (code += line != &#x27;&#x27; ? &#x27;r.push(&quot;&#x27; + line.replace(/&quot;/g, &#x27;\\&quot;&#x27;) + &#x27;&quot;);\n&#x27; : &#x27;&#x27;);
+        return add;
+    }
+    while(match = re.exec(html)) {
+        add(html.slice(cursor, match.index))(match[1], true);
+        cursor = match.index + match[0].length;
+    }
+    add(html.substr(cursor, html.length - cursor));
+    code += &#x27;return r.join(&quot;&quot;);&#x27;;
+    return new Function(code.replace(/[\r\t\n]/g, &#x27;&#x27;)).apply(options);
+}</code></pre>
+        <div class="callout note">
+          <strong>Обучающий момент:</strong> этот движок «переводит шаблон в код» (компилирует), а не разбирает шаблон на лету; та же логика стоит за современными движками вроде EJS — и хочется сделать сноску на микро-шаблонизацию Джона Резига, которая переведена в следующем уроке этого раздела.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Шаблонизатор на JS за 20 строк» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Шаблонизатор на JS за 20 строк» принадлежит автору оригинала (Красимир Цонев (Krasimir Tsonev)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Красимир Цонев (Krasimir Tsonev)). Читайте оригинал на
         <a href="http://krasimirtsonev.com/blog/article/Javascript-template-engine-in-just-20-line" target="_blank" rel="noopener">http://krasimirtsonev.com/blog/article/Javascript-template-engine-in-just-20-line</a>.
       </div>
     </article>

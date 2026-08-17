@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Бильярд 8-ball на JavaScript»
+          <b>Оригинальный источник:</b> «8-Ball Pool Game»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=aXwCrtAo4Wc" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-8ball.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,74 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Бильярд на JavaScript: шары, отскоки и столкновения — физика 2D прямо в браузере.</p>
+      <h2>О серии</h2>
+        <p>В этой серии на JavaScript и Canvas создаётся полноценная игра <b>8-Ball Pool</b> (американский бильярд) — без каких-либо библиотек. От физики столкновения шаров, удара кием, движения и трения до правил «восьмёрки» и интерфейса — всё реализуется шаг за шагом. Серия начинается с «Part 1» и завершается в трёх частях.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> у проекта полная физика: столкновение шар-шар, шар-борт, спин (вращение) и трение — это один из лучших уроков настоящей двухмерной физики в браузере.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Шары и скорости</li>
-          <li>Столкновения шаров</li>
-          <li>Отскоки от бортов</li>
-          <li>Карманные лузы</li>
-        </ul>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; по ссылке ниже вы перейдёте прямо на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/watch?v=aXwCrtAo4Wc" target="_blank" rel="noopener">▶ Смотреть «8-Ball Pool Game Part 1»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Бильярд — физика: упругие столкновения, отскоки от бортов и «лузы». Каждый элемент на JS.</p>
-        <p>Упругое столкновение двух шаров:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>// вдоль нормали обмениваемся компонентами скоростей
-const dv = v1 - v2;
-v1 -= (dv * 0.5); v2 += (dv * 0.5);</code></pre>
+      <h2>Концепции реализации</h2>
+        <p>Пример физики шаров, создаваемой в серии:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Шар: позиция, скорость, радиус и состояние
+class Ball {
+  constructor(x, y, radius, color, id) {
+    this.x = x; this.y = y;
+    this.vx = 0; this.vy = 0;
+    this.radius = radius;
+    this.color = color;
+    this.id = id;
+  }
+
+  // Движение и применение трения
+  update(dt) {
+    this.x += this.vx * dt;
+    this.y += this.vy * dt;
+    this.vx *= FRICTION; // трение стола
+    this.vy *= FRICTION;
+    if (Math.abs(this.vx) &lt; EPSILON) this.vx = 0;
+    if (Math.abs(this.vy) &lt; EPSILON) this.vy = 0;
+    this.collideWalls();
+  }
+
+  // Упругое столкновение круг-круг между двумя шарами
+  collide(other) {
+    const dx = other.x - this.x;
+    const dy = other.y - this.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist &lt; this.radius + other.radius) {
+      // Вектор нормали и обмен скоростей вдоль него
+      const nx = dx / dist, ny = dy / dist;
+      const relVx = this.vx - other.vx;
+      const relVy = this.vy - other.vy;
+      const speed = relVx * nx + relVy * ny;
+      if (speed &gt; 0) {
+        this.vx -= speed * nx;
+        this.vy -= speed * ny;
+        other.vx += speed * nx;
+        other.vy += speed * ny;
+      }
+    }
+  }
+}</code></pre>
+        <p>В следующих частях: прицеливание и удар мышью, правило «восьмёрки» (победа с шаром 8), подсчёт очков и красивый пользовательский интерфейс.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Бильярд — элегантная физика: рассчитанные отскоки приятнее любой грубой аркады.</p>
+      <h2>Итоги</h2>
+        <p>Эта серия — отличное сочетание «веб-разработки» и «игровой физики»: в итоге у вас полноценная играбельная игра, в которую можно играть с друзьями онлайн. Полный код и демо доступны на GitHub.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Бильярд 8-ball на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Бильярд 8-ball на JavaScript» принадлежит автору оригинала (Чен Шмилович (Chen Shmilovich)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Чен Шмилович (Chen Shmilovich)). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=aXwCrtAo4Wc" target="_blank" rel="noopener">https://www.youtube.com/watch?v=aXwCrtAo4Wc</a>.
       </div>
     </article>

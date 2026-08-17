@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Регекспы без магии на Scala»
+          <b>Оригинальный источник:</b> «No Magic: Regular Expressions»
         </div>
         <a class="btn solid" href="https://rcoh.svbtle.com/no-magic-regular-expressions" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/regex-no-magic-scala.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,110 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Регекспы с нуля на Scala: сопоставление и комбинаторы — регулярные выражения без секретов.</p>
+      <h2>Введение</h2>
+        <p>До недавнего времени регулярные выражения казались мне магией. Я никогда не понимал, как можно определить, сопоставляется ли строка с данным выражением. Теперь я знаю! Вот способ реализовать начальный движок регулярных выражений меньше чем в 200 строк кода.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Спецификация</h2>
+        <p>Полная реализация регулярных выражений довольно утомительна и, что хуже, мало чему вас учит. Версия, которую мы реализуем, ровно настолько велика, чтобы учиться без скуки. Наш язык регулярных выражений поддерживает:</p>
+        <pre class="code"><span class="lang-tag">Таблица</span><code style="direction:ltr;text-align:left">.    сопоставь с любым символом
+|    сопоставь с «abc» или «cde»
++    сопоставь с одним и более вхождений предыдущего шаблона
+*    сопоставь с нулём и более вхождений предыдущего шаблона
+( )  для группировки</code></pre>
+        <p>Хотя это маленький набор возможностей, мы всё равно можем строить забавные regex; например, <code>m(t|n| )|b</code> для сопоставления субтитров «Звёздных войн» без сопоставления «Стартрека», или <code>(..)*</code> — множество всех строк чётной длины.</p>
+      </section>
+      <section>
+      <h2>План атаки</h2>
+        <p>Оцениваем регулярные выражения в 3 фазы:</p>
         <ul>
-          <li>Парсер</li>
-          <li>Сопоставление</li>
-          <li>Комбинаторы</li>
-          <li>Типы</li>
+          <li>Разобрать выражение в дерево синтаксиса</li>
+          <li>Превратить дерево синтаксиса в машину состояний</li>
+          <li>Выполнить машину состояний на нашей строке</li>
         </ul>
+        <p>Для оценки выражений используем машину состояний под названием NFA (подробнее о ней позже). На высоком уровне NFA представляет наш regex. Потребляя входы, мы переходим из состояния в состояние в NFA. Если доходим до места, где не можем следовать допустимому переходу, выражение не сопоставляется со строкой.</p>
+        <p>Этот подход впервые продемонстрировал <strong>Кен Томпсон</strong>, один из главных авторов Unix. В своей статье 1968 года (CACM) он описывает реализацию текстового редактора и включает в неё оценщик регулярных выражений. Единственная разница: его статья написана на машинном коде 7094. Раньше всё было серьёзнее.</p>
+        <p>Этот алгоритм — упрощение того, как движки regex без backtracking, такие как RE2, оценивают выражения: в доказуемо линейное время. Заметный контраст с движками regex в Python и Java, использующими backtracking: на специальных входах на маленьких строках они исполняются практически вечно. Наш движок работает за <code>O(длина входа × длина выражения)</code>.</p>
+        <p>Мой подход почти следует стратегии, намеченной Рассом Коксом в его превосходном посте.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Scala-версия строит регекспы на комбинаторах: маленькие парсеры собираются в мощное сопоставление.</p>
-        <p>Тип regex-выражения на Scala:</p>
-        <pre class="code"><span class="lang-tag">Scala</span><code>sealed trait Re
-case class Lit(c: Char) extends Re
-case class Star(r: Re) extends Re
-case class Alt(a: Re, b: Re) extends Re
-case class Seq(a: Re, b: Re) extends Re</code></pre>
+      <h2>Представление регулярного выражения</h2>
+        <p>Сделаем шаг назад и подумаем, как представить выражение. Прежде чем надеяться оценить выражение, нужно превратить его в структуру данных, с которой может работать компьютер. В то время как строки имеют линейную структуру, регулярные выражения имеют естественную иерархию.</p>
+        <p>Рассмотрим строку <code>abc|(c|(de))</code>. Если хранить её как строку, при оценке придётся прыгать вперёд-назад между разными наборами скобок и откатываться. Одно из решений — превратить её в дерево, которое компьютер легко может обойти. Например, <code>b+a</code> становится деревом.</p>
+        <p>Для представления дерева хотим построить иерархию классов. Например, наш класс <code>Or</code> должен иметь два поддерева, представляющие две его стороны. По спецификации нужно распознавать 4 разных компонента regex: <code>+</code>, <code>*</code>, <code>|</code> и литеральные символы вроде <code>.</code>, <code>a</code> и <code>b</code>. Кроме того, нужно уметь показывать, что одно выражение следует за другим. Вот наши классы:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">abstract class RegexExpr
+
+// ., a, b
+case class Literal(c: Char) extends RegexExpr
+
+// a|b
+case class Or(expr1: RegexExpr, expr2: RegexExpr) extends RegexExpr
+
+// ab -&gt; Concat(a,b); abc -&gt; Concat(a, Concat(b, c))
+case class Concat(first: RegexExpr, second: RegexExpr) extends RegexExpr
+
+// a*
+case class Repeat(expr: RegexExpr) extends RegexExpr
+
+// a+
+case class Plus(expr: RegexExpr) extends RegexExpr</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>«Без магии» — девиз урока: тип-система Scala сделает структуру регекспов очевидной.</p>
+      <h2>Разбор регулярного выражения</h2>
+        <p>Чтобы перейти от строки к древесному представлению, используем процесс под названием «разбор» (parsing). Я не собираюсь подробно рассказывать о построении разборщиков. Вместо этого дам столько, сколько нужно, чтобы направить вас, если захотите написать свой. Здесь я расскажу, как разобрал выражения с помощью библиотеки parser combinator из Scala.</p>
+        <p>Библиотека разбора Scala позволяет написать разборщик, просто записав набор правил, описывающих наш язык. К сожалению, она использует много символов, но надеюсь, вы сможете увидеть суть за этим шумом.</p>
+        <p>При реализации разборщика нужно учитывать порядок операций. Так же как «приоритет операторов» применяется к вычислениям, для выражений применяется другой набор правил. Можно формализовать это идеей «сцепления» оператора с соседними символами. Разные операторы «сцепляются» с разной силой — по аналогии, в выражениях вроде <code>5+6*4</code>, <code>*</code> сцепляется сильнее <code>+</code>. В выражениях <code>*</code> сцепляется сильнее <code>|</code>. Если представить это деревом, слабейшие операторы оказываются сверху.</p>
+        <p>Вывод: сначала нужно разбирать слабейшие операторы, затем более сильные. При разборе можно представить: вытащи оператор, добавь в дерево, затем рекурсивно обработай оставшиеся две части строки.</p>
+        <p>В регулярных выражениях порядок силы сцепления такой:</p>
+        <pre class="code"><span class="lang-tag">Таблица</span><code style="direction:ltr;text-align:left">литеральный символ и скобки      (сильнейший)
++ и *
+конкатенация — «a» следует за «b»
+|                                  (слабейший)</code></pre>
+        <p>Поскольку есть 4 уровня силы сцепления, нужны 4 разных типа выражений. Назовём их (несколько произвольно): <code>lit</code>, <code>lowExpr</code> (+ и *), <code>midExpr</code> (конкатенация) и <code>highExpr</code> (|). Перейдём к коду. Сначала разборщик для самого начального уровня — одиночного символа:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">object RegexParser extends RegexParsers {
+    def charLit: Parser[RegexExpr] = (&quot;&quot;&quot;\w&quot;&quot;&quot;.r | &quot;.&quot;) ^^ {
+        char =&gt; Literal(char.head)
+    }</code></pre>
+        <p>Остановимся на минуту, чтобы объяснить этот синтаксис. Он определяет разборщик, создающий RegexExpr. Правая часть говорит: «найди что-то, сопоставимое с <code>\w</code> (любой слово-символ) или точкой. Если нашёл, преврати в Literal».</p>
+        <p>Скобки нужно определять на самом нижнем уровне разборщика, потому что у них сильнейшее сцепление. Но нужно уметь класть внутрь скобок что угодно. Сделаем это так:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">    def parenExpr: Parser[RegexExpr] = &quot;(&quot; ~&gt; highExpr &lt;~ &quot;)&quot;
+    def lit: Parser[RegexExpr] = charLit | parenExpr</code></pre>
+        <p>Здесь определяем <code>*</code> и <code>+</code>:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">    def repeat: Parser[RegexExpr] = lit &lt;~ &quot;*&quot;
+        ^^ { case l =&gt; Repeat(l) }
+    def plus: Parser[RegexExpr] = lit &lt;~ &quot;+&quot;
+        ^^ { case p =&gt; Plus(p) }
+    def lowExpr: Parser[RegexExpr] = repeat | plus | lit</code></pre>
+        <p>Затем конкатенацию, следующий уровень:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">    def concat: Parser[RegexExpr] = rep(lowExpr)
+        ^^ { case list =&gt; listToConcat(list)}
+    def midExpr: Parser[RegexExpr] = concat | lowExpr</code></pre>
+        <p>Наконец, определяем <code>or</code>:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">    def or: Parser[RegexExpr] = midExpr ~ &quot;|&quot; ~ midExpr
+        ^^ { case l ~ &quot;|&quot; ~ r =&gt; Or(l, r)}</code></pre>
+        <p>И в самом конце определяем <code>highExpr</code>. highExpr — это <code>or</code>, слабейший оператор сцепления, или, если <code>or</code> нет, <code>midExpr</code>:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">    def highExpr: Parser[RegexExpr] = or | midExpr</code></pre>
+        <p>И наконец, немного вспомогательного кода для завершения:</p>
+        <pre class="code"><span class="lang-tag">scala</span><code style="direction:ltr;text-align:left">    def listToConcat(list: List[RegexExpr]): RegexExpr = list match {
+        case head :: Nil =&gt; head
+        case head :: rest =&gt; Concat(head, listToConcat(rest))
+    }
+
+    def apply(input: String): Option[RegexExpr] = {
+        parseAll(highExpr, input) match {
+            case Success(result, _) =&gt; Some(result)
+            case failure : NoSuccess =&gt; None
+        }
+    }
+}</code></pre>
+        <p>Готово! С этим кодом Scala вы можете создавать деревья разбора для любого выражения, соответствующего спецификации. Полученные структуры данных — деревья.</p>
+        <p>Теперь, когда мы умеем превращать выражения в деревья синтаксиса, мы на полпути к их оценке. Следующие шаги описаны в разделах 2 и 3 статьи: превращение дерева синтаксиса в NFA и затем оценка этого NFA на данных строках — тем же подходом алгоритмов <strong>RE2</strong> и конструкции Томпсона, на которые есть ссылки.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Регекспы без магии на Scala» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Регекспы без магии на Scala» принадлежит автору оригинала (Russell Cohen). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Russell Cohen). Читайте оригинал на
         <a href="https://rcoh.svbtle.com/no-magic-regular-expressions" target="_blank" rel="noopener">https://rcoh.svbtle.com/no-magic-regular-expressions</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем cowsay на Go»
+          <b>Оригинальный источник:</b> «Building a CLI command with Go: cowsay»
         </div>
         <a class="btn solid" href="https://flaviocopes.com/go-tutorial-cowsay/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/go-cowsay.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,259 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Знаменитый cowsay — говорящая корова — на Go: сборка реплик, рамки «пузыря» речи и персонажи. Разбор форматирования и текстовых «пиксель-арт» шаблонов.</p>
+      <h2>Введение: что такое cowsay?</h2>
+        <p><a href="https://en.wikipedia.org/wiki/Cowsay" target="_blank" rel="noopener">Cowsay</a> — одно из тех приложений, без которых нельзя жить.</p>
+        <p>По сути, оно генерирует ASCII-картинку коровы вместе с любым сообщением, которое вы ей передадите; на скриншоте выше для сообщения использован <code class="inline">fortune</code>. Но инструмент не ограничивается коровой: он умеет печатать пингвина, лося (moose) и многих других животных.</p>
+        <p>Похоже, это отличный кандидат для переноса на Go!</p>
+        <p>Кстати, мне нравится простой английский текст прилагаемой лицензии:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">==============
+лицензия cowsay
+==============
+
+cowsay распространяется на тех же условиях, что и Perl:
+лицензия Artistic (Artistic License) или GNU General Public
+License (GNU GPL). Если вы не хотите следовать этим
+лицензиям и читать их самостоятельно, воспользуйтесь теми
+частями, которые предпочитаю я:
+
+(0) Её написал я, а не вы.
+
+(1) Если заимствуете код для другой цели, отдайте
+должное там, где положено.
+
+(2) Если у вас есть правки или предложения, пожалуйста,
+сообщите мне, чтобы я мог их применить.
+
+(3) Если вы хотите зарабатывать деньги на cowsay,
+вы — ничтожество.</code></pre>
+        <div class="callout tip">
+          Интересуетесь CLI-приложениями? <a href="https://flaviocopes.com/go-tutorial-lolcat/" target="_blank" rel="noopener">Не пропустите учебник по <strong>lolcat</strong>!</a>
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Формат пузыря речи</li>
-          <li>Шаблоны коровы</li>
-          <li>Перенос длинных строк</li>
-          <li>Аргументы и варианты</li>
-        </ul>
+      <h2>Постановка задачи: чтение ввода из пайпа</h2>
+        <p>Начнём с постановки задачи. Мы хотим принимать ввод через пайп (pipe), а наша корова будет его произносить.</p>
+        <p>Первая итерация читает пользовательский ввод из пайпа и печатает его обратно. Не так уж сложно.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+	&quot;bufio&quot;
+	&quot;fmt&quot;
+	&quot;io&quot;
+	&quot;os&quot;
+)
+
+func main() {
+	info, _ := os.Stdin.Stat()
+
+	if info.Mode()&amp;os.ModeCharDevice != 0 {
+		fmt.Println(&quot;The command is intended to work with pipes.&quot;)
+		fmt.Println(&quot;Usage: fortune | gocowsay&quot;)
+		return
+	}
+
+	reader := bufio.NewReader(os.Stdin)
+	var output []rune
+
+	for {
+		input, _, err := reader.ReadRune()
+		if err != nil &amp;&amp; err == io.EOF {
+			break
+		}
+		output = append(output, input)
+	}
+
+	for j := 0; j &lt; len(output); j++ {
+		fmt.Printf(&quot;%c&quot;, output[j])
+	}
+}</code></pre>
+        <p>Коровы у нас пока нет, и сообщение нужно обернуть в баллон (balloon) с правильным форматированием.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Всё искусство — в аккуратных отступах: текст выравнивается, рамка обрамляет, а ASCII-корова ждёт своего выхода. Урок про чистую текстовую магию.</p>
-        <p>Построение пузыря с текстом:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>fmt.Println(" " + strings.Repeat("_", len(text)+2))
-fmt.Println("&lt; " + text + " &gt;")
-fmt.Println(" " + strings.Repeat("-", len(text)+2))</code></pre>
+      <h2>Создаём речевой баллон</h2>
+        <p>Вот первая полная итерация нашей программы:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+	&quot;bufio&quot;
+	&quot;fmt&quot;
+	&quot;io&quot;
+	&quot;os&quot;
+	&quot;strings&quot;
+	&quot;unicode/utf8&quot;
+)
+
+// buildBalloon принимает срез строк с максимальной шириной maxwidth,
+// добавляет границы к первой и последней строке, а также в начало/конец
+// каждой строки и возвращает строку с содержимым баллона
+func buildBalloon(lines []string, maxwidth int) string {
+	var borders []string
+	count := len(lines)
+	var ret []string
+
+	borders = []string{&quot;/&quot;, &quot;\\&quot;, &quot;\\&quot;, &quot;/&quot;, &quot;|&quot;, &quot;&lt;&quot;, &quot;&gt;&quot;}
+
+	top := &quot; &quot; + strings.Repeat(&quot;_&quot;, maxwidth+2)
+	bottom := &quot; &quot; + strings.Repeat(&quot;-&quot;, maxwidth+2)
+
+	ret = append(ret, top)
+	if count == 1 {
+		s := fmt.Sprintf(&quot;%s %s %s&quot;, borders[5], lines[0], borders[6])
+		ret = append(ret, s)
+	} else {
+		s := fmt.Sprintf(`%s %s %s`, borders[0], lines[0], borders[1])
+		ret = append(ret, s)
+		i := 1
+		for ; i &lt; count-1; i++ {
+			s = fmt.Sprintf(`%s %s %s`, borders[4], lines[i], borders[4])
+			ret = append(ret, s)
+		}
+		s = fmt.Sprintf(`%s %s %s`, borders[2], lines[i], borders[3])
+		ret = append(ret, s)
+	}
+
+	ret = append(ret, bottom)
+	return strings.Join(ret, &quot;\n&quot;)
+}
+
+// tabsToSpaces преобразует все табуляции в строках среза lines в 4 пробела,
+// чтобы не было рассинхронизации при подсчёте рун
+func tabsToSpaces(lines []string) []string {
+	var ret []string
+	for _, l := range lines {
+		l = strings.Replace(l, &quot;\t&quot;, &quot;    &quot;, -1)
+		ret = append(ret, l)
+	}
+	return ret
+}
+
+// calculateMaxWidth принимает срез строк и возвращает длину самой длинной строки
+func calculateMaxWidth(lines []string) int {
+	w := 0
+	for _, l := range lines {
+		len := utf8.RuneCountInString(l)
+		if len &gt; w {
+			w = len
+		}
+	}
+
+	return w
+}
+
+// normalizeStringsLength принимает срез строк и добавляет к каждой
+// пробелы так, чтобы все они имели одинаковое количество рун
+func normalizeStringsLength(lines []string, maxwidth int) []string {
+	var ret []string
+	for _, l := range lines {
+		s := l + strings.Repeat(&quot; &quot;, maxwidth-utf8.RuneCountInString(l))
+		ret = append(ret, s)
+	}
+	return ret
+}
+
+func main() {
+	info, _ := os.Stdin.Stat()
+
+	if info.Mode()&amp;os.ModeCharDevice != 0 {
+		fmt.Println(&quot;The command is intended to work with pipes.&quot;)
+		fmt.Println(&quot;Usage: fortune | gocowsay&quot;)
+		return
+	}
+
+	var lines []string
+
+	reader := bufio.NewReader(os.Stdin)
+
+	for {
+		line, _, err := reader.ReadLine()
+		if err != nil &amp;&amp; err == io.EOF {
+			break
+		}
+		lines = append(lines, string(line))
+	}
+
+	var cow = `         \  ^__^
+          \ (oo)\_______
+    (__)\       )\/\
+        ||----w |
+        ||     ||
+	`
+
+	lines = tabsToSpaces(lines)
+	maxwidth := calculateMaxWidth(lines)
+	messages := normalizeStringsLength(lines, maxwidth)
+	balloon := buildBalloon(messages, maxwidth)
+	fmt.Println(balloon)
+	fmt.Println(cow)
+	fmt.Println()
+}</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>cowsay — классика юникса, которую пишут для веселья и обучения: вы освоите выравнивание и поймёте, как строятся культовые `fortune`-штуки.</p>
+      <h2>Делаем фигуру настраиваемой: флаг <code class="inline">-f</code></h2>
+        <p>Теперь сделаем фигуру настраиваемой и добавим <a href="https://en.wikipedia.org/wiki/Stegosaurus" target="_blank" rel="noopener"><strong>стегозавра</strong></a>:</p>
+        <p>Оригинальная программа использует флаг <code class="inline">-f</code> для приёма пользовательской фигуры. Сделаем то же самое, обработав флаг командной строки.</p>
+        <p>Кратко изменю предыдущую программу, чтобы ввести функцию <code class="inline">printFigure()</code>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// printFigure принимает имя фигуры и печатает её.
+// Сейчас поддерживаются `cow` и `stegosaurus`.
+func printFigure(name string) {
+
+	var cow = `         \  ^__^
+          \ (oo)\_______
+    (__)\       )\/\
+        ||----w |
+        ||     ||
+	`
+
+	var stegosaurus = `         \                      .       .
+          \                    / ` + &quot;`&quot; + `.   .&#x27; &quot;
+           \           .---.  &lt;    &gt; &lt;    &gt;  .---.
+            \          |    \  \ - ~ ~ - /  /    |
+          _____           ..-~             ~-..-~
+         |     |   \~~~\.&#x27;                    ` + &quot;`&quot; + `./~~~/
+        ---------   \__/                         \__/
+       .&#x27;  O    \     /               /       \  &quot;
+      (_____,    ` + &quot;`&quot; + `._.&#x27;               |         }  \/~~~/
+       ` + &quot;`&quot; + `----.          /       }     |        /    \__/
+             ` + &quot;`&quot; + `-.      |       /      |       /      ` + &quot;`&quot; + `. ,~~|
+                 ~-.__|      /_ - ~ ^|      /- _      ` + &quot;`&quot; + `..-&#x27;
+                      |     /        |     /     ~-.     ` + &quot;`&quot; + `-. _  _  _
+                      |_____|        |_____|         ~ - . _ _ _ _ _&gt;
+
+	`
+
+	switch name {
+	case &quot;cow&quot;:
+		fmt.Println(cow)
+	case &quot;stegosaurus&quot;:
+		fmt.Println(stegosaurus)
+	default:
+		fmt.Println(&quot;Unknown figure&quot;)
+	}
+}</code></pre>
+        <p>И изменю <code class="inline">main()</code>, чтобы он принимал флаг и передавал его в <code class="inline">printFigure()</code>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func main() {
+	//...
+
+	var figure string
+	flag.StringVar(&amp;figure, &quot;f&quot;, &quot;cow&quot;, &quot;the figure name. Valid values are `cow` and `stegosaurus`&quot;)
+	flag.Parse()
+
+	//...
+	printFigure(figure)
+	fmt.Println()
+}</code></pre>
+        <p>Этот код можно опробовать онлайн: <a href="https://play.golang.org/p/ZNQiXZctN2" target="_blank" rel="noopener">play</a></p>
+      </section>
+      <section>
+      <h2>Сборка и установка</h2>
+        <p>Думаю, мы добрались до хорошей точки. Осталось сделать инструмент доступным на уровне ОС, без запуска <code class="inline">go run main.go</code>; для этого достаточно набрать <code class="inline">go build</code> и <code class="inline">go install</code>.</p>
+        <p>Теперь я могу провести свой день с <a href="https://flaviocopes.com/go-tutorial-lolcat/" target="_blank" rel="noopener"><strong>gololcat</strong></a> и gocowsay:</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем cowsay на Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем cowsay на Go» принадлежит автору оригинала (Флавио Копес (Flavio Copes)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Флавио Копес (Flavio Copes)). Читайте оригинал на
         <a href="https://flaviocopes.com/go-tutorial-cowsay/" target="_blank" rel="noopener">https://flaviocopes.com/go-tutorial-cowsay/</a>.
       </div>
     </article>

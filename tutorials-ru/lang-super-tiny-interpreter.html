@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Супер-маленький интерпретатор на JavaScript»
+          <b>Оригинальный источник:</b> «The Super Tiny Interpreter»
         </div>
         <a class="btn solid" href="https://github.com/keyanzhang/the-super-tiny-interpreter" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-super-tiny-interpreter.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,57 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Интерпретатор на JS: парсер и eval — выполнение языка своими руками в миниатюре.</p>
+      <h2>Естественное дополнение супер-маленького компилятора</h2>
+        <p>В «Супер-маленьком компиляторе» мы научились превращать AST в код C; но есть и другой вариант: вместо генерации кода взять тот же AST и сразу его «вычислить» — это и есть интерпретатор. Этот проект делает ровно это и делает ощутимым сравнение «компиляция» против «интерпретация».</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Парсер</li>
-          <li>Окружение</li>
-          <li>Eval</li>
-          <li>Тесты</li>
-        </ul>
-      </section>
+      <h2>Структура</h2>
+        <p>Как и в версии-компиляторе, код аккуратно разделён: tokenizer и parser (тот же Lisp-подобный вход), затем evaluator, который при обходе AST хранит переменные в таблице окружения. Сердце интерпретатора — функция <code>interpret</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function interpret(ast, env = {}) {
+  const node = ast;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Интерпретатор — это eval: разобрать дерево и выполнить. Мини-версия на JS умещается на ладони.</p>
-        <p>Выполнение вызова функции:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function evaluate(node, env) {
-  if (node.type === "Call") {
-    const fn = env[node.name];
-    return fn(...node.args.map(a =&gt; evaluate(a, env)));
+  switch (node.type) {
+    case &#x27;NumberLiteral&#x27;:
+      return Number(node.value);
+
+    case &#x27;CallExpression&#x27;: {
+      // вычисляем каждый аргумент
+      const args = node.arguments.map(arg =&gt; interpret(arg, env));
+
+      // ищем функцию в окружении (например, add или subtract)
+      const func = env[node.callee];
+      if (typeof func !== &#x27;function&#x27;)
+        throw new Error(`функция ${node.callee} не определена`);
+
+      return func.apply(null, args);
+    }
+    default:
+      throw new Error(`неизвестный узел: ${node.type}`);
   }
-}</code></pre>
-      </section>
+}
 
+// Начальное окружение: базовые функции
+const env = {
+  add: (a, b) =&gt; a + b,
+  subtract: (a, b) =&gt; a - b,
+};
+
+const ast = parse(tokenize(&#x27;(add 2 (subtract 4 2))&#x27;));
+console.log(interpret(ast, env)); // 4</code></pre>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Микро-интерпретаторы — вход в семантику: вы поймёте eval, окружения и вызовы за один вечер.</p>
+      <h2>Почему важно сравнить эти два?</h2>
+        <p>Между двумя проектами есть тонкая разница: компилятор выдаёт «код» (сам не исполняет), интерпретатор выдаёт «значение» (исполняет сам). Вы понимаете понятия «стоимость исполнения» и «стоимость компиляции» — а в реальном мире JIT (компиляция на лету) — это комбинация обоих.</p>
+      </section>
+      <section>
+      <h2>Учебный совет</h2>
+        <p>Если хотите расширить окружение (переменные, if, lambda) — это лучшая отправная точка: код короткий, и <code>interpret</code> можно развивать под каждый новый узел. Тот же паттерн — таблица символов и рекурсивное вычисление — в реальных интерпретаторах (например, jlox) реализован в большом масштабе.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Супер-маленький интерпретатор на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Супер-маленький интерпретатор на JavaScript» принадлежит автору оригинала (Keyan Zhang). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Keyan Zhang). Читайте оригинал на
         <a href="https://github.com/keyanzhang/the-super-tiny-interpreter" target="_blank" rel="noopener">https://github.com/keyanzhang/the-super-tiny-interpreter</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем компилятор на Haskell (серия)»
+          <b>Оригинальный источник:</b> «Write You a Haskell»
         </div>
         <a class="btn solid" href="http://dev.stephendiehl.com/fun/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-write-haskell.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,45 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия по компиляторам на Haskell: лексер, парсер, типы и кодогенерация — функциональный полный конвейер.</p>
+      <h2>Введение и цель</h2>
+        <p>Если вы читали «Write Yourself a Scheme за 48 часов» — эта книга следующий шаг: вместо простого интерпретатора вы строите <b>полный компилятор функционального языка</b> с системой типов Hindley-Milner, type classes, алгоритмом десахаринга (desugaring) и финальным исполнением через трансляцию в C. Итог — настоящий исполняемый файл.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер и парсер</li>
-          <li>Типы и контекст</li>
-          <li>Кодогенерация</li>
-          <li>Тесты компилятора</li>
-        </ul>
+      <h2>Содержание и архитектура</h2>
+        <p>Книга в 14 главах: синтаксис через Parsec; AST (термы через сопоставление с образцом); промежуточное представление (Core Language); система типов (подстановка, унификация, Hindley-Milner); type classes и разрешение инстансов; преобразование кортежей/строк в базовые структуры; десахаринг; мономорфизация; и наконец генератор кода, переводящий Core в C.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Серия строит зрелый компилятор на Haskell: от токенов до типов — глубина и выразительность.</p>
-        <p>Проверка типов выражений:</p>
-        <pre class="code"><span class="lang-tag">Haskell</span><code>infer :: Expr -&gt; Type
-infer (Lit n) = TInt
-infer (Add a b) =
-    check (infer a) TInt &gt;&gt; check (infer b) TInt &gt;&gt; pure TInt</code></pre>
+      <h2>Пример кода: унификация (Unification)</h2>
+        <pre class="code"><span class="lang-tag">haskell</span><code style="direction:ltr;text-align:left">-- Подстановка типов
+type Subst = Map.Map TVar Type
+
+-- Унификация: приведение двух типов к одному виду через подстановку
+unify :: Type -&gt; Type -&gt; Subst -&gt; Either String Subst
+unify (TAp l r) (TAp l&#x27; r&#x27;) s = do
+  s1 &lt;- unify l l&#x27; s
+  s2 &lt;- unify r r&#x27; s1
+  return s2
+unify (TVar a) t s = bind a t s
+unify t (TVar a) s = bind a t s
+unify TInt TInt s = return s
+unify TBool TBool s = return s
+unify t1 t2 _ =
+  Left (&quot;несовпадение типов: &quot; ++ show t1 ++ &quot; и &quot; ++ show t2)</code></pre>
+        <p>Это тот же алгоритм (Робинсона), что используется во многих реальных функциональных компиляторах, включая GHC.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Haskell — язык для написания языков: серия покажет силу типов в самом сложном виде ПО.</p>
+      <h2>Финальный шаг: трансляция в C</h2>
+        <p>После проверки типов программы Core Language переводятся в код C (пакет <code>Crunch</code>) — здесь вы сталкиваетесь с реальными проблемами вроде управления кучей и сборки мусора (выделение через <code>malloc</code> и сборка по меткам). Финальные шаги — выполнение реальных примеров (например, интерпретатора и небольших программ).</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Продвинутый, но уникальный ресурс для понимания функциональных компиляторов: система типов Хиндли-Милнер, алгоритм унификации, type classes и трансляция в промежуточный язык — всё на практике. Предпосылки: знакомство с Haskell и базовыми концепциями компиляторов.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем компилятор на Haskell (серия)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем компилятор на Haskell (серия)» принадлежит автору оригинала (Stephen Diehl). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Stephen Diehl). Читайте оригинал на
         <a href="http://dev.stephendiehl.com/fun/" target="_blank" rel="noopener">http://dev.stephendiehl.com/fun/</a>.
       </div>
     </article>

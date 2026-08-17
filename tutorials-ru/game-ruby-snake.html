@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Змейка на Ruby»
+          <b>Оригинальный источник:</b> «Gamedev on Ruby — why not? (Diatom Enterprises)»
         </div>
         <a class="btn solid" href="https://www.diatomenterprises.com/gamedev-on-ruby-why-not/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-ruby-snake.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,105 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Змейка на Ruby: сетка, еда и клавиатура — минимальная игра для обучения.</p>
+      <h2>Об обучении</h2>
+        <p>Эта статья показывает, что разработка игр на Ruby вполне возможна и приятна: в терминале создаётся игра «Змейка», и преподаётся структурированный образ мышления (классы <code>Board</code>, <code>Snake</code>, <code>Food</code> и <code>Game</code>) — без графики, на терминальных символах.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> статья одновременно знакомит и с геймдевом, и с «чистой структурой игровых концепций»: у неё отличная разбивка по классам.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Сетка и змейка</li>
-          <li>Еда</li>
-          <li>Ввод</li>
-          <li>Очки</li>
-        </ul>
-      </section>
+      <h2>Структура классов</h2>
+        <p>Набор классов и их обязанности:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Игровое поле: сетка и границы
+class Board
+  attr_accessor :grid_size, :x_limit, :y_limit
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Змейка на Ruby — минимализм: консоль или окно, сетка и логика роста.</p>
-        <p>Движение в направлении:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code>def move!
-  @body.unshift([@head[0] + @dx, @head[1] + @dy])
-  @body.pop
+  def initialize(grid_size)
+    @grid_size = grid_size
+    @x_limit = @grid_size / 2   # координаты от -limit до +limit
+    @y_limit = @grid_size / 2
+  end
+
+  def random_position
+    [rand(-@x_limit..@x_limit), rand(-@y_limit..@y_limit)]
+  end
+
+  def within?(x, y)
+    x.between?(-@x_limit, @x_limit) &amp;&amp; y.between?(-@y_limit, @y_limit)
+  end
+end
+
+# Еда: случайная точка
+class Food
+  attr_accessor :x, :y
+
+  def initialize(board)
+    @board = board
+    spawn
+  end
+
+  def spawn
+    @x, @y = @board.random_position
+  end
+end
+
+# Змейка: последовательность сегментов
+class Snake
+  attr_accessor :body, :direction_head, :poisoning
+
+  def initialize(length)
+    @direction_head = [1, 0]
+    @body = Array.new(length) { |i| [0, i] }
+    @poisoning = false
+  end
+
+  def head
+    @body.first
+  end
+
+  # Шаг: новая голова вперёд, хвост удаляется, если не поели
+  def move(food_eaten = false)
+    new_head = [head[0] + @direction_head[0], head[1] + @direction_head[1]]
+    @body.unshift(new_head)
+    @body.pop unless food_eaten
+  end
 end</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Крошечный проект — огромная уверенность: змейка на Ruby откроет вам игровой процесс без страха.</p>
+      <h2>Главный игровой цикл</h2>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">class Game
+  def initialize
+    @board = Board.new(32)
+    @snake = Snake.new(3)
+    @food = Food.new(@board)
+  end
+
+  def run
+    loop do
+      input          # смена направления клавишами
+      moved          # шаг змейки
+      break if collision   # стена или сама себя
+      eat            # поедание и рост
+      render         # отрисовка поля в терминале
+      sleep(0.1)
+    end
+  end
+end</code></pre>
+        <p>Интересная алгоритмическая деталь статьи: змейка реализована через <code>body.unshift(new_head)</code> и условный <code>pop</code> — то есть естественный рост при поедании еды без лишнего кода.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Разработка игр на Ruby возможна так же просто, как на любом другом языке.</li>
+          <li>Чистая классовая структура (Board/Snake/Food/Game) — хороший паттерн для любой игры.</li>
+          <li>Терминал — отличная база для старта; графический UI можно добавить позже.</li>
+        </ul>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Змейка на Ruby» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.diatomenterprises.com/gamedev-on-ruby-why-not/" target="_blank" rel="noopener">https://www.diatomenterprises.com/gamedev-on-ruby-why-not/</a>.
       </div>
     </article>

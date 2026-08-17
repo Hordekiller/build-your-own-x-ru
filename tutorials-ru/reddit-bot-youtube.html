@@ -53,40 +53,39 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Видео-урок по полному циклу создания Reddit-бота: от регистрации приложения до запуска скрипта на сервере, с ботом, который отвечает на ключевые слова в комментариях.</p>
+      <h2>Об этом учебнике</h2>
+        <p>В этом пошаговом видеоуроке вы научитесь создавать Reddit-бота на Python: от создания приложения в Reddit и получения учётных данных до написания скрипта, который автоматически отвечает на комментарии и посты.</p>
+        <p>Видео показывает базовые концепции API и автоматизации на практическом примере.</p>
+        <pre class="code"><span class="lang-tag">Python</span><code style="direction:ltr;text-align:left"># Получение последних постов сабреддита прямым запросом
+import requests
+
+url = &quot;https://www.reddit.com/r/Python/new.json&quot;
+data = requests.get(url, headers={&quot;User-Agent&quot;: &quot;byox-bot/0.1&quot;}).json()
+for post in data[&quot;data&quot;][&quot;children&quot;][:5]:
+    print(post[&quot;data&quot;][&quot;title&quot;])   # заголовки свежих постов</code></pre>
+        <p>Бот из видео отслеживает эти же данные и автоматически отвечает по своим правилам.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/krTUf7BpTc0" title="Видеоурок: как создать Reddit-бота" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/watch?v=krTUf7BpTc0" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
         <ul>
-          <li>Настройка Reddit API-приложения</li>
-          <li>Скрипт входа через praw</li>
-          <li>Мониторинг комментариев и реакции</li>
-          <li>Запуск бота в фоне</li>
+          <li>Создание приложения в Reddit и получение OAuth-учётных данных</li>
+          <li>Установка и использование библиотеки PRAW</li>
+          <li>Написание бота с автоответами</li>
+          <li>Запуск и исправление типичных ошибок</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Всё действие — в praw и API: бот заходит под аккаунтом, слушает комментарии и отвечает. Видео показывает каждый шаг на экране, включая получение credentials.</p>
-        <p>Реакция на комментарий — короткая функция:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def on_comment(comment):
-    if "!remind" in comment.body:
-        comment.reply("Принято! Напомню через день.")
-        schedule_reminder(comment.author)</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Шаг-в-шаг видео доводит бота до запуска: вы увидите реальный процесс создания и поймёте, как выглядит типичный бот-проект изнутри.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Как создать Reddit-бота (видео-руководство)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=krTUf7BpTc0" target="_blank" rel="noopener">https://www.youtube.com/watch?v=krTUf7BpTc0</a>.
       </div>
     </article>

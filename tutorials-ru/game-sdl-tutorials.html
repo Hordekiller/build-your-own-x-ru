@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игровые уроки SDL на C++»
+          <b>Оригинальный источник:</b> «Beginning Game Programming v2.0»
         </div>
         <a class="btn solid" href="http://lazyfoo.net/tutorials/SDL/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-sdl-tutorials.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,77 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия уроков по SDL на C++: окно, спрайты, события и основы игрового цикла — развитие первых игр.</p>
+      <h2>Что такое SDL и почему Lazy Foo</h2>
+        <p><b>SDL (Simple DirectMedia Layer)</b> — open-source библиотека C/C++ для низкоуровневого доступа к графике, звуку, вводу и окнам; именно на ней построено множество игр и движков (даже эмуляторов). Уроки Lazy Foo — самый известный ресурс для старта с SDL 2: нумерованные уроки, полный скачиваемый код и подробное объяснение каждой концепции.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> серия движется «от консоли к рендерингу в реальном времени»: сначала вы знакомитесь с первым окном и рендером текстуры, а постепенно приходите к полноценным системам (tiling, ввод с мыши/клавиатуры/геймпада, звук и видео).
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта уроков</h2>
         <ul>
-          <li>Инициализация SDL</li>
-          <li>Спрайты и текстуры</li>
-          <li>События ввода</li>
-          <li>Игровой цикл</li>
+          <li><b>Уроки 1–5:</b> установка, первое окно, рендер изображения и цикл событий</li>
+          <li><b>Уроки 6–10:</b> текстуры, загрузка изображений (PNG через libpng), программный и аппаратный рендеринг</li>
+          <li><b>Уроки 11–15:</b> движение клавиатурой и мышью, контроллеры, клиппинг</li>
+          <li><b>Уроки 16–20:</b> звук (WAV и потоковое воспроизведение), tiling со sprite sheet, столкновения, шрифты (TTF)</li>
+          <li><b>Уроки 21–25:</b> продвинутое: синхронизация дисплея (vsync), формат пикселей, анимированные спрайты</li>
+          <li><b>Далее:</b> геймпад, запись экрана, композитинг и даже введение в Vulkan/SDL3</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Пример первой программы</h2>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Урок 01: первое окно
+#include &lt;SDL.h&gt;
+#include &lt;cstdio&gt;
+
+int main(int argc, char *argv[]) {
+  if (SDL_Init(SDL_INIT_VIDEO) &lt; 0) {
+    printf(&quot;Не удалось инициализировать SDL! Ошибка: %s\n&quot;, SDL_GetError());
+    return 1;
+  }
+
+  SDL_Window *window = SDL_CreateWindow(
+    &quot;Первое окно&quot;,              // заголовок
+    SDL_WINDOWPOS_UNDEFINED,    // позиция x
+    SDL_WINDOWPOS_UNDEFINED,    // позиция y
+    SCREEN_WIDTH, SCREEN_HEIGHT,
+    SDL_WINDOW_SHOWN
+  );
+  if (window == NULL) { printf(&quot;Окно не создано: %s\n&quot;, SDL_GetError()); return 1; }
+
+  SDL_Surface *screen = SDL_GetWindowSurface(window);
+  // Заливка поверхности окна
+  SDL_FillRect(screen, NULL, SDL_MapRGB(screen-&gt;format, 0xFF, 0xFF, 0xFF));
+  SDL_UpdateWindowSurface(window);
+
+  // Цикл событий: пока окно не закрыто
+  bool quit = false;
+  SDL_Event e;
+  while (!quit) {
+    while (SDL_PollEvent(&amp;e) != 0) {
+      if (e.type == SDL_QUIT) quit = true;
+    }
+  }
+
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+  return 0;
+}</code></pre>
+        <p>Процесс каждого урока одинаков: инициализация ← цикл событий ← рендер ← очистка. Повторяя этот паттерн, в следующих уроках вы добавляете новые слои (текстуры, ввод, звук).</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Lazy Foo — лучшая отправная точка для SDL 2: уроки самодостаточны, код полный.</li>
+          <li>Каждый урок учит новому слою разработки игр (графика, ввод, звук, столкновения).</li>
+          <li>Для запуска кода достаточно библиотеки SDL2 и компилятора C++; примеры работают на Windows, Linux и Mac.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>SDL даёт низкий уровень контроля: окно, текстуры, события. Урок за уроком — полная база 2D-игр.</p>
-        <p>Цикл обработки событий:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>SDL_Event e;
-while (SDL_PollEvent(&amp;e)) {
-    if (e.type == SDL_QUIT) running = false;
-    if (e.type == SDL_KEYDOWN) handle_key(e.key);
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>SDL — профессиональный минимум для игр на C++: после серии вы сможете выбирать между SDL, SFML или движками осознанно.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игровые уроки SDL на C++» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игровые уроки SDL на C++» принадлежит автору оригинала (Lazy Foo' Productions). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Lazy Foo' Productions). Читайте оригинал на
         <a href="http://lazyfoo.net/tutorials/SDL/" target="_blank" rel="noopener">http://lazyfoo.net/tutorials/SDL/</a>.
       </div>
     </article>

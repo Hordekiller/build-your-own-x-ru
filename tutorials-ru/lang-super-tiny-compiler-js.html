@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Микро-компилятор на JavaScript»
+          <b>Оригинальный источник:</b> «The Super Tiny Compiler»
         </div>
         <a class="btn solid" href="https://github.com/jamiebuilds/the-super-tiny-compiler" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-super-tiny-compiler-js.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,76 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Тот самый Super Tiny Compiler на JavaScript: лексер, парсер и трансформация — компиляция в 200 строк.</p>
+      <h2>Идея проекта</h2>
+        <p>Джеймс Кайл этим проектом хотел показать «скелет» компиляторов в минимально возможном коде. На входе — язык в духе Lisp: <code>(add 2 (subtract 4 2))</code>, на выходе — код в стиле C: <code>add(2, subtract(4, 2))</code>. Все ключевые концепции компилятора умещаются в эти 200 строк.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>Парсер</li>
-          <li>Трансформация</li>
-          <li>Генерация</li>
-        </ul>
-      </section>
+      <h2>Этапы: 4 функции</h2>
+        <p><b>1) tokenizer</b> — превращает строку в токены; <b>2) parser</b> — превращает токены в AST; <b>3) transformer</b> — с помощью <code>traverser</code> (обход enter/exit) превращает входной AST в выходной; <b>4) codeGenerator</b> — из выходного AST строит финальный код.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function tokenizer(input) {
+  let current = 0;      // указатель позиции
+  let tokens = [];
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Знаменитый учебник: весь компилятор в одном файле. Трансформация AST — мост между языками.</p>
-        <p>Генерация из AST:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function codeGenerator(node) {
-  switch (node.type) {
-    case "NumberLiteral": return node.value;
-    case "CallExpression":
-      return node.name + "(" + node.params.map(codeGenerator).join(", ") + ")";
+  while (current &lt; input.length) {
+    let char = input[current];
+
+    // скобки
+    if (char === &#x27;(&#x27;) {
+      tokens.push({ type: &#x27;paren&#x27;, value: &#x27;(&#x27; });
+      current++;
+      continue;
+    }
+
+    // числа: несколько цифр подряд
+    const NUMBERS = /[0-9]/;
+    if (NUMBERS.test(char)) {
+      let value = &#x27;&#x27;;
+      while (NUMBERS.test(char)) {
+        value += char;
+        char = input[++current];
+      }
+      tokens.push({ type: &#x27;number&#x27;, value });
+      continue;
+    }
+
+    // имена (add, subtract, ...)
+    const LETTERS = /[a-z]/i;
+    if (LETTERS.test(char)) {
+      let value = &#x27;&#x27;;
+      while (LETTERS.test(char)) {
+        value += char;
+        char = input[++current];
+      }
+      tokens.push({ type: &#x27;name&#x27;, value });
+      continue;
+    }
+
+    // пропускаем пробелы
+    const WHITESPACE = /\s/;
+    if (WHITESPACE.test(char)) {
+      current++;
+      continue;
+    }
+
+    throw new TypeError(&#x27;неизвестный символ: &#x27; + char);
   }
+
+  return tokens;
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Super Tiny Compiler — идеальный первый компилятор: его читают миллионы, и вы присоединитесь к ним.</p>
+      <h2>Почему стоит прочитать?</h2>
+        <p>Если вы никогда не видели код компилятора, этот проект — мягкое вхождение: подробная документация в комментариях объясняет каждую функцию, и всё можно пошагово запустить с <code>node</code>. Также от этого проекта произошли версии на Go, Rust и др.; чтение оригинала даёт более полное представление об архитектуре.</p>
+      </section>
+      <section>
+      <h2>Куда идти после этого проекта?</h2>
+        <p>Для продолжения держите в голове ядро — tokenizer, parser, AST, traverser, codegen. Затем переходите к «Little Lisp» или «Crafting Interpreters», чтобы добавить вычисление и окружение, — или, если хочется мощности компиляции, к учебнику Kaleidoscope с LLVM.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Микро-компилятор на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Микро-компилятор на JavaScript» принадлежит автору оригинала (jamiebuilds (James Kyle)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (jamiebuilds (James Kyle)). Читайте оригинал на
         <a href="https://github.com/jamiebuilds/the-super-tiny-compiler" target="_blank" rel="noopener">https://github.com/jamiebuilds/the-super-tiny-compiler</a>.
       </div>
     </article>

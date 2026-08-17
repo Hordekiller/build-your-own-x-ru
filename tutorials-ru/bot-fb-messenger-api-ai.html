@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Умный чат-бот для Facebook Messenger с API.ai»
+          <b>Оригинальный источник:</b> «Creating a Simple Facebook Messenger AI Bot with API.ai in Node.js»
         </div>
         <a class="btn solid" href="https://tutorials.botsfloor.com/creating-a-simple-facebook-messenger-ai-bot-with-api-ai-in-node-js-50ae2fa5c80d" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/bot-fb-messenger-api-ai.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,124 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство создаёт чат-бота для Messenger на Node.js с API.ai: намерения, диалоговые сценарии, обработка текста и ответы — автоответчик с пониманием клиентских запросов.</p>
+      <h2>Введение</h2>
+        <p>В этом руководстве вы научитесь создавать умного AI-бота для Facebook Messenger с помощью <a href="https://api.ai" target="_blank" rel="noopener">API.ai</a> (сегодня известного как <strong>Dialogflow</strong>) и Node.js. Мы создадим простого бота — вашего умного «бухгалтера»: с API.ai мы даём ему обработку естественного языка (Natural Language), чтобы он понимал простые диалоги — он даже умеет шутить! Дойдите до конца — и у вас будет по-настоящему рабочий бот.</p>
+        <p>Этот туториал основан на <a href="https://developers.facebook.com/docs/messenger-platform" target="_blank" rel="noopener">платформе Facebook Messenger</a> и её официальном быстром старте, но с двумя большими отличиями: во-первых, мы строим бота на Express.js и Node.js; во-вторых — вместо заранее определённых ответов добавляем боту искусственный интеллект через API.ai.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Что вам понадобится</h2>
         <ul>
-          <li>Что такое намерения и как их распознаёт API.ai</li>
-          <li>Вебхук и приём сообщений Messenger</li>
-          <li>Сценарии: приветствие, вопросы, заказ</li>
-          <li>Связка диалоговой модели и Node.js</li>
+          <li>Приложение Facebook и страница Facebook (для получения Page Token)</li>
+          <li>Аккаунт API.ai (бесплатный) и новый Agent</li>
+          <li>Node.js-сервер — тестируйте локальный webhook с помощью <a href="https://ngrok.com" target="_blank" rel="noopener">ngrok</a></li>
+          <li>Доступ к терминалу/CLI (установлены Node и npm)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>API.ai отделяет понимание от логики: сервис распознаёт намерение пользователя, а ваш код решает, что ответить. Вебхук собирает обе стороны вместе.</p>
-        <p>Обработка намерения на сервере:</p>
-        <pre class="code"><span class="lang-tag">Node.js</span><code>const intent = result.intents[0].name;
-if (intent === "book_hotel") {
-  // Уточняем детали и подтверждаем бронь
-  sendMessage(sender, "Отлично! На какую дату?");
+      <h2>Шаг 1: настройка Node.js-проекта</h2>
+        <p>Сначала создайте папку проекта и инициализируйте package.json. Боту нужны две библиотеки: <code class="inline">express</code> для веб-сервера и <code class="inline">request</code> для вызовов API Facebook и API.ai. Если хотите использовать минимум — шаблон быстрого старта Facebook, рекомендую следовать коду самого туториала.</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">npm init
+npm install express request --save</code></pre>
+        <p>Затем создайте файл <code class="inline">app.js</code>. Его стартовый код (упрощённый, по шаблону туториала):</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// app.js — бот Facebook Messenger с API.ai
+const express = require(&#x27;express&#x27;);
+const request = require(&#x27;request&#x27;);
+
+const app = express();
+
+// Токен доступа страницы — из настроек приложения Facebook
+const PAGE_ACCESS_TOKEN = &#x27;ВАШ_ТОКЕН_СТРАНИЦЫ&#x27;;
+// Токен проверки webhook — придумываете сами
+const VERIFY_TOKEN = &#x27;ВАШ_ТОКЕН_ПРОВЕРКИ&#x27;;
+
+app.use(express.json());
+
+// Подтверждение webhook Facebook&#x27;ом
+app.get(&#x27;/webhook&#x27;, (req, res) =&gt; {
+  if (req.query[&#x27;hub.mode&#x27;] === &#x27;subscribe&#x27; &amp;&amp;
+      req.query[&#x27;hub.verify_token&#x27;] === VERIFY_TOKEN) {
+    res.status(200).send(req.query[&#x27;hub.challenge&#x27;]);
+  } else {
+    res.sendStatus(403);
+  }
+});
+
+// Получение сообщений от Facebook
+app.post(&#x27;/webhook&#x27;, (req, res) =&gt; {
+  const body = req.body;
+  if (body.object === &#x27;page&#x27;) {
+    body.entry.forEach(entry =&gt; {
+      entry.messaging.forEach(event =&gt; {
+        const senderId = event.sender.id;
+        if (event.message &amp;&amp; event.message.text) {
+          handleMessage(senderId, event.message.text);
+        }
+      });
+    });
+    res.sendStatus(200);
+  }
+});
+
+function handleMessage(senderId, messageText) {
+  // Здесь отправляем текст сообщения в API.ai
+  console.log(&#x27;Получено сообщение:&#x27;, messageText);
+}
+
+app.listen(process.env.PORT || 3000, () =&gt; {
+  console.log(&#x27;Сервер бота запущен&#x27;);
+});</code></pre>
+      </section>
+      <section>
+      <h2>Шаг 2: создание приложения Facebook и получение Page Token</h2>
+        <p>Перейдите на <a href="https://developers.facebook.com" target="_blank" rel="noopener">developers.facebook.com</a> и:</p>
+        <ul>
+          <li>Добавьте <strong>продукт Messenger</strong> в своё приложение</li>
+          <li>Привяжите свою страницу Facebook к приложению</li>
+          <li>Скопируйте <code class="inline">Page Access Token</code> и вставьте в <code class="inline">app.js</code></li>
+          <li>Задайте произвольный <code class="inline">Verify Token</code> (например, случайную строку) и поместите его в код</li>
+        </ul>
+        <h3>Настройка webhook</h3>
+        <p>В настройках Facebook Developer откройте раздел Webhooks, укажите адрес <span dir="ltr"><code>https://YOUR_SERVER/webhook</code></span> и введите Verify Token. Для проверки Facebook отправляет GET-запрос на ваш адрес; код выше отвечает с помощью <code class="inline">hub.challenge</code>, и соединение устанавливается.</p>
+      </section>
+      <section>
+      <h2>Шаг 3: локальное тестирование с ngrok</h2>
+        <p>Чтобы Facebook мог достучаться до вашего локального сервера, ngrok создаёт безопасный туннель:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">node app.js
+# Во втором терминале:
+ngrok http 3000</code></pre>
+        <p>ngrok даст публичный адрес, например <span dir="ltr">https://xxxx.ngrok.io</span> — именно его (с /webhook) укажите как адрес Callback webhook в Facebook.</p>
+      </section>
+      <section>
+      <h2>Шаг 4: подключение API.ai к боту</h2>
+        <p>В панели API.ai создайте нового Agent. Сделаем два ключевых действия:</p>
+        <ul>
+          <li><strong>Small Talk:</strong> в меню Agent включите домен (Domain) «Small Talk», чтобы бот умел отвечать на повседневные разговоры (приветствия, «как дела», шутки и т. д.)</li>
+          <li>Создайте <strong>пользовательский Intent</strong>, например <code class="inline">get.current.time</code>, чтобы бот понимал, чего хочет пользователь, — например, когда пользователь спрашивает «сколько времени?», API.ai понимает это и отправляет подходящий ответ</li>
+        </ul>
+        <p>Затем в <code class="inline">handleMessage</code> отправляйте текст сообщения в <code class="inline">https://api.dialogflow.com/v1/query</code> и возвращайте ответ (<code class="inline">result.fulfillment.speech</code>) пользователю через «Send API» Facebook:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function handleMessage(senderId, messageText) {
+  request({
+    url: &#x27;https://api.dialogflow.com/v1/query&#x27;,
+    method: &#x27;POST&#x27;,
+    headers: { Authorization: &#x27;Bearer &#x27; + APIAI_TOKEN },
+    json: { query: messageText, lang: &#x27;en&#x27;, sessionId: senderId }
+  }, (err, res, body) =&gt; {
+    if (err) { console.error(err); return; }
+    const reply = body.result.fulfillment.speech;
+    sendTextMessage(senderId, reply);
+  });
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Так строится большинство чат-ботов: NLU-платформа + ваш бэкенд. Урок даст обе половины и научит выкатывать бота в прод.</p>
+      <h2>Шаг 5: публикация бота</h2>
+        <p>После успешного теста опубликуйте бота: задеплойте код на <a href="https://www.heroku.com" target="_blank" rel="noopener">Heroku</a> (или аналогичный сервис) и замените ngrok публичным адресом. Подключите страницу Facebook к Messenger, чтобы все могли с ним общаться.</p>
+        <p><strong>Теперь у вас умный бот</strong> — а не просто отвечающий по словам. Демо и полный код этого туториала есть в GitHub-репозитории автора (ветка <span dir="ltr">tutorial-01</span>).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Умный чат-бот для Facebook Messenger с API.ai» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Умный чат-бот для Facebook Messenger с API.ai» принадлежит автору оригинала (Томоми Имура (Tomomi Imura)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Томоми Имура (Tomomi Imura)). Читайте оригинал на
         <a href="https://tutorials.botsfloor.com/creating-a-simple-facebook-messenger-ai-bot-with-api-ai-in-node-js-50ae2fa5c80d" target="_blank" rel="noopener">https://tutorials.botsfloor.com/creating-a-simple-facebook-messenger-ai-bot-with-api-ai-in-node-js-50ae2fa5c80d</a>.
       </div>
     </article>

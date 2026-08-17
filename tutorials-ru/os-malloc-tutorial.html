@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Malloc изнутри: учебник для ОС»
+          <b>Оригинальный источник:</b> «Malloc Tutorial»
         </div>
         <a class="btn solid" href="https://danluu.com/malloc-tutorial/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-malloc-tutorial.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,85 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Собственный malloc для ядра: свободные списки, блоки и сборка — менеджер памяти от нуля.</p>
+      <h2>Зачем писать malloc</h2>
+        <p>С точки зрения программиста malloc — «магическая коробка». Этот урок открывает коробку: мы строим аллокатор памяти, который берёт у операционной системы сырую память (системным вызовом sbrk) и выдаёт её программе в виде структуры блоков. Этот проект — мост между обычным программированием и миром ОС: той самой памятью, которой управляют ядра.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Свободные списки</li>
-          <li>Выделение</li>
-          <li>Освобождение</li>
-          <li>Интеграция в ядро</li>
-        </ul>
+      <h2>Структура данных: связный список блоков</h2>
+        <p>Сердце реализации — связный список блоков. У каждого блока есть заголовок с четырьмя полями: размер данных, указатель на следующий блок, флаг свободности и «магическое число» для обнаружения порчи памяти:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">typedef struct block_meta {
+    size_t size;          // размер данных этого блока
+    struct block_meta *next;  // следующий блок в списке
+    int free;             // 1 = свободен, 0 = занят
+    int magic;            // магическое число (для поиска порчи)
+} block_meta_t;
+
+#define META_SIZE sizeof(block_meta_t)
+#define MAGIC 0x77777777
+#define ALIGN 8            // выравнивание: блоки по границе 8 байт
+
+void *global_base = NULL;  // начало списка блоков</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>malloc для ядра — вопрос структуры: блоки с метаданными и списки свободной памяти.</p>
-        <p>Разделение свободного блока:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void *malloc(size_t size) {
-    block_t *b = find_free(size);
-    if (b) split(b, size);  // режем блок под запрос
-    return b-&gt;data;
+      <h2>Выделение: поиск блока и его разбиение</h2>
+        <p>Алгоритм malloc: ищем в списке свободный блок достаточного размера. Если найден — снимаем с него флаг свободности; если нет — берём новый блок у системы через sbrk. Если свободный блок сильно больше необходимого, его можно разбить (split), а остаток оставить как свободный блок:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">void *malloc(size_t size) {
+    block_meta_t *block;
+
+    // выравнивание размера по 8 байт
+    size = (size + ALIGN - 1) &amp; ~(ALIGN - 1);
+
+    if (!global_base) {
+        // первый раз: берём у системы начальный блок
+        block = request_space(NULL, size);
+        if (!block) return NULL;
+        global_base = block;
+    } else {
+        // поиск свободного блока подходящего размера
+        block = find_free_block(global_base, &amp;size);
+        if (!block) {
+            block = request_space(global_base, size);
+            if (!block) return NULL;
+        } else {
+            block-&gt;free = 0;    // помечаем занятым
+            block-&gt;magic = MAGIC;
+        }
+    }
+    return block + 1;   // данные начинаются после заголовка
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Учебник по malloc — глубина ОС: вы поймёте кучу, фрагментацию и API памяти ядра.</p>
+      <h2>Освобождение и слияние</h2>
+        <p>Для free достаточно просто поменять флаг блока на «свободен» (и вернуть системе системным вызовом munmap последние блоки). Но чтобы избежать фрагментации памяти, свободные соседние блоки объединяются (coalescing) — если следующий блок тоже свободен, текущий объявляется больше:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">void free(void *ptr) {
+    if (!ptr) return;
+    block_meta_t *block = (block_meta_t *) ptr - 1;
+    block-&gt;free = 1;
+    block-&gt;magic = 0;
+
+    // слияние со следующим свободным блоком
+    if (block-&gt;next &amp;&amp; block-&gt;next-&gt;free) {
+        block-&gt;size += META_SIZE + block-&gt;next-&gt;size;
+        block-&gt;next = block-&gt;next-&gt;next;
+    }
+}</code></pre>
+        <p>Любопытно, что free гораздо проще malloc — потому что мы ничего по-настоящему не «удаляем», а просто сообщаем системе, что эта область снова пригодна для использования.</p>
+      </section>
+      <section>
+      <h2>Результат и тестирование</h2>
+        <p>Урок завершается тестовой программой, проверяющей выделение и освобождение разными паттернами. Полный тест проверяет: простую работу, многократное выделение, освобождение, повторное выделение того же адреса и возможную утечку памяти:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">gcc -o test malloc.c test.c
+valgrind --leak-check=full ./test
+# вывод: утечек памяти нет</code></pre>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> этот маленький, но полный проект простым языком объясняет концепции, которые вы потом увидите в «управлении heap-памятью» ядер (например, в части 7 курса Джеймса Моллоя), ещё до входа в мир ядер.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Malloc изнутри: учебник для ОС» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Malloc изнутри: учебник для ОС» принадлежит автору оригинала (Dan Luu). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Dan Luu). Читайте оригинал на
         <a href="https://danluu.com/malloc-tutorial/" target="_blank" rel="noopener">https://danluu.com/malloc-tutorial/</a>.
       </div>
     </article>

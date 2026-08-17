@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Понимаем JSX: как он устроен»
+          <b>Оригинальный источник:</b> «WTF is JSX»
         </div>
         <a class="btn solid" href="https://jasonformat.com/wtf-is-jsx/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-jsx.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,67 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Механика JSX изнутри: как XML-разметка превращается в вызовы JavaScript, элементы и деревья — фундамент React без «магии».</p>
+      <h2>1. Введение: JSX — это не магия</h2>
+        <p>Многие разработчики считают JSX «новым языком», но на самом деле JSX — всего лишь <b>синтаксический сахар (syntax sugar)</b> для вызова функции. Когда вы пишете:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const el = &lt;div className=&quot;foo&quot;&gt;Привет, мир!&lt;/div&gt;;</code></pre>
+        <p>Транспилятор (Babel или TypeScript) превращает это ровно в такой простой вызов:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const el = createElement(&quot;div&quot;, { className: &quot;foo&quot; }, &quot;Привет, мир!&quot;);</code></pre>
+        <p>Вся работа JSX — это вызов функции с упорядоченными аргументами. Поэтому, чтобы «построить JSX», достаточно реализовать собственный <code>createElement</code>.</p>
+        <div class="callout note">
+          <strong>Примечание:</strong> секрет успеха этой конструкции в том, что JSX не привязан к DOM; именно единый формат позволяет React Native, Preact, Vue и десяткам других фреймворков использовать один и тот же синтаксис.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Создаём свой createElement</h2>
+        <p>Автор опубликовал полную реализацию вместе с учебным проектом на <a href="https://github.com/developit/wtf-is-jsx" target="_blank" rel="noopener">GitHub</a>. Сначала мы пишем фабрику узлов (древовидной структуры):</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function createElement(type, props, ...children) {
+  // итоговое значение children может быть массивом узлов и строк
+  const el = document.createElement(type);
+  // копирование props на элемент
+  for (const key in props) {
+    ...
+  }
+  return el;
+}</code></pre>
+        <p>С этой функцией работает любой JSX-код, даже компоненты! Ведь <code>createElement</code> сам может решить, что делать, если тип — <b>функция</b>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function createElement(type, props, ...children) {
+  // если type — функция (компонент), вызываем её с props
+  if (typeof type === &quot;function&quot;) {
+    return type({ ...props, children });
+  }
+  // в противном случае создаём обычный элемент
+  ...
+}</code></pre>
+      </section>
+      <section>
+      <h2>3. Обновление: сравнение и patch</h2>
+        <p>Пока что мы умеем рендерить один раз. Для обновления проще всего удалить старое дерево и построить новое, но это неэффективно. Лучший путь — <b>повторный рендер и сравнение узлов (diff)</b>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function update(oldNode, newNode) {
+  if (!oldNode || oldNode.nodeName !== newNode.nodeName) {
+    // тип узла изменился: полная замена
+    oldNode.replaceWith(newNode);
+    return newNode;
+  }
+  // построить новых детей и сравнить с прежними
+  ...
+}</code></pre>
+        <p>Это главная идея всех фреймворков; React и Preact лишь делают алгоритм diff умнее (например, используют ключи/key и сравнивают только изменившиеся атрибуты).</p>
+      </section>
+      <section>
+      <h2>4. Итоги</h2>
         <ul>
-          <li>JSX — синтаксический сахар createElement</li>
-          <li>Элементы и деревья</li>
-          <li>Трансформация в Babel</li>
-          <li>Прообраз настоящего DOM</li>
+          <li><b>JSX = синтаксический сахар</b>: каждое JSX-выражение превращается в вызов функции; чтобы его использовать, достаточно реализовать эту функцию.</li>
+          <li><b>Компонент = функция</b>: когда <code>typeof type === "function"</code>, рендерер вызывает компонент, а не создаёт DOM-элемент.</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>JSX на самом деле — это функции: &lt;div&gt; становится вызовом createElement. Поняв это, вы читаете React-приложения как структуру данных.</p>
-        <p>Превращение JSX в вызовы:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>const el = &lt;div className="app"&gt;Привет&lt;/div&gt;
-// эквивалент:
-const el = React.createElement("div", { className: "app" }, "Привет")</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>JSX — это просто API: зная это, вы сможете строить свои трансдюсеры и понимать, за что отвечает каждый слой React.</p>
+        <div class="callout note">
+          <strong>Дополнительно:</strong> Джейсон Миллер — автор Preact, построенного на той же идее (лёгкий React без привязки к спецификации); изучение исходников Preact — отличное продолжение этого пути.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Понимаем JSX: как он устроен» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Понимаем JSX: как он устроен» принадлежит автору оригинала (Джейсон Миллер (Jason Miller)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Джейсон Миллер (Jason Miller)). Читайте оригинал на
         <a href="https://jasonformat.com/wtf-is-jsx/" target="_blank" rel="noopener">https://jasonformat.com/wtf-is-jsx/</a>.
       </div>
     </article>

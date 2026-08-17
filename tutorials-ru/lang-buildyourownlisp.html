@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Build Your Own Lisp: книга по компиляторам»
+          <b>Оригинальный источник:</b> «Build Your Own Lisp»
         </div>
         <a class="btn solid" href="http://www.buildyourownlisp.com/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-buildyourownlisp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,53 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Книга «Build Your Own Lisp» на C: лексер, парсер и интерпретатор собственного диалекта Lisp — полный язык за одну книгу.</p>
+      <h2>Книга, которая начинается «с нуля»</h2>
+        <p>Дэниел Холден исходит из того, что читатель не знает C, и ведёт его шаг за шагом от установки компилятора до полного построения языка Lisp. Конечный результат — «Lispy»: язык с функциями, переменными, условиями, циклом и лямбда-правилами, работающий в REPL.</p>
+        <p>Отличительная особенность книги — использование библиотеки mpc (простого парсер-комбинатора, который строится прямо внутри книги) для определения грамматики языка — так читатель знакомится с настоящей архитектурой компиляторов, не увязая в сложностях лексера.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Интерактивный REPL</li>
-          <li>Лексер и парсер</li>
-          <li>Среда и функции</li>
-          <li>Сборка проекта</li>
-        </ul>
+      <h2>Ключевые концепции: mpc и грамматика языка</h2>
+        <p>В первой главе вы строите калькулятор в польской нотации (Polish notation): вход вида + 1 (* 2 3). Затем через mpc_parser_t* вы определяете грамматику языка:</p>
+        <pre class="code"><span class="lang-tag">C</span><code style="direction:ltr;text-align:left">mpc_parser_t* Number    = mpc_new(&quot;number&quot;);
+mpc_parser_t* Operator  = mpc_new(&quot;operator&quot;);
+mpc_parser_t* Expr      = mpc_new(&quot;expr&quot;);
+mpc_parser_t* Lispy     = mpc_new(&quot;lispy&quot;);
+
+mpca_lang(MPCA_LANG_DEFAULT,
+  &quot; number : /-?[0-9]+/ ;            &quot;
+  &quot; operator: &#x27;+&#x27; | &#x27;-&#x27; | &#x27;*&#x27; | &#x27;/&#x27; ;&quot;
+  &quot; expr    : &lt;number&gt; | &#x27;(&#x27; &lt;operator&gt; &lt;expr&gt;+ &#x27;)&#x27; ;&quot;
+  &quot; lispy   : /^/ &lt;operator&gt; &lt;expr&gt;+ /$/ ; &quot;,
+  Number, Operator, Expr, Lispy);</code></pre>
+        <p>Эта грамматика определена рекурсивно — expr может содержать внутри себя expr — что лежит в основе понимания вложенных структур языков программирования.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Книга строит Lisp-диалект на C: от пустого REPL до полноценного интерпретатора с функциями и переменными.</p>
-        <p>Цикл REPL:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>while (1) {
-    char *input = readline("lispy&gt; ");
-    lval *result = lval_eval(parsed(input));
-    lval_print(result);
+      <h2>От парсера к интерпретатору: eval</h2>
+        <p>После того как mpc построит дерево синтаксиса (AST), вы пишете, как вычисляется каждый узел. Сердце интерпретатора — функция, которая берёт список, отделяет оператор от операндов и выполняет вычисление:</p>
+        <pre class="code"><span class="lang-tag">C</span><code style="direction:ltr;text-align:left">lval* eval(lval* v) {
+  if (v-&gt;type == LVAL_NUM) return v;      // число = конечное значение
+  lval* f = pop(v, 0);                    // забрать оператор
+  if (f-&gt;type != LVAL_FUN) { lval_del(f); lval_del(v); error! }
+  for (int i = 0; i &lt; v-&gt;count; i++)
+    v-&gt;cell[i] = eval(v-&gt;cell[i]);       // рекурсивное вычисление аргументов
+  return call(f, v);                      // выполнение функции
 }</code></pre>
+        <p>Позже, добавив Q-Expression (списки, которые не вычисляются), в язык приходят функции list, head и tail; а в следующих главах — переменные через def и =, определяемые функции через \ (lambda) и даже обработка ошибок и простой GC.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Книга — классический вход в языки: вы напишете свой Lisp и поймёте компиляцию на практике.</p>
+      <h2>Финальные шаги</h2>
+        <p>В последних главах книги: (1) система обработки ошибок и типы данных; (2) сохранение и загрузка кода в файл; (3) добавление маленькой стандартной библиотеки (например, sum, len). В конце можно писать настоящие программы на Lispy.</p>
+        <p>Весь код книги компилируется на Linux и macOS простым cc; единственная внешняя зависимость — mpc, которую вы создаёте сами.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Лучший выбор для того, кто «вообще ничего не знает о языках программирования»: вы начинаете с C, а в конце у вас Lisp-интерпретатор с функциями и переменными; вы глубоко понимаете концепции parser, AST, eval и REPL.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Build Your Own Lisp: книга по компиляторам» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Build Your Own Lisp: книга по компиляторам» принадлежит автору оригинала (Daniel Holden). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Daniel Holden). Читайте оригинал на
         <a href="http://www.buildyourownlisp.com/" target="_blank" rel="noopener">http://www.buildyourownlisp.com/</a>.
       </div>
     </article>

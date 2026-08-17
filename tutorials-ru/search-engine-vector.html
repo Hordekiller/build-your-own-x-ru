@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Векторный поиск: мини-поисковик на Python»
+          <b>Оригинальный источник:</b> «Building a Vector Space Indexing Engine in Python»
         </div>
         <a class="btn solid" href="https://boyter.org/2010/08/build-vector-space-search-engine-python/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/search-engine-vector-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,99 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Поиск по эмбеддингам: векторы документов, косинусная близость и ANN — современный семантический поиск.</p>
+      <h2>Введение: поиск как геометрия</h2>
+        <p>В серии статей Бойтера цель — строить настоящие поисковые движки с нуля и понимать их. Эта часть посвящена модели <b>векторного пространства (Vector Space Model)</b>: мы представляем каждый документ как вектор в пространстве «слов», запрос пользователя — тоже вектор, а «релевантность» означает угловую близость этих двух векторов — она измеряется <b>косинусным сходством (cosine similarity)</b>. Простыми словами: похожие документы тянутся из начала координат в близких направлениях.</p>
+        <div class="callout note">
+          <strong>Главная идея:</strong> вместо поиска «слово за словом» мы превращаем текст в геометрические координаты и вычисляем «похожесть» через угол между векторами — модель, лежащая в основе большинства классических движков.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Эмбеддинги слов и документов</li>
-          <li>Косинусная близость</li>
-          <li>Индексы и ANN</li>
-          <li>Семантика вместо лексики</li>
-        </ul>
+      <h2>Строим словарь: функция concordance</h2>
+        <p>Первый шаг — построение <b>словаря (vocabulary)</b>: функция читает содержимое всех файлов папки, разбивает их на слова и строит отображение «слово → номер». Этот номер и есть «размерность» вектора — позже для каждого документа строится вектор с этими же размерностями. Бойтер называет эту функцию <code>concordance()</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import os, re
+
+def concordance(path):
+    &quot;&quot;&quot;Чтение всех файлов папки и построение словаря (слово → номер)&quot;&quot;&quot;
+    words = {}
+    for f in os.listdir(path):
+        text = open(os.path.join(path, f), &#x27;r&#x27;).read().lower()
+        for word in re.findall(r&#x27;\w+&#x27;, text):
+            words.setdefault(word, len(words))   # каждое новое слово — новая размерность
+    return words</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Векторный поиск ищет смысл: документы превращаются в векторы, а соответствие — в косинусную близость. Так ищут современные системы.</p>
-        <p>Косинусная близость двух векторов:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import numpy as np
-sim = np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b))</code></pre>
+      <h2>Вектор каждого документа: подсчёт слов</h2>
+        <p>Теперь для каждого файла строим вектор, у которого в размерности, соответствующей слову, стоит количество вхождений этого слова в файл. Получается «матрица документ×слово»: интенсивность присутствия каждого слова в каждом документе. Бойтер показывает полный код этого шага поэтапно (повторное чтение файлов, подсчёт через счётчик и заполнение векторов) — обратите внимание, что на этот раз используется построенный словарь, чтобы все векторы были «одинаковой размерности».</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def build_vectors(path, concord):
+    &quot;&quot;&quot;Для каждого файла построить вектор подсчёта слов&quot;&quot;&quot;
+    vectors = {}
+    files = os.listdir(path)
+    for f in files:
+        counts = {}
+        text = open(os.path.join(path, f), &#x27;r&#x27;).read().lower()
+        for word in re.findall(r&#x27;\w+&#x27;, text):
+            counts[word] = counts.get(word, 0) + 1
+        vec = [0] * len(concord)
+        for word, count in counts.items():
+            vec[concord[word]] = count
+        vectors[f] = vec
+    return vectors</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Семантический поиск — главный тренд: векторный движок откроет вам путь к RAG, рекомендациям и большим данным.</p>
+      <h2>Ранжирование по косинусному расстоянию</h2>
+        <p>Кульминация урока: функция, вычисляющая «косинусное сходство» двух векторов — скалярное произведение векторов, делённое на произведение их норм:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from math import sqrt, acos
+
+def dot(vec_a, vec_b):
+    return sum(a * b for a, b in zip(vec_a, vec_b))
+
+def norm(vec):
+    return sqrt(sum(x * x for x in vec))
+
+def cosine_similarity(vec_a, vec_b):
+    &quot;&quot;&quot;Косинусное сходство: 1 — сонаправленные (очень похожие), 0 — несвязанные&quot;&quot;&quot;
+    if norm(vec_a) == 0 or norm(vec_b) == 0:
+        return 0.0
+    return dot(vec_a, vec_b) / (norm(vec_a) * norm(vec_b))
+
+def cosine_distance(vec_a, vec_b):
+    &quot;&quot;&quot;Косинусное расстояние = 1 - сходство; меньшее число значит больше релевантности&quot;&quot;&quot;
+    return 1.0 - cosine_similarity(vec_a, vec_b)</code></pre>
+        <p>Затем для запроса: сначала строится вектор запроса (в том же пространстве, с тем же словарём), потом вычисляется косинусное расстояние до вектора каждого документа, и результаты сортируются по этому расстоянию — документ с наименьшим расстоянием (наибольшим сходством) получает первое место.</p>
+      </section>
+      <section>
+      <h2>Улучшенный алгоритм: IDF против незначащих слов</h2>
+        <p>У простой первой версии есть известная проблема: частые бессмысленные слова («the», «and», «of») сближают векторы и затеняют редкие ключевые слова. Решение, которое Бойтер называет «улучшенным алгоритмом», — применение веса <b>IDF</b>: слово, присутствующее во всех файлах, несёт мало информации, и его вес снижается; слово, встречающееся лишь в нескольких файлах, — «признак», и его вес растёт. В доработанном коде перед вычислением сходства каждый элемент вектора умножается на IDF соответствующего слова; практический эффект — значимые результаты выходят в вершину ранжирования.</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import math
+
+def calculate_idf(vectors, concord):
+    &quot;&quot;&quot;Вес каждого слова: логарифм отношения числа документов со словом к общему числу документов (обратно)&quot;&quot;&quot;
+    n = len(vectors)
+    idf = {}
+    for word, idx in concord.items():
+        docs_having = sum(1 for v in vectors.values() if v[idx] &gt; 0)
+        idf[word] = math.log(n / docs_having)
+    return idf
+
+def apply_idf(vectors, idf, concord):
+    &quot;&quot;&quot;Умножение векторов на IDF — частые слова бледнеют, редкие выделяются&quot;&quot;&quot;
+    result = {}
+    for fname, vec in vectors.items():
+        result[fname] = [vec[i] * idf[word] for word, i in concord.items()]
+    return result</code></pre>
+        <div class="callout note">
+          <strong>Почему «векторное пространство»?</strong> Потому что каждое слово — это «ось», а каждый документ — точка/вектор в этом пространстве. Документы можно сравнивать как геометрию — именно на этом десятилетиями строятся классические поисковые движки (например, Lucene).
+        </div>
+      </section>
+      <section>
+      <h2>Итоги и следующий шаг</h2>
+        <p>Этот урок показывает, как поисковый движок переходит от «сопоставления слов» к «геометрическому сравнению»: словарь, вектор документа, косинусное сходство и, наконец, IDF-взвешивание для качества. Для более глубокого понимания оценки прочитайте урок «TF-IDF» из этого же раздела, а для версии «обучающегося поиска» — следующий справочник: статья «Обучение текстового поиска на обратной связи».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Векторный поиск: мини-поисковик на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Векторный поиск: мини-поисковик на Python» принадлежит автору оригинала (Бен Бойтер (Ben Boyter)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Бен Бойтер (Ben Boyter)). Читайте оригинал на
         <a href="https://boyter.org/2010/08/build-vector-space-search-engine-python/" target="_blank" rel="noopener">https://boyter.org/2010/08/build-vector-space-search-engine-python/</a>.
       </div>
     </article>

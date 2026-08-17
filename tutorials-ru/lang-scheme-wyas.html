@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем Scheme на Haskell (Write Yourself a Scheme)»
+          <b>Оригинальный источник:</b> «Write You a Scheme, v2»
         </div>
         <a class="btn solid" href="https://www.wespiser.com/writings/wyas/home.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-scheme-wyas.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,46 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Полная реализация Scheme на Haskell: eval, замыкания, макросы — компиляция интерпретатора функционально.</p>
+      <h2>Чем отличается от первой версии?</h2>
+        <p>Первая версия (2013) строила интерпретатор просто; вторая (2015) полностью переписана с нуля современными инженерными методами: поддержка <b>cabal</b>, автоматические тесты (<code>QuickCheck</code> и golden-тесты), документация через haddock, гигиеничная макросистема (hygienic macros) и структура данных, выстраиваемая снизу вверх.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Окружения и замыкания</li>
-          <li>Примитивы</li>
-          <li>Макросы</li>
-          <li>Хвостовая рекурсия</li>
-        </ul>
+      <h2>Архитектура проекта</h2>
+        <p>Код организован в небольшие модули: <code>Language.Scheme.*</code> включает parser, runtime (вычисление), environment и types. У каждого модуля есть свои тесты в папке <code>test</code>; например, с помощью <code>golden-test</code> поведение eval сверяется на примерных Scheme-скриптах.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Проект доводит интерпретатор до зрелости: замыкания, макросы и хвостовые вызовы — настоящий Scheme.</p>
-        <p>Замыкание — функция плюс окружение:</p>
-        <pre class="code"><span class="lang-tag">Haskell</span><code>data LispVal = Atom String
-              | List [LispVal]
-              | Lambda [String] Env [LispVal]</code></pre>
+      <h2>Пример кода: окружение и вычисление</h2>
+        <pre class="code"><span class="lang-tag">haskell</span><code style="direction:ltr;text-align:left">-- Определение окружения с быстрым доступом к данным
+data Env = Env { envParent :: Maybe Env
+               , envValues :: Map.Map Text LispVal
+               }
+
+-- Вычисление через pattern matching
+eval :: Env -&gt; LispVal -&gt; IOThrowsError LispVal
+eval env (LispAtom a) = lookupEnv env a
+
+eval env (LispList [LispAtom &quot;if&quot;, cond, cons, alt]) = do
+  result &lt;- eval env cond
+  case result of
+    LispBool False -&gt; eval env alt
+    LispList []    -&gt; eval env alt   -- в Scheme: пустой список = false
+    _              -&gt; eval env cons
+
+eval env (LispList [LispAtom &quot;lambda&quot;, params, body]) = ...</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Полный интерпретатор — зрелый проект: вы поймёте, как устроены языки, на уровне их семантики.</p>
+      <h2>Отличительные особенности</h2>
+        <p>1) Гигиеничные макросы: через <code>syntax-rule</code> и <code>define-syntax</code> — без конфликтов имён между макросом и кодом пользователя; 2) представление данных <code>LispVal</code> как sum type с pattern matching; 3) ошибки через <code>MonadError</code>; 4) полная система тестов, которая служит и образцом хорошего кода, и гарантией от регрессий.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Для тех, кто читал первую версию или «Scheme за 48 часов» и хочет увидеть, как пишется «профессиональный» интерпретатор: модульная архитектура, тесты и макросы показывают все хорошие практики Haskell.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем Scheme на Haskell (Write Yourself a Scheme)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем Scheme на Haskell (Write Yourself a Scheme)» принадлежит автору оригинала (Adam Wespiser). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Adam Wespiser). Читайте оригинал на
         <a href="https://www.wespiser.com/writings/wyas/home.html" target="_blank" rel="noopener">https://www.wespiser.com/writings/wyas/home.html</a>.
       </div>
     </article>

@@ -36,7 +36,7 @@
       </div>
       <h1>Ядро 101: первые шаги</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://arjunsreedharan.org/post/82710718100/kernel-101-lets-write-a-kernel" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Ядро 101: первые шаги»
+          <b>Оригинальный источник:</b> «Kernel 101 — Let's write a Kernel»
         </div>
         <a class="btn solid" href="https://arjunsreedharan.org/post/82710718100/kernel-101-lets-write-a-kernel" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-kernel-101.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,75 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Kernel 101: ядро на C и ассемблере — серия уроков от пустого файла до работающего ядра.</p>
+      <h2>Главная идея</h2>
+        <p>Этот урок строит два первых ядра: одно на ассемблере и одно на C — оба загружаются с помощью GRUB, чтобы не писать загрузчик самостоятельно. Цель — показать «самую простую вещь, которую можно назвать загружаемым ядром»: ELF-файл, печатающий на экран «Hello World».</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Ядро на ассемблере: вход через GRUB и стек</h2>
+        <p>Когда загружается GRUB, он по стандарту Multiboot загружает ядро и передаёт ему управление. Тонкий момент: на этом этапе ESP не определён (GRUB не задаёт надёжного значения стека), поэтому первое, что должно сделать ядро, — построить собственный стек:</p>
+        <pre class="code"><span class="lang-tag">nasm</span><code style="direction:ltr;text-align:left">; kernel.asm — ассемблерное ядро: определение стека и печать сообщения
+bits 32
+section .text
+
+global start
+start:
+    mov esp, stack_top  ; построение стека (обязательно! ESP не определён)
+    call kmain          ; переход в основную функцию
+    hlt                 ; остановка процессора
+
+section .bss
+resb 8192               ; 8 килобайт под стек
+stack_top:</code></pre>
+      </section>
+      <section>
+      <h2>Ядро на C: прямая запись в видеопамять VGA</h2>
+        <p>У C-версии есть красивая деталь: вместо каких-либо систем достаточно писать в видеопамять 0xB8000 (текстовый режим VGA). Каждый символ = 2 байта (код символа + атрибут цвета). Функция kmain для каждой буквы записывает атрибут зелёный-на-чёрном:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// kmain.c — C-ядро: печать в видеопамять VGA
+#define VGA_ADDRESS 0xB8000
+#define WHITE_ON_BLACK 0x0f00
+#define GREEN_ON_BLACK 0x2a00
+
+void kmain(void) {
+    const char *str = &quot;my first kernel&quot;;
+    unsigned short *vga = (unsigned short *) VGA_ADDRESS;
+
+    for (int i = 0; str[i] != &#x27;\0&#x27;; ++i) {
+        vga[i] = GREEN_ON_BLACK | str[i];
+    }
+
+    for (;;) {        // бесконечный цикл: ядро «закончило»
+        __asm__(&quot;hlt&quot;);
+    }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Компиляция и запуск</h2>
+        <p>C-ядро линкуется в 32-битный ELF-файл (адрес от 1MB) и затем файлы kernel и grub помещаются в загрузочный ISO с помощью grub-mkrescue:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Компиляция и линковка ядра
+gcc -m32 -c kernel.c -o kernel.o
+ld -m elf_i386 -T link.ld kernel.o -o kernel
+
+# Сборка загрузочного ISO с GRUB
+grub-mkrescue -o os.iso kernel_dir
+
+# Запуск в QEMU
+qemu-system-i386 -cdrom os.iso</code></pre>
+        <p>Через несколько секунд на экране QEMU появится надпись «my first kernel».</p>
+      </section>
+      <section>
+      <h2>Почему это важно</h2>
         <ul>
-          <li>Загрузка ядра</li>
-          <li>Видеопамять</li>
-          <li>Прерывания</li>
-          <li>Простые драйверы</li>
+          <li><b>Максимально короткий путь к «настоящему ядру»</b> — без мороки с написанием загрузчика.</li>
+          <li><b>Понятие Multiboot</b> объясняется наглядно и на примере.</li>
+          <li><b>Линковка и ELF для bare-metal</b> объясняются на файле линкера.</li>
+          <li><b>Хороший мост к Kernel 201</b> (того же автора), который добавляет ввод с клавиатуры и работу с экраном.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Серия Kernel 101 построена на малых шагах: каждое занятие — одна подсистема ядра.</p>
-        <p>Вывод символа в видеопамять:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void put_char(char c) {
-    volatile char *video = (volatile char*)0xB8000;
-    *video++ = c; *video++ = 0x07; // символ и атрибут
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Пошаговый формат — лучший для старта: серия 101 даст первую ядру с минимумом стресса.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Ядро 101: первые шаги» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Ядро 101: первые шаги» принадлежит автору оригинала (Arjun Sreedharan). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Arjun Sreedharan). Читайте оригинал на
         <a href="https://arjunsreedharan.org/post/82710718100/kernel-101-lets-write-a-kernel" target="_blank" rel="noopener">https://arjunsreedharan.org/post/82710718100/kernel-101-lets-write-a-kernel</a>.
       </div>
     </article>

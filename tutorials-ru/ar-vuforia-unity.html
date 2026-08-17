@@ -53,38 +53,40 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок знакомит с дополненной реальностью на Unity и Vuforia: распознавание маркера камерой, размещение 3D-объектов в сцене и запуск AR-приложения на устройстве.</p>
+      <h2>Об этом учебнике</h2>
+        <p>В этом пошаговом видеоуроке вы научитесь создавать AR-приложение с нуля на Unity 3D и Vuforia: от создания проекта и настройки лицензии Vuforia до отображения 3D-моделей на изображениях-маркерах (Image Target).</p>
+        <p>Видео рассчитано на новичков и не требует ничего, кроме установленного Unity.</p>
+        <pre class="code"><span class="lang-tag">C#</span><code style="direction:ltr;text-align:left">// Показ 3D-модели, когда Image Target распознан (Vuforia)
+public class TargetHandler : MonoBehaviour, ITrackableEventHandler {
+  public GameObject model;   // 3D-модель, привязанная к маркеру
+
+  void OnTrackableStateChanged(TrackableBehaviour.Status st) {
+    model.SetActive(st == TrackableBehaviour.Status.TRACKED);
+  }
+}</code></pre>
+        <p>В видео эта простая логика дополняется настройкой лицензии Vuforia и созданием Image Target.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/uXNjNcqW4kY" title="Видеоурок: AR-приложение с Vuforia и Unity" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/watch?v=uXNjNcqW4kY" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
         <ul>
-          <li>Что такое маркер и трекинг изображения</li>
-          <li>Интеграция Vuforia в Unity</li>
-          <li>Размещение объектов поверх маркера</li>
-          <li>Сборка и запуск на телефоне</li>
+          <li>Установка Unity и пакета Vuforia Engine</li>
+          <li>Создание Image Target и настройка AR-камеры</li>
+          <li>Добавление 3D-модели и взаимодействие с ней</li>
+          <li>Сборка и запуск на мобильном устройстве</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Vuforia распознаёт изображение-маркер в видеопотоке и сообщает его положение в пространстве; Unity ставит в эту точку 3D-объект. Всё AR-волшебство — точное слежение + сцена.</p>
-        <p>Установка объекта на маркер — пара строк:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>// Ставим 3D-объект ровно на распознанный маркер
-target.transform.localPosition = Vector3.zero;</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>AR-приложения — это камера + трекинг + 3D: поняв связку Unity-Vuforia, вы сможете быстро прототипировать идеи дополненной реальности для индустрий и обучения.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Создаём AR-приложение с Vuforia и Unity» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=uXNjNcqW4kY" target="_blank" rel="noopener">https://www.youtube.com/watch?v=uXNjNcqW4kY</a>.
       </div>
     </article>

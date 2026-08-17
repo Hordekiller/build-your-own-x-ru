@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Dangerous Dave на C (ретро)»
+          <b>Оригинальный источник:</b> ««Let's Build: Dangerous Dave» — плейлист»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLSkJey49cOgTSj465v2KbLZ7LMn10bCF9" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-dangerous-dave.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Клон Dangerous Dave на C: твёрдые тела, коллизии и уровни — платформер в доброй классической манере.</p>
+      <h2>Об обучении</h2>
+        <p><b>Dangerous Dave</b> — классический платформер для DOS, созданный Джоном Ромеро (создателем Doom и Wolfenstein) в 1988 году — и считающийся одной из первых простых и увлекательных «игр-конструкторов». В этом плейлисте та же игра с почти идентичной графикой и деталями воссоздаётся на C: спрайты 16×16, движение, гравитация, сбор предметов, враги, прыжки и несколько уровней.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> эта серия отлично подходит для старта: кода в каждом выпуске немного, структура простая, а в конце вы получаете полноценную рабочую игру.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Структура уровней</li>
-          <li>Персонаж и физика</li>
-          <li>Столкновения</li>
-          <li>Спрайты и анимация</li>
-        </ul>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; весь плейлист — по ссылке на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/playlist?list=PLSkJey49cOgTSj465v2KbLZ7LMn10bCF9" target="_blank" rel="noopener">▶ Смотреть плейлист «Let's Build: Dangerous Dave»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Платформер — это уровни-карты и проверка столкновений: персонаж движется, стены останавливают, спрайты оживляются.</p>
-        <p>Проверка столкновения с тайлом:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>// тайл под ногами?
-int tile = map[(playerY + h) / TILE][playerX / TILE];
-if (solid[tile]) playerY -= 1; // не проваливаемся</code></pre>
+      <h2>Ключевые концепции</h2>
+        <p>Пример структуры 2D-платформера, реализуемой в серии:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Структура уровня: сетка тайлов
+#define TILE_EMPTY 0
+#define TILE_BLOCK 1
+#define TILE_LADDER 2
+
+typedef struct {
+  int tile[ROWS][COLS];  // карта уровня
+  Player player;         // игрок
+  Monster monsters[MAX_MONSTERS];
+  Item items[MAX_ITEMS];
+} Level;
+
+// Главный цикл игры: ввод → обновление физики → рендер
+void game_loop(void) {
+  while (running) {
+    handle_input();
+    // Физика игрока: гравитация, горизонтальное движение,
+    // столкновения с тайлами
+    update_player(&amp;level.player, &amp;level);
+    // Враги и предметы
+    update_monsters(&amp;level);
+    render(&amp;level);  // отрисовка спрайтов в буфер
+    swap_buffers();  // вывод на экран
+    delay_frame();
+  }
+}</code></pre>
+        <p>Учебные концепции серии: игровой цикл, движение на основе тайлов, простые коллизии, физика гравитации и прыжка, простой ИИ врагов и управление несколькими уровнями через файлы.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Платформер на C — эталон ретро: вы посмотрите на уровне/движение глазами авторов 80-х.</p>
+      <h2>Итоги</h2>
+        <p>Этот плейлист — один из самых приятных способов создать свою первую полноценную игру: известная игра, простой и развиваемый код. После него можно переходить к более сложным играм на той же структуре.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Dangerous Dave на C (ретро)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLSkJey49cOgTSj465v2KbLZ7LMn10bCF9" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLSkJey49cOgTSj465v2KbLZ7LMn10bCF9</a>.
       </div>
     </article>

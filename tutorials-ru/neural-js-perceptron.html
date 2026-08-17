@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Перцептрон на JavaScript»
+          <b>Оригинальный источник:</b> «Neural Networks from Scratch for JavaScript Linguists (Part 1: The Perceptron)»
         </div>
         <a class="btn solid" href="https://hackernoon.com/neural-networks-from-scratch-for-javascript-linguists-part1-the-perceptron-632a4d1fbad2" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-js-perceptron.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,69 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Перцептрон на JS: веса, обучение и демо в браузере — нейросеть, которую можно потрогать.</p>
+      <h2>Предыстория: перцептрон Розенблатта (1958)</h2>
+        <p>В 1958 году Фрэнк Розенблатт представил перцептрон: простейшую «нейросеть» — один нейрон, принимающий несколько входов и выдающий один двоичный выход. Перцептрон — <b>линейный классификатор</b>: его решение опирается на линию (в пространстве признаков). Каждый вход умножается на вес, взвешенная сумма сравнивается со <b>смещением</b> (порогом), и выход становится 0 или 1:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Выход перцептрона: если взвешенная сумма + смещение переходит порог — 1, иначе 0
+function perceptron(inputs, weights, bias) {
+  let sum = bias;
+  for (let i = 0; i &lt; inputs.length; i++) {
+    sum += inputs[i] * weights[i];
+  }
+  return sum &gt; 0 ? 1 : 0;   // нулевой порог
+}</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Обучение: правило обновления перцептрона</h2>
+        <p>Перцептрон учится на примерах: если предсказание неверно — веса корректируются; если верно — остаются нетронутыми. Размер правки равен «скорость обучения × ошибка × вход». Ошибка положительна для желаемого выхода 1 при предсказании 0 (и наоборот) — так веса движутся в точности в нужном направлении:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Обучение на примере: если предсказание неверно, правь веса
+function train(inputs, target, weights, bias, lr) {
+  const prediction = perceptron(inputs, weights, bias);
+  const error = target - prediction;      // -1, 0 или 1
+  for (let i = 0; i &lt; weights.length; i++) {
+    weights[i] += lr * error * inputs[i]; // правило обучения перцептрона
+  }
+  bias += lr * error;
+  return { weights, bias };
+}</code></pre>
+        <p>Правило происходит из простой математики: изменение веса в направлении «отрицательного градиента ошибки» — та самая идея градиентного спуска, которая позже используется в глубоких сетях.</p>
+      </section>
+      <section>
+      <h2>Эксперимент: изучение оператора AND</h2>
+        <p>Чтобы убедиться, что обучение действительно работает, обучим перцептрон на таблице истинности <b>AND</b>: четыре образца (0,0)←0, (0,1)←0, (1,0)←0, (1,1)←1. После нескольких раундов веса настраиваются так, что перцептрон верно предсказывает все состояния — например, приходит к весам около 0,6 и смещению −1:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Обучение перцептрона на AND
+let weights = [Math.random(), Math.random()];
+let bias = Math.random();
+
+for (let epoch = 0; epoch &lt; 100; epoch++) {
+  for (const [x1, x2, target] of [[0,0,0],[0,1,0],[1,0,0],[1,1,1]]) {
+    ({ weights, bias } = train([x1, x2], target, weights, bias, 0.1));
+  }
+}
+console.log(perceptron([1, 1], weights, bias)); // → 1 (верная догадка)</code></pre>
+        <p>Обученный перцептрон даёт верный выход для <b>всех четырёх</b> состояний входа — даже для образцов, которых раньше не видел. Это обобщение, а не запоминание.</p>
+      </section>
+      <section>
+      <h2>От перцептрона к скрытому слою</h2>
+        <p>Фундаментальное ограничение одиночного перцептрона: он только линеен. Функцию <b>XOR</b> (которая не AND и не OR) никакой линией не разделить — но если объединить два перцептрона (выход одного идёт во вход другого), мы получим <b>скрытый слой</b> с нелинейной выразительной силой. Эта же идея в следующих частях превращается в полную сеть:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Объединение двух перцептронов: выход первого — вход второго (ядро скрытого слоя)
+const h1 = perceptron([x1, x2], wA, bA);
+const h2 = perceptron([x1, x2], wB, bB);
+const output = perceptron([h1, h2], wC, bC);</code></pre>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>Перцептрон</li>
-          <li>Обучение</li>
-          <li>Демо в браузере</li>
-          <li>Игровые применения</li>
+          <li>Перцептрон = взвешенная сумма + порог; простейшая обучающая машина классификации.</li>
+          <li>Правило обучения: <code>w += lr × error × input</code> — источник градиентного спуска.</li>
+          <li>AND выучивается (линейная задача); XOR — нет (нелинейная задача).</li>
+          <li>Скрытый слой строится объединением перцептронов и даёт нелинейность.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>JS-перцептрон интерактивен: веса меняются на глазах, обучение видно в реальном времени.</p>
-        <p>Классический перцептрон на JS:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>class Perceptron {
-  constructor(n) { this.weights = new Array(n).fill(0); }
-  guess(inputs) {
-    let sum = this.weights.reduce((s, w, i) =&gt; s + w * inputs[i], 0);
-    return sum &gt; 0 ? 1 : -1;
-  }
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Интерактивность — сила учебника: вы поймёте обучение нейронов, наблюдая за ним в браузере.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Перцептрон на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Перцептрон на JavaScript» принадлежит автору оригинала (автор серии для HackerNoon). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор серии для HackerNoon). Читайте оригинал на
         <a href="https://hackernoon.com/neural-networks-from-scratch-for-javascript-linguists-part1-the-perceptron-632a4d1fbad2" target="_blank" rel="noopener">https://hackernoon.com/neural-networks-from-scratch-for-javascript-linguists-part1-the-perceptron-632a4d1fbad2</a>.
       </div>
     </article>

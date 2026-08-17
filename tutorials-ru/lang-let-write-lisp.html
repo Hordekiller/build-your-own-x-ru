@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Давай напишем Lisp на JavaScript»
+          <b>Оригинальный источник:</b> «Let's Go Write a Lisp»
         </div>
         <a class="btn solid" href="https://idiocy.org/lets-go-write-a-lisp/part-1.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-let-write-lisp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,45 +53,39 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Напишем Lisp на JS: парсер, eval и функции — интерпретатор с русскими объяснениями.</p>
+      <h2>О статье</h2>
+        <p>Эта старая, но золотая статья строит интерпретатор Lisp методом «снизу вверх» (bottom-up): сначала представление данных и примитивные функции, затем parser и только потом closures и окружение. По стилю она похожа на статью «Little Lisp» Мэри Роуз Кук, но с большими подробностями об окружении и closures.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Парсер</li>
-          <li>Eval</li>
-          <li>Окружение</li>
-          <li>Лямбда-функции</li>
-        </ul>
+      <h2>Пошаговая структура</h2>
+        <p>1) Определение структур данных (Number, Lambda, Symbol и т.д.); 2) примитивные функции глобального окружения (определение через <code>define</code>); 3) parser из двух функций <code>tokenize</code>/<code>parse</code>; 4) главный <code>eval</code>, поддерживающий и числа/имена, и определение lambda; 5) <code>apply</code> для вызова функции и построения локального окружения.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Построение локального окружения для вызова функции
+function callLispFunction(closure, args) {
+  var localEnv = cloneEnvironment(closure.env);   // дочернее окружение определения
+  closure.params.forEach(function (param, i) {
+    localEnv[param] = args[i];                    // связывание параметров
+  });
+  // тело функции вычисляется в локальном окружении
+  return evalLisp(closure.body, localEnv);
+}</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Lisp-интерпретатор на JS — это пара сотен строк: списки, eval, окружение. Учебник без лишней теории.</p>
-        <p>Оценка списка-вызова:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>const evaluate = (ast, env) =&gt; {
-  if (ast[0] === "define") {
-    env[ast[1]] = evaluate(ast[2], env);
-    return;
-  }
-  const fn = evaluate(ast[0], env);
-  const args = ast.slice(1).map(x =&gt; evaluate(x, env));
-  return fn(...args);
-};</code></pre>
+      <h2>Ключевые концепции, которые вы узнаете</h2>
+        <p>1) <b>closure</b>: функция должна хранить своё окружение определения (Env in closure) — именно это придаёт Lisp смысл; 2) <b>последовательное вычисление</b> (begin) и условное (if); 3) рекурсия в функциях; 4) разница между eval и apply. Примеры в статье включают факториал и функцию map.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Ещё один маленький Lisp — ещё один уровень понимания: накопив опыт, вы пишете языки на автомате.</p>
+      <h2>Сравнение с другими учебниками</h2>
+        <p>По сравнению с «Little Lisp» эта статья показывает дочернее «вложенное» окружение (nested scope) более явно — то есть даёт лучшее понимание цепочечной области видимости, которая лежит в основе любого языка.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Познавательный и весёлый день: построение интерпретатора Lisp с нуля на JavaScript с акцентом на окружение и closures. Позже можно добавить <code>quote</code>, макросы и GC, чтобы приблизить интерпретатор к «mal».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Давай напишем Lisp на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Давай напишем Lisp на JavaScript» принадлежит автору оригинала (idiocy.org). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (idiocy.org). Читайте оригинал на
         <a href="https://idiocy.org/lets-go-write-a-lisp/part-1.html" target="_blank" rel="noopener">https://idiocy.org/lets-go-write-a-lisp/part-1.html</a>.
       </div>
     </article>

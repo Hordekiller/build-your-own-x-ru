@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Парсер-комбинаторы на F#»
+          <b>Оригинальный источник:</b> «Understanding Parser Combinators»
         </div>
         <a class="btn solid" href="https://fsharpforfunandprofit.com/posts/understanding-parser-combinators/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-parser-combinators-fs.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Парсеры с комбинаторами на F#: базовые примитивы и комбинация — функциональный подход к разбору языков.</p>
+      <h2>Что такое комбинатор парсеров</h2>
+        <p>Вместо написания отдельного парсера для каждого языка «комбинаторы» — маленькие функции, которые сочетаются друг с другом и строят парсер. Парсер — это «функция»: принимает вход (строку) и либо возвращает успех (результат + остаток входа), либо неудачу.</p>
+        <p>Скотт Влашин объясняет эту идею на F# — функциональном и читаемом языке; концепции переносимы на любой язык (существуют версии на Rust, Go, JavaScript).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Комбинаторы</li>
-          <li>Последовательности и выбор</li>
-          <li>Многоразовые парсеры</li>
-          <li>Отчёты об ошибках</li>
-        </ul>
+      <h2>Главная концепция: базовые функции и комбинирование</h2>
+        <p>Три базовых комбинатора: preturn (всегда успех с фиксированным значением), pzero (всегда неудача), satisfy (символ, соответствующий предусловию). Затем структурные комбинаторы: andThen (p1 затем p2), orElse (либо p1, либо p2), many (ноль или больше раз). На них строятся сложные парсеры:</p>
+        <pre class="code"><span class="lang-tag">F#</span><code style="direction:ltr;text-align:left">type Parser&lt;&#x27;a&gt; = string -&gt; Result&lt;&#x27;a * string, string&gt;
+
+// и затем: p1 и после него p2
+let andThen p1 p2 = fun input -&gt;
+    match p1 input with
+    | Error e -&gt; Error e
+    | Ok (r1, rest) -&gt;
+      match p2 rest with
+      | Error e -&gt; Error e
+      | Ok (r2, rest2) -&gt; Ok ((r1, r2), rest2)
+
+// p1 или p2
+let orElse p1 p2 = fun input -&gt;
+    match p1 input with
+    | Ok r -&gt; Ok r
+    | Error _ -&gt; p2 input</code></pre>
+        <p>Обратите внимание: рекурсией и этими двумя простыми функциями можно определить полные грамматики — без инструментов генерации парсеров, пока вы сами этого не захотите.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Парсер-комбинаторы — строительные блоки: маленькие парсеры соединяются в большие. F# делает это выразительно.</p>
-        <p>Комбинатор последовательности:</p>
-        <pre class="code"><span class="lang-tag">F#</span><code>let pAndThen (p1: Parser&lt;'a&gt;) (p2: Parser&lt;'b&gt;) : Parser&lt;'a * 'b&gt; =
-    fun input -&gt;
-        match p1 input with
-        | Success (a, rest) -&gt;
-            match p2 rest with
-            | Success (b, rest2) -&gt; Success ((a, b), rest2)
-            | Failure msg -&gt; Failure msg
-        | Failure msg -&gt; Failure msg</code></pre>
+      <h2>Практическое применение: калькулятор</h2>
+        <p>В продолжении статьи на этих комбинаторах строится маленький калькулятор (числа, сложение, умножение с приоритетами). Также обсуждается, как с помощью «монады» (в F# через forwardPipe и record) чище управлять ошибками и состоянием; и почему комбинаторы естественным образом страдают от «левой рекурсии» (left recursion) — проблемы, которую решают LALR-парсеры.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Комбинаторы — язык построения парсеров: освоив их на F#, вы примените везде.</p>
+      <h2>Пример кода: числа и операторы</h2>
+        <pre class="code"><span class="lang-tag">F#</span><code style="direction:ltr;text-align:left">let digitChar = satisfy (fun ch -&gt; System.Char.IsDigit ch)
+let digits = many1 digitChar   // одна или больше цифр
+
+// преобразование строки цифр в int
+let toInt (str:string) : int = System.Int32.Parse(str)
+
+let number = digits |&gt;&gt; toInt   // парсер числа
+
+// expr := number ((&quot;+&quot;|&quot;-&quot;) number)*
+let expr =
+    let op = char &#x27;-&#x27; |&gt;&gt; (fun _ -&gt; (-)) &lt;|&gt; char &#x27;+&#x27; |&gt;&gt; (fun _ -&gt; (+))
+    number .&gt;&gt;. many (op .&gt;&gt;. number)</code></pre>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Если хотите узнать, из чего состоят парсеры, — без тяжёлых библиотек — прочитайте эту статью. Позже примените ту же идею в реальных проектах (например, при построении DSL или маленького интерпретатора).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Парсер-комбинаторы на F#» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Парсер-комбинаторы на F#» принадлежит автору оригинала (Scott Wlaschin). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Scott Wlaschin). Читайте оригинал на
         <a href="https://fsharpforfunandprofit.com/posts/understanding-parser-combinators/" target="_blank" rel="noopener">https://fsharpforfunandprofit.com/posts/understanding-parser-combinators/</a>.
       </div>
     </article>

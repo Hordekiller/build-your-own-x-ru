@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «LSBASI: интерпретатор BASIC на Python»
+          <b>Оригинальный источник:</b> «Let's Build A Simple Interpreter (lsbasi)»
         </div>
         <a class="btn solid" href="https://ruslanspivak.com/lsbasi-part1/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-lsbasi.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,53 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Let's Build A Simple Interpreter: интерпретатор Pascal-подобного языка — лексер, парсер и AST.</p>
+      <h2>О серии</h2>
+        <p>Руслан Спивак серией «Давайте построим простой интерпретатор» (более 20 частей) написал один из самых популярных учебников по созданию интерпретаторов: от калькулятора <code>3 + 5</code> до языка с переменными, условиями, циклами и даже раздельными Lexer и Parser. Каждая часть посвящена одной концепции.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>Парсер</li>
-          <li>AST</li>
-          <li>Интерпретация</li>
-        </ul>
+      <h2>Пошаговые концепции</h2>
+        <p>1) Token и Lexer (превращение текста в токены); 2–3) Parser и AST; 4) Interpreter (вычисление); 5–7) приоритет операторов и грамматики (синтаксические диаграммы); 8–9) обработка составных токенов; 10–11) выполнение вычислений и простой синтаксис; 12–13) переменные и присваивание; 14–15) обзор и ошибки; 16–20) условия, циклы, логические операторы и финальная структура.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Серия строит полноценный интерпретатор: лексер, парсер, AST и исполнитель — нарастающая сложность кода.</p>
-        <p>Разбор оператора присваивания:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>class AssignNode(AST):
-    def __init__(self, left, op, right):
-        self.left, self.token, self.right = left, op, right</code></pre>
+      <h2>Пример кода: лексер (части 1 и 2)</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Типы токенов
+INTEGER, PLUS, MINUS, MUL, DIV = &#x27;INTEGER&#x27;, &#x27;PLUS&#x27;, &#x27;MINUS&#x27;, &#x27;MUL&#x27;, &#x27;DIV&#x27;
+
+class Interpreter:
+    def __init__(self, text):
+        self.text = text
+        self.pos = 0
+        self.current_token = None
+
+    def get_next_token(self):
+        # lexer: пропуск пробелов, распознавание чисел/операторов
+        while self.pos &lt; len(self.text) and self.text[self.pos].isspace():
+            self.pos += 1
+        if self.pos &gt;= len(self.text):
+            return Token(EOF, None)
+        tok = self.text[self.pos]
+        if tok.isdigit():
+            start = self.pos
+            while self.pos &lt; len(self.text) and self.text[self.pos].isdigit():
+                self.pos += 1
+            return Token(INTEGER, int(self.text[start:self.pos]))
+        if tok == &#x27;+&#x27;: self.pos += 1; return Token(PLUS, &#x27;+&#x27;)
+        ...
+        raise Exception(&#x27;ошибка разбора&#x27;)</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Серия LSBASI — классический путь: вы пройдёте интерпретатор от первой строки до полного языка.</p>
+      <h2>Почему эта серия популярна?</h2>
+        <p>Тексты Руслана очень подробны: диаграммы грамматики, таблицы и объяснения в духе «лучше так не делать, потому что…». Особенно просто изложены темы AST и visitor pattern. В конце вы сможете расширять свой язык, определяя ключевые слова (<code>BEGIN…END</code>).</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Если вы хотите без каких-либо предпосылок о компиляторах интуитивно построить интерпретатор — это лучшая отправная точка. Параллельно можно читать «lispy» Норвига, чтобы сравнить два стиля (Lisp-интерпретатор и императивный интерпретатор).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «LSBASI: интерпретатор BASIC на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «LSBASI: интерпретатор BASIC на Python» принадлежит автору оригинала (Ruslan Spivak). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ruslan Spivak). Читайте оригинал на
         <a href="https://ruslanspivak.com/lsbasi-part1/" target="_blank" rel="noopener">https://ruslanspivak.com/lsbasi-part1/</a>.
       </div>
     </article>

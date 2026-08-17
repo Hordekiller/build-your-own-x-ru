@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Шахматы на C»
+          <b>Оригинальный источник:</b> ««Chess Engine in C» — плейлист VICE»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-chess-c.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Шахматный движок на C: доска, ходы, алгоритм поиска минимакс и оценка позиции — интеллект в коде.</p>
+      <h2>Об обучении</h2>
+        <p>В этом плейлисте с нуля создаётся профессиональный шахматный движок <b>VICE</b>. Это реальный движок, играющий в силу примерно 2400+ рейтинга, и в серии на C реализуются и объясняются все его компоненты: генерация ходов, поиск minimax/alpha-beta, оценка позиции, таблица транспозиций (transposition table), книга дебютов и пользовательский интерфейс.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы не знакомы ни с шахматами, ни с игровым ИИ — не переживайте: серия начинается с нуля и подробно объясняет каждый алгоритм.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Представление доски</li>
-          <li>Генерация ходов</li>
-          <li>Минимакс и альфа-бета</li>
-          <li>Оценка позиции</li>
-        </ul>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; весь плейлист — по ссылке на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/playlist?list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg" target="_blank" rel="noopener">▶ Смотреть плейлист «Chess Engine in C»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Шахматы — это граф состояний: движок генерирует ходы, оценивает позиции и выбирает лучший через минимакс с отсечением.</p>
-        <p>Рекурсивный выбор хода:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>int minimax(depth, alpha, beta) {
-    if (depth == 0) return evaluate();
-    for (move : generateMoves()) {
-        make(move); score = -minimax(depth-1, -beta, -alpha);
-        unmake(move);
-        if (score &gt;= beta) return beta;    // отсечение
-    }
+      <h2>Ключевые концепции реализации</h2>
+        <p>Пример структур данных шахматного движка на C — представление доски битбордами или простыми массивами и структура хода:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Представление шахматного хода
+typedef struct {
+  int from;      // стартовое поле
+  int to;        // целевое поле
+  int piece;     // движущаяся фигура
+  int promoted;  // фигура превращения (для пешек)
+  int capture;   // является ли ход взятием?
+} move_t;
+
+// Оценка позиции: сумма ценности фигур + позиционные факторы
+int evaluate(board_t *board) {
+  int score = 0;
+  // Базовая ценность фигур (пешка 100, конь 320, слон 330,
+  // ладья 500, ферзь 900, король ∞)
+  score += material_score(board);
+  score += piece_square_tables(board); // позиционные таблицы
+  score += mobility(board);            // количество доступных ходов
+  return score;
+}
+
+// Поиск minimax с отсечением альфа-бета
+int alpha_beta(board_t *board, int depth, int alpha, int beta, int side) {
+  if (depth == 0) return evaluate(board);
+  // генерация всех ходов, сортировка и перебор
+  // отсечение: если alpha &gt;= beta, остаток не проверять
 }</code></pre>
+        <p>Другие части серии: <b>таблица транспозиций</b> (чтобы не пересчитывать повторяющиеся позиции), <b>Zobrist hashing</b> (подпись позиции), книга дебютов и <b>UCI</b> (стандартный протокол связи движка с интерфейсами вроде Arena).</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Шахматы — классика алгоритмов: после своего движка вы без труда прочитаете любой поиск и дерево решений.</p>
+      <h2>Итоги</h2>
+        <p>Если хотите увидеть «настоящий искусственный интеллект» — с поиском и оценкой — с нуля и заодно подтянуть навыки C, этот плейлист один из лучших вариантов. Полный код VICE доступен на GitHub, чтобы потренироваться после просмотра.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Шахматы на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLZ1QII7yudbc-Ky058TEaOstZHVbT-2hg</a>.
       </div>
     </article>

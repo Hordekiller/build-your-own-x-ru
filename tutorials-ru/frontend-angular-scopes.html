@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Angular Scopes: скоупы в своём фреймворке»
+          <b>Оригинальный источник:</b> «Make Your Own AngularJS, Part 1: Scopes and Digest»
         </div>
         <a class="btn solid" href="http://teropa.info/blog/2013/11/03/make-your-own-angular-part-1-scopes-and-digest.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-angular-scopes.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,146 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок раскрывает механизм скоупов Angular: наследование, вложенность и распространение изменений — внутренности $scope своими руками.</p>
+      <h2>1. Зачем Scope и Digest?</h2>
+        <p>В AngularJS всё вращается вокруг двух концепций: <b>Scope</b> (модель, к которой привязан DOM) и <b>Digest</b> (механизм, который находит изменения модели и переносит их в DOM). В этой части мы строим их с нуля — с той же тщательностью и подходом, что и настоящий Angular, но в среде тестирования чистого JavaScript (без DOM).</p>
+        <div class="callout tip">
+          <strong>Метод обучения:</strong> статья написана в стиле TDD: сначала описывается поведение (тест), затем приводится его реализация. Если будете следовать за кодом, тесты запустите на Mocha/Jasmine.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Watcher'ы: подписка на изменения</h2>
+        <p>Через <code>$watch</code> регистрируется функция-«наблюдатель», возвращающая текущее значение. Через <code>$digest</code> мы вызываем этих наблюдателей и, если значение изменилось, уведомляем слушателей:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">Scope.prototype.$watch = function(watchFn, listenerFn) {
+  const watcher = {
+    watchFn: watchFn,
+    listenerFn: listenerFn || function() {},
+    last: initWatchVal, // специальное значение «ещё не вычислено»
+  };
+  this.$$watchers.push(watcher);
+};
+
+Scope.prototype.$digest = function() {
+  let dirty;
+  do {
+    dirty = this.$$digestOnce();
+  } while (dirty);
+};
+
+Scope.prototype.$$digestOnce = function() {
+  let self = this;
+  let dirty = false;
+  this.$$watchers.forEach(function(watcher) {
+    const newValue = watcher.watchFn(self);
+    const oldValue = watcher.last;
+    // уведомляем только если изменилось
+    if (newValue !== oldValue) {
+      watcher.last = newValue;
+      watcher.listenerFn(newValue, oldValue, self);
+      dirty = true;
+    }
+  });
+  return dirty;
+};</code></pre>
+        <p>Важный момент: цикл <code>do…while</code> означает <b>«пока найдено изменение, проверяй снова»</b> — потому что слушатель сам может изменить scope. Это поведение называется dirty checking.</p>
+      </section>
+      <section>
+      <h2>3. Предупреждение о цикле: защита от бесконечности</h2>
+        <p>Если слушатель постоянно меняет значение, digest никогда не закончится. В Angular есть ограничение TTL (<code>$digestTtl</code>):</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">Scope.prototype.$digest = function() {
+  let ttl = 10; // максимум проходов
+  let dirty;
+  do {
+    dirty = this.$$digestOnce();
+    if (dirty &amp;&amp; !(ttl--)) {
+      throw &#x27;Десять проходов digest без достижения стабильности!&#x27;;
+    }
+  } while (dirty);
+};</code></pre>
+      </section>
+      <section>
+      <h2>4. Сравнение по значению (Value-based) и глубокое (Deep)</h2>
+        <p>В Angular можно указать, будет ли сравнение «по значению» (по умолчанию для чисел и строк) или «по ссылке» (для объектов), или даже <b>глубоким</b> (рекурсивное сравнение структуры объекта). Статья реализует все три режима с помощью <code>$$watchValueFn</code> и алгоритма <code>$$areEqual</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">Scope.prototype.$watch = function(watchFn, listenerFn, valueEq) {
+  const watcher = {
+    watchFn: watchFn,
+    listenerFn: listenerFn || function() {},
+    valueEq: !!valueEq, // глубокое или ссылочное сравнение
+    last: initWatchVal,
+  };
+  this.$$watchers.push(watcher);
+};
+
+Scope.prototype.$$digestOnce = function() {
+  let self = this;
+  let dirty = false;
+  this.$$watchers.forEach(function(watcher) {
+    const newValue = watcher.watchFn(self);
+    const oldValue = watcher.last;
+    // сравнение по подходящему критерию
+    if (!self.$$areEqual(newValue, oldValue, watcher.valueEq)) {
+      watcher.last = (watcher.valueEq ? _.cloneDeep(newValue) : newValue);
+      watcher.listenerFn(newValue, oldValue, self);
+      dirty = true;
+    }
+  });
+  return dirty;
+};
+
+Scope.prototype.$$areEqual = function(newValue, oldValue, valueEq) {
+  if (valueEq) {
+    return _.isEqual(newValue, oldValue); // глубокое сравнение
+  }
+  return newValue === oldValue; // ссылочное сравнение
+};</code></pre>
+        <p>Почему deep watch опасен? Потому что глубокое сравнение для каждого watcher'а дорого, и с большими структурами digest замедляется, — Angular платит эту цену только если вы его используете.</p>
+      </section>
+      <section>
+      <h2>5. Невычисленные значения и NaN: хранение «беззначного» значения</h2>
+        <p>Важная деталь: при первом digest слушатель должен обязательно вызваться, даже если начальное значение watchFn равно undefined. Angular решает это специальным значением <code>initWatchVal</code> (тот же приём заставляет корректно работать и NaN, потому что NaN не равен сам себе):</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function initWatchVal() {} // значение-«маркер», не равное ничему</code></pre>
+      </section>
+      <section>
+      <h2>6. $eval, $evalAsync и $apply</h2>
+        <p>Заключительная часть статьи добавляет три важных способа выполнения кода в scope:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">Scope.prototype.$eval = function(expr, locals) {
+  // немедленное выполнение функции/выражения в контексте scope
+  return expr(this, locals);
+};
+
+Scope.prototype.$evalAsync = function(expr) {
+  // отложенное выполнение: в очереди $applyAsyncQueue, до следующего digest
+  if (!this.$$phase &amp;&amp; !this.$$asyncQueue.length) {
+    setTimeout(function() {
+      // когда очередь пуста, выполняем digest
+      if (scope.$$asyncQueue.length) scope.$digest();
+    }, 0);
+  }
+  this.$$asyncQueue.push({ scope: this, expr: expr });
+};
+
+Scope.prototype.$apply = function(expr) {
+  // выполнение кода «вне цикла Angular» (например, в событии браузера)
+  try {
+    this.$eval(expr);
+  } finally {
+    this.$digest(); // digest выполняется всегда
+  }
+};</code></pre>
+        <p>Причина существования <code>$apply</code>: любое изменение, происходящее вне «зоны» Angular (например, в setTimeout или внешней библиотеке), не видно digest'у; <code>$apply</code> вводит его в цикл.</p>
+      </section>
+      <section>
+      <h2>7. Итоги</h2>
         <ul>
-          <li>Что такое scope</li>
-          <li>Наследование скоупов</li>
-          <li>Наблюдение за изменениями</li>
-          <li>Цикл digest</li>
+          <li>Scope — простая модель + механизм watch/digest, который можно расширять; вся «магия» Angular исходит из этого цикла dirty checking.</li>
+          <li>Ссылочное сравнение против глубокого — это баланс между точностью и скоростью.</li>
+          <li>Следующие части серии посвящены дочерним scope, событиям и директивам (directives).</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Скоупы выстраивают иерархию, изменения распространяются по дереву, а digest-цикл проверяет консистентность. Всё это — обычный JS.</p>
-        <p>Наблюдатель изменения:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>scope.$watch("name", (newVal) =&gt; {
-  console.log("Имя изменилось:", newVal);
-});</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Узнав скоупы Angular, вы свободно читаете legacy-код и понимаете, почему React пришёл на смену digest-циклу.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Angular Scopes: скоупы в своём фреймворке» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Angular Scopes: скоупы в своём фреймворке» принадлежит автору оригинала (Теро Парвиайнен (Tero Parviainen)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Теро Парвиайнен (Tero Parviainen)). Читайте оригинал на
         <a href="http://teropa.info/blog/2013/11/03/make-your-own-angular-part-1-scopes-and-digest.html" target="_blank" rel="noopener">http://teropa.info/blog/2013/11/03/make-your-own-angular-part-1-scopes-and-digest.html</a>.
       </div>
     </article>

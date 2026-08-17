@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игры на Pygame: первая игра»
+          <b>Оригинальный источник:</b> «PyGame tutorial: Introduction»
         </div>
         <a class="btn solid" href="https://pythonprogramming.net/pygame-python-3-part-1-intro/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-pygame.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,67 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Pygame с нуля: окно, спрайты и ввод — первая игра на Python за один вечер.</p>
+      <h2>О курсе</h2>
+        <p>Эта видео-серия создаёт игру «A bit Racey»: гоночная машина, управляемая клавишами, которая объезжает надвигающиеся препятствия. Первый урок показывает полную настройку: установку PyGame, создание окна, игровой цикл и контроль частоты кадров через <code>Clock</code>.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> это текстово-видео обучение: у каждого урока есть и видео, и текст — отлично для пошагового следования.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Окно и поверхность</li>
-          <li>Спрайты и движение</li>
-          <li>События</li>
-          <li>Сборка игры</li>
-        </ul>
-      </section>
+      <h2>Вводный код</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import pygame
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Pygame — прямой вход в игры на Python: поверхности, спрайты и события — всё просто и наглядно.</p>
-        <p>Движение и отрисовка в цикле:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>while True:
+# Инициализация всех модулей pygame
+pygame.init()
+
+# Создание окна: ширина 800, высота 600
+win = pygame.display.set_mode((800, 600))
+
+# Заголовок окна
+pygame.display.set_caption(&quot;A bit Racey&quot;)
+
+# Часы: контроль частоты кадров
+clock = pygame.time.Clock()
+
+# Инициализация машины
+x, y = 400, 500      # позиция машины
+width, height = 40, 60
+vel = 5              # скорость движения
+
+run = True
+while run:
+    clock.tick(60)   # максимум 60 кадров в секунду
+
+    # Обработка событий: закрытие окна
     for event in pygame.event.get():
-        if event.type == pygame.QUIT: leave()
-    screen.fill(BLACK)
-    screen.blit(player_img, (x, y))
-    pygame.display.flip()</code></pre>
-      </section>
+        if event.type == pygame.QUIT:
+            run = False
 
+    # Ввод: движение стрелками
+    keys = pygame.key.get_pressed()
+    if keys[pygame.K_LEFT] and x &gt; 0:
+        x -= vel
+    if keys[pygame.K_RIGHT] and x &lt; 800 - width:
+        x += vel
+
+    # Рендер: очистка экрана и отрисовка машины
+    win.fill((0, 0, 0))
+    pygame.draw.rect(win, (255, 0, 0), (x, y, width, height))
+
+    pygame.display.update()
+
+pygame.quit()</code></pre>
+        <p>Всего около 30 строк — и ваша первая рабочая игра готова; следующие уроки добавляют препятствия, столкновения, очки и экраны старта/конца.</p>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Pygame — первый контакт тысяч геймдев-начинающих: урок даст вам его же, но по-взрослому.</p>
+      <h2>Итоги</h2>
+        <p>Серия PyGame Харрисона (PythonProgramming.net) — золотой стандарт для старта в разработке игр на Python: введение покрывается быстро и практично, а видео с текстом упрощают обучение.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игры на Pygame: первая игра» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игры на Pygame: первая игра» принадлежит автору оригинала (Харрисон Кинсли (Harrison Kinsley)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Харрисон Кинсли (Harrison Kinsley)). Читайте оригинал на
         <a href="https://pythonprogramming.net/pygame-python-3-part-1-intro/" target="_blank" rel="noopener">https://pythonprogramming.net/pygame-python-3-part-1-intro/</a>.
       </div>
     </article>

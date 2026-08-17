@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Компилятор в WebAssembly на TypeScript»
+          <b>Оригинальный источник:</b> «WebAssembly Compiler (Scott Logic)»
         </div>
         <a class="btn solid" href="https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-wasm-compiler.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,72 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Компилятор, порождающий WebAssembly: лексер, парсер и генерация .wasm — ваш язык в браузере.</p>
+      <h2>Почему WebAssembly — отличная цель для компилятора?</h2>
+        <p>WebAssembly — бинарный формат для быстрого выполнения в браузере. Его преимущество для изучения компиляторов в том, что конечный результат — исполняемый в браузере файл <code>.wasm</code>: сразу, без посредников, видно, работает ли ваш код.</p>
+        <p>Учебник начинается со своего мини-языка и проходит три основных этапа: <b>lexer</b> для распознавания токенов, <b>parser</b> для построения дерева синтаксиса и <b>генератор кода</b> для производства байт-кода wasm.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>WebAssembly</li>
-          <li>Лексер и парсер</li>
-          <li>Генерация wasm</li>
-          <li>Запуск в браузере</li>
-        </ul>
+      <h2>Структура входного языка</h2>
+        <p>У языка JavaScript-подобный синтаксис: целые числа, локальные переменные, инструкция return и функция main. Простейшая отправная точка — генерировать функцию, работающую с заданным числом входных аргументов и возвращающую результат через <code>return</code>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Компиляция в wasm — современный путь: язык становится пригодным для браузера и edge-рантаймов.</p>
-        <p>Генерация инструкции wasm:</p>
-        <pre class="code"><span class="lang-tag">TypeScript</span><code>// i32.add — инструкция сложения
-const add = [0x6a]; // opcode i32.add
-out.push(...add);</code></pre>
+      <h2>Лексер и парсер</h2>
+        <p>Начальные части классические: токены <code>number</code>, <code>identifier</code>, операторы и ключевые слова. Далее парсер рекурсивным спуском строит AST:</p>
+        <pre class="code"><span class="lang-tag">typescript</span><code style="direction:ltr;text-align:left">// Разбор выражения: число, переменная или вызов функции
+function parseExpression(): AstNode {
+  const token = nextToken();
+  if (token.type === &quot;number&quot;) {
+    return { kind: &quot;number&quot;, value: Number(token.value) };
+  }
+  if (token.type === &quot;identifier&quot;) {
+    const next = peek();
+    if (next.type === &quot;lparen&quot;) {          // вызов функции
+      nextToken();
+      const args: AstNode[] = [];
+      while (peek().type !== &quot;rparen&quot;) {
+        args.push(parseExpression());
+        if (peek().type === &quot;comma&quot;) nextToken();
+      }
+      nextToken();                         // закрыть скобку
+      return { kind: &quot;call&quot;, name: token.value, args };
+    }
+    return { kind: &quot;var&quot;, name: token.value };
+  }
+  throw new Error(`Неожиданный токен: ${token.value}`);
+}</code></pre>
+        <p>Этот простой парсер корректно разбирает вложенные структуры вроде <code>main(add(1, 2))</code>.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Wasm-компиляторы — будущее веба: этот проект поставит вас на передний край современной инженерии.</p>
+      <h2>Генерация байт-кода wasm</h2>
+        <p>Самая интересная часть — перевод AST в двоичные инструкции: каждый узел превращается в серию <code>opcode</code> и <code>leb128</code>. Например, сложение двух чисел — инструкция <code>i32.add</code>, а функция — type section и function body:</p>
+        <pre class="code"><span class="lang-tag">typescript</span><code style="direction:ltr;text-align:left">// Генерация байт-кода для функции main
+function emitFunction(name: string, params: number[], body: AstNode): Uint8Array {
+  const bytes: number[] = [];
+
+  // Регистрирует section function type
+  const typeIdx = encodeL128(params.filter(p =&gt; p === i32).length);
+
+  // body: содержимое выражения return
+  bytes.push(0x0b);          // конец блока выражения
+  emitExpression(body);      // инструкции добавляются в bytes
+
+  return new Uint8Array(bytes);
+}</code></pre>
+        <p>Здесь видно, что разные части (header, type и code) регистрируются модульным байтом 0x и идентификатором.</p>
+      </section>
+      <section>
+      <h2>Запуск и тестирование</h2>
+        <p>В конце загрузчик выполняет байт-код в браузере через <code>WebAssembly.instantiate</code> и печатает результат функции. Этот цикл — редактирование, компиляция, запуск — даёт мгновенную обратную связь и делает обучение по-настоящему осязаемым.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Учебник — отличное начало пути в компиляторы браузерных языков. Если после него нужен проект побольше, следующая логичная цель — фронтенд для языка с типами или циклами.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Компилятор в WebAssembly на TypeScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Компилятор в WebAssembly на TypeScript» принадлежит автору оригинала (Colin Eberhardt). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Colin Eberhardt). Читайте оригинал на
         <a href="https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html" target="_blank" rel="noopener">https://blog.scottlogic.com/2019/05/17/webassembly-compiler.html</a>.
       </div>
     </article>

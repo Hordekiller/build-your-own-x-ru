@@ -36,7 +36,7 @@
       </div>
       <h1>Пишем свою ОС на C++</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://www.youtube.com/playlist?list=PLHh55M_Kq4OApWScZyPl5HhgsTJS9MZ6M" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем свою ОС на C++»
+          <b>Оригинальный источник:</b> «Write your own Operating System (видеосериал на YouTube)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLHh55M_Kq4OApWScZyPl5HhgsTJS9MZ6M" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-write-your-own.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,47 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Собственная ОС на C++: загрузчик, ядро и интерфейс — системный код с объектным языком.</p>
+      <h2>О курсе</h2>
+        <p>CodePulse (Дэвид Калланан) создал один из самых популярных видеокурсов по разработке ОС. Каждое видео в живом режиме написания кода строит очередную часть ОС, и зритель «вблизи» видит, как принимается каждое решение. В отличие от статей, у видео есть большое преимущество: видны ошибки, отладка и ход мыслей автора.</p>
+        <pre class="code"><span class="lang-tag">C</span><code style="direction:ltr;text-align:left">// Первый код курса: вывод символа прямо в текстовый экран
+static void print_char(char c) {
+  static uint16_t* vga = (uint16_t*)0xB8000;   // видеопамять VGA
+  static uint8_t row = 0, col = 0;
+  vga[row * 80 + col] = (0x0F &lt;&lt; 8) | c;        // яркий цвет + символ
+  col++;
+}</code></pre>
+        <p>Этот простой принтер символов — первый кирпич, от которого курс поднимается до прерываний и планировщика.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Путь курса</h2>
         <ul>
-          <li>C++ и ядро</li>
-          <li>Загрузчик</li>
-          <li>Графический вывод</li>
-          <li>Менеджер памяти</li>
+          <li><b>Первые части — загрузка</b>: структура загрузчика, первый ассемблер, загрузка в эмуляторе и печать сообщения.</li>
+          <li><b>Средние части — ядро</b>: вход в 32-битный режим, управление экраном, прерывания и драйвер клавиатуры.</li>
+          <li><b>Финальные части — завершение</b>: планировщик, управление памятью и итог финальной ОС.</li>
+        </ul>
+        <p>Полный исходный код проекта лежит в репозитории GitHub os-series, и каждую часть можно проходить отдельно.</p>
+      </section>
+      <section>
+      <h2>Что вы узнаете</h2>
+        <ul>
+          <li><b>Как реально работают загрузчик, GDT, IDT и прерывания</b> — вживую.</li>
+          <li><b>Написание драйверов клавиатуры и экрана</b>.</li>
+          <li><b>Начальное управление памятью и планирование процессов</b>.</li>
+          <li><b>Паттерны отладки ядер</b>.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>ОС на C++ использует преимущества языка даже в ядре: классы, шаблоны и RAII в системном коде.</p>
-        <p>Вывод текста в C++-ядре:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>class Terminal {
-public:
-    void print(const std::string &amp;s);
-private:
-    uint16_t *vga = (uint16_t*)0xB8000;
-};</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>C++ в ядре — редкая, но поучительная практика: вы увидите язык в самых жёстких условиях.</p>
+      <h2>Как смотреть</h2>
+        <p>Лучший способ — кодить одновременно с видео: остановите видео, внесите то же изменение сами и запустите, прежде чем продолжать. Код курса на каждом этапе запускается в QEMU; если застряли на какой-то части — сравните свой код с оригинальным репозиторием.</p>
+        <div class="callout note">
+          Эта страница, из-за видеоприроды источника, содержит только введение и ссылку, и по правилам каталога видео прямо на странице не встраивается — для просмотра перейдите по ссылке «Оригинальный источник».
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем свою ОС на C++» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем свою ОС на C++» принадлежит автору оригинала (David Callanan (CodePulse)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (David Callanan (CodePulse)). Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLHh55M_Kq4OApWScZyPl5HhgsTJS9MZ6M" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLHh55M_Kq4OApWScZyPl5HhgsTJS9MZ6M</a>.
       </div>
     </article>

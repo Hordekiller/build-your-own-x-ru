@@ -36,7 +36,7 @@
       </div>
       <h1>Crafting Interpreters: книга по языкам (Java)</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: Java</span>
+        <span class="meta-badge">⚙ Язык: Java и C</span>
         <span class="meta-badge">📁 Язык программирования</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="http://www.craftinginterpreters.com/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Crafting Interpreters: книга по языкам (Java)»
+          <b>Оригинальный источник:</b> «Crafting Interpreters»
         </div>
         <a class="btn solid" href="http://www.craftinginterpreters.com/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-crafting-interpreters.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,79 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Легендарная книга о компиляторах и интерпретаторах: первый язык — tree-walk интерпретатор, второй — байткод-ВМ с GC.</p>
+      <h2>О книге</h2>
+        <p>«Crafting Interpreters» написал Роберт Найстром — тот самый, кто создал статью о «сборщике мусора для младенцев» и работал над языком Dart в Google. Книга реализует язык <b>Lox</b> дважды: первый раз — интерпретатор по дереву (tree-walker) на <b>Java</b>, второй — байткод-виртуальная машина на <b>C</b>. То, чего не даёт ни одна другая книга: прямое сравнение двух архитектур.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер и парсер</li>
-          <li>Интерпретатор (tree-walk)</li>
-          <li>Байткод и стек</li>
-          <li>GC и замыкания</li>
-        </ul>
-      </section>
+      <h2>Часть первая: jlox — интерпретатор по дереву на Java</h2>
+        <p>Первая часть (главы 4–13) строит scanner, parser (с генератором AST), evaluator, окружение, функции (closures), классы (наследование и полиморфизм). Вы учитесь тому, как вычисление идёт пошагово по дереву синтаксиса. Пример:</p>
+        <pre class="code"><span class="lang-tag">java</span><code style="direction:ltr;text-align:left">// Вычисление узла по шаблону visitor
+@Override
+public Object visitBinaryExpr(Expr.Binary expr) {
+  Object left = evaluate(expr.left);
+  Object right = evaluate(expr.right);
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Книга ведёт через два языка: Lox интерпретируется, затем компилируется в байткод ВМ. Каждый концепт — глава и код.</p>
-        <p>Диспетчер опкода в байткод-ВМ:</p>
-        <pre class="code"><span class="lang-tag">Java</span><code>switch (opcode) {
-    case OP_CONSTANT:
-        push(bytecode[++ip]); break;
-    case OP_ADD:
-        push(pop() + pop()); break;
+  switch (expr.operator.type) {
+    case PLUS:
+      // число или строка: + складывает оба
+      if (left instanceof Double &amp;&amp; right instanceof Double)
+        return (double) left + (double) right;
+      if (left instanceof String &amp;&amp; right instanceof String)
+        return (String) left + (String) right;
+      throw new RuntimeError(expr.operator, &quot;значения должны быть числами или строками&quot;);
+    case MINUS:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left - (double) right;
+    case STAR:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left * (double) right;
+    case SLASH:
+      checkNumberOperands(expr.operator, left, right);
+      return (double) left / (double) right;
+    default:
+      throw new RuntimeError(expr.operator, &quot;неизвестный оператор&quot;);
+  }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Crafting Interpreters — современная библия компиляторов: после неё вы умеете строить языки от начала до конца.</p>
+      <h2>Часть вторая: clox — виртуальная машина на C</h2>
+        <p>Во второй части (главы 14–30) всё строится заново и на скорости: байткод (глава 15), выполнение VM с циклом диспетчеризации (глава 16), хеш-таблицы для глобальных переменных (глава 18), closures с upvalue (глава 25), сборщик мусора mark-and-sweep (глава 26), классы и наследование (главы 27–28) и «государь» (глава 30). Эта часть показывает настоящую глубину выполнения байткода:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Главный цикл VM
+static InterpretResult run() {
+  for (;;) {
+    uint8_t instruction;
+    switch (instruction = READ_BYTE()) {
+      case OP_CONSTANT: {
+        Value constant = READ_CONSTANT();
+        push(constant);
+        break;
+      }
+      case OP_ADD: {
+        Value b = pop();
+        Value a = pop();
+        push(NUMBER_VAL(AS_NUMBER(a) + AS_NUMBER(b)));
+        break;
+      }
+      case OP_RETURN: {
+        return INTERPRET_OK;
+      }
+    }
+  }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Почему эта книга лучшая?</h2>
+        <p>1) Логичный порядок: каждая глава — маленькая компилируемая возможность; 2) объяснение «почему» каждого решения (например, почему у closures есть upvalue); 3) повествование и юмор автора делают чтение приятным; 4) полный код каждой главы (файлы lox и c на GitHub). Как наставник, книга шаг за шагом идёт рядом с вами.</p>
+      </section>
+      <section>
+      <h2>Предпосылки и итоги</h2>
+        <p>Нужно среднее знакомство с программированием (Java или C — соответственно для каждой части), но сама книга объясняет все концепции. Если время есть только на одну книгу — выбирайте эту: после прочтения у вас и интерпретатор, и глубокое понимание VM — и тема «создание языка программирования» закрыта.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Crafting Interpreters: книга по языкам (Java)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Crafting Interpreters: книга по языкам (Java)» принадлежит автору оригинала (Robert Nystrom). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Robert Nystrom). Читайте оригинал на
         <a href="http://www.craftinginterpreters.com/" target="_blank" rel="noopener">http://www.craftinginterpreters.com/</a>.
       </div>
     </article>

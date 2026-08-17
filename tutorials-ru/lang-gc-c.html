@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Сборщик мусора на C (Baby's First Garbage Collector)»
+          <b>Оригинальный источник:</b> «Baby's First Garbage Collector»
         </div>
         <a class="btn solid" href="http://journal.stuffwithstuff.com/2013/12/08/babys-first-garbage-collector/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-gc-c.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Сборщик мусора на C: маркировка и освобождение (mark &amp; sweep) — управление памятью изнутри.</p>
+      <h2>Зачем собирать GC вручную</h2>
+        <p>Автоматическое управление памятью (сборка мусора) в таких языках, как Python, Java и даже JavaScript, — повседневная работа программистов; но когда вы пишете собственный интерпретатор, за вас объекты никто не подчистит. Боб Нистром в этой статье строит на C простой сборщик mark-and-sweep и показывает, что именно эта система считает «живым».</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Куча и указатели</li>
-          <li>Маркировка корней</li>
-          <li>Сборка мусора</li>
-          <li>Стек и регisters</li>
-        </ul>
+      <h2>Главная идея: корни и граф объектов</h2>
+        <p>В любом языке объекты, достижимые из «корней» (доступные переменные, стек вызовов и т.д.), — живые; остальные можно удалять. В этой статье для простоты предполагается, что корни — это «стек виртуальной машины»: связный список объектов, с которыми в данный момент работает интерпретатор.</p>
+        <p>У каждого объекта есть флаг marked. Сборщик работает в два этапа: разметка (начинается с корней и помечает все достижимые по графу ссылок объекты) и очистка (проходит по списку всех объектов и освобождает непомеченные).</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Сборщик мусора — это обход: отметить достижимое из корней, потом освободить остальное. Классический mark-and-sweep.</p>
-        <p>Обход и маркировка объекта:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void mark(void *p) {
-    Header *h = get_header(p);
-    if (h-&gt;marked) return;
-    h-&gt;marked = 1;
-    for (child in h-&gt;refs) mark(child); // рекурсия
+      <h2>Пример кода: структура объекта и функция сборки</h2>
+        <pre class="code"><span class="lang-tag">C</span><code style="direction:ltr;text-align:left">typedef struct sObject {
+  struct sObject* next;   // связный список всех объектов
+  char marked;            // флаг разметки
+  union {
+    int value;
+    struct sObject* head; // для списков
+    ...
+  } data;
+} Object;
+
+void gc() {
+  // 1) Разметка: от корней (стека VM)
+  for (Object* root = vm.stack; root != NULL; root = root-&gt;next)
+    mark(root);
+
+  // 2) Очистка: освободи каждый непомеченный объект
+  Object** obj = &amp;vm.objects;   // указатель на весь список
+  while (*obj != NULL) {
+    if (!(*obj)-&gt;marked) {
+      Object* unreached = *obj;
+      *obj = unreached-&gt;next;
+      free(unreached);
+    } else {
+      (*obj)-&gt;marked = 0;      // для следующего раза
+      obj = &amp;(*obj)-&gt;next;
+    }
+  }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>GC — самая недооценённая инженерия: после собственного вы будете понимать JVM, Go и даже Refcount более глубоко.</p>
+      <h2>Проблемы и практические решения</h2>
+        <p>Главная проблема: когда VM использует новый объект, он ещё не привязан к стеку — в этом случае GC не должен его удалять. Решение статьи: объект «в процессе создания» прямо при создании помещается «на корень», чтобы его никогда не собрали.</p>
+        <p>Вторая проблема: в C можно игнорировать другие риски (например, корни на C-стеке), потому что тесты и примеры работают с кучей. В конце статьи упоминаются и «реальные» пути: conservative GC и exact GC, использование shadow stack или ручной оптимизации.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Эта статья за час чтения перекрывает путь «от почти нуля до настоящего GC»: меньше чем на 100 строках C вы строите систему управления памятью вашего интерпретатора и понимаете, почему языки высокого уровня так настаивают на «сборке мусора».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Сборщик мусора на C (Baby's First Garbage Collector)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Сборщик мусора на C (Baby's First Garbage Collector)» принадлежит автору оригинала (Bob Nystrom). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Bob Nystrom). Читайте оригинал на
         <a href="http://journal.stuffwithstuff.com/2013/12/08/babys-first-garbage-collector/" target="_blank" rel="noopener">http://journal.stuffwithstuff.com/2013/12/08/babys-first-garbage-collector/</a>.
       </div>
     </article>

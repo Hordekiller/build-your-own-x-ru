@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Поиск по видео: движок на Python»
+          <b>Оригинальный источник:</b> «Building A Python-Based Search Engine»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=cY7pE7vX6MU" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/search-engine-python-video.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,36 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Видео-поиск: извлечение кадров, иконки и векторы — поиск содержимого видео (вне текста).</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Об этом видео</h2>
+        <p>В этой лекции шаг за шагом строится поисковый движок на Python, и по ходу дела раскрываются проектные решения и структуры данных, стоящие за сценой. Основные темы, которые проходятся в видео:</p>
         <ul>
-          <li>Кадры и эмбеддинги</li>
-          <li>Поиск по подобию</li>
-          <li>Представление видео</li>
-          <li>Новые типы запросов</li>
+          <li><b>Построение инвертированного индекса</b> словарём Python: каждое слово (или n-грамма) сопоставляется со списком позиций, и каждая позиция содержит идентификатор документа (doc id) и позицию слова в тексте — этой тройки достаточно для поиска и ранжирования.</li>
+          <li><b>n-граммы от 3 до 6</b>: хранение многокомпонентных последовательностей позволяет искать составные фразы и сопротивляться слишком общим словам.</li>
+          <li><b>Поиск по индексу</b> вместо сканирования документов: запрос обращается к записи словаря, комбинирует списки позиций и сортирует результаты с помощью простой оценки.</li>
         </ul>
-      </section>
+        <p>Это видео — лучшая отправная точка для тех, кто хочет своими глазами увидеть «мозг» поискового движка — без сложностей распределённых систем. Если после просмотра захочется письменной практики, отличными дополнениями из этого же раздела будут «TF-IDF» и «Векторное индексирование».</p>
+        <pre class="code"><span class="lang-tag">Python</span><code style="direction:ltr;text-align:left"># Инвертированный индекс: каждое слово → список (id документа, позиция)
+index = {}
+for doc_id, words in enumerate(documents):
+    for pos, word in enumerate(words):
+        index.setdefault(word, []).append((doc_id, pos))
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Видео-поиск — это поиск по «картинкам»: кадры превращаются в векторы, и похожее видео находится по близости.</p>
-        <p>Извлечение кадра:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import cv2
-cap = cv2.VideoCapture("video.mp4")
-ok, frame = cap.read()  # первый кадр — вектор сцены</code></pre>
+def search(query):
+    return index.get(query, [])   # поиск прямо по индексу, без сканирования документов</code></pre>
+        <p>Это та самая структура данных, которую строит видео; n-граммы — это просто многокомпонентные «слова» с таким же отображением.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Мультимодальный поиск — будущее: этот урок станет мостиком от текстовых запросов к поиску всего.</p>
+      <h2>Смотреть видео</h2>
+        <p>Для прямого просмотра лекции «Building A Python-Based Search Engine»:</p>
+        <div style="text-align:center;margin:24px 0">
+          <a class="btn solid" style="font-size:1.05rem;padding:14px 32px" href="https://www.youtube.com/watch?v=cY7pE7vX6MU" target="_blank" rel="noopener">▶ Смотреть на YouTube</a>
+        </div>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Поиск по видео: движок на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=cY7pE7vX6MU" target="_blank" rel="noopener">https://www.youtube.com/watch?v=cY7pE7vX6MU</a>.
       </div>
     </article>

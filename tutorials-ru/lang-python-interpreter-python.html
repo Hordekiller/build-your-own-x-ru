@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Интерпретатор на Python»
+          <b>Оригинальный источник:</b> «A Python Interpreter Written in Python (byterun)»
         </div>
         <a class="btn solid" href="http://aosabook.org/en/500L/a-python-interpreter-written-in-python.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-python-interpreter-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,56 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Интерпретатор на Python: лексер, парсер и eval — свой язык, написанный на Python.</p>
+      <h2>Постановка задачи</h2>
+        <p>Задумывались ли вы, что именно делает Python, исполняя ваш код? Глава из сборника 500L, написанная Эллисон Каптур (работавшей над PyPy), отвечает на этот вопрос, построив <b>byterun</b>: интерпретатор, который читает и исполняет файлы <code>.pyc</code> (скомпилированный байткод Python) — не разбирая текст сам.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>Парсер</li>
-          <li>Eval</li>
-          <li>Функции</li>
-        </ul>
+      <h2>Четыре основных компонента</h2>
+        <p>Интерпретатор состоит из четырёх классов: <b>VirtualMachine</b> (главный цикл исполнения), <b>Frame</b> (указатель исполнения: код, локальные переменные, стек возврата), <b>Function</b> (функция с closure) и <b>Block</b> (управление try/except и циклами). Ключевое понятие: у каждого фрейма есть <b>стек исполнения</b> и <b>счётчик следующей инструкции</b>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Python — удобный язык для интерпретаторов: словари и функции делают eval естественным.</p>
-        <p>Простая среда и eval:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def eval_expr(node, env):
-    if isinstance(node, int): return node
-    if isinstance(node, tuple):  # (op, a, b)
-        op, a, b = node
-        return apply(op, eval_expr(a, env), eval_expr(b, env))</code></pre>
+      <h2>Пример кода: главный цикл</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class VirtualMachine:
+    def run_code(self, code, global_names=None, local_names=None):
+        frame = self.make_frame(code, global_names, local_names)
+        self.run_frame(frame)
+
+    def run_frame(self, frame):
+        while True:
+            opname = frame.code.co_names[frame.next_instr]
+            instr = opname
+
+            # главный цикл исполнения: выполняем инструкции
+            if instr.startswith(&#x27;UNARY&#x27;):
+                self.unaryOperator(instr[5:])     # UNARY_NEGATIVE и др.
+            elif instr.startswith(&#x27;BINARY&#x27;):
+                self.binaryOperator(instr[6:])    # BINARY_ADD и др.
+            elif instr.startswith(&#x27;LOAD&#x27;):
+                self.load_name(instr[4:])         # LOAD_FAST и др.
+            elif instr.startswith(&#x27;STORE&#x27;):
+                self.store_name(instr[5:])        # STORE_FAST и др.
+            elif instr == &#x27;JUMP_ABSOLUTE&#x27;:
+                frame.next_instr = self.parse_arg_and_increment(frame)
+            elif instr == &#x27;PRINT_ITEM&#x27;:
+                print(self.pop(), end=&#x27; &#x27;)
+            elif instr == &#x27;RETURN_VALUE&#x27;:
+                return self.pop()
+            ...
+            frame.next_instr += 1</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Интерпретатор на Python — быстрый успех: вы получите язык и привычку разбирать код по слоям.</p>
+      <h2>Ценные концепции</h2>
+        <p>1) <b>Стек виртуальной машины</b> для вычисления выражений; 2) <b>байткоды</b> вроде <code>LOAD_FAST</code>/<code>STORE_FAST</code> для локальных переменных и <code>LOAD_GLOBAL</code> для глобальных; 3) управление <b>возвратом и вызовом</b> через стек фреймов; 4) <b>функции</b> как значения с <code>closure</code> (захваченными переменными); 5) управление <b>exception/loop</b> через Block. С ними поведение Python (например, локальная область видимости в функции) становится полностью логичным.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Эта глава — около 300 строк Python, а с помощью <code>dis</code> можно посмотреть байткод любой своей функции. Её понимание — мост между «языком высокого уровня» и «виртуальной машиной»; это также лучшее введение перед чтением «Crafting Interpreters».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Интерпретатор на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Интерпретатор на Python» принадлежит автору оригинала (Allison Kaptur). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Allison Kaptur). Читайте оригинал на
         <a href="http://aosabook.org/en/500L/a-python-interpreter-written-in-python.html" target="_blank" rel="noopener">http://aosabook.org/en/500L/a-python-interpreter-written-in-python.html</a>.
       </div>
     </article>

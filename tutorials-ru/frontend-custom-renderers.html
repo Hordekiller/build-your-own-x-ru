@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Нестандартные рендереры: React за пределами DOM»
+          <b>Оригинальный источник:</b> «Learn you some custom React renderers»
         </div>
         <a class="btn solid" href="https://hackernoon.com/learn-you-some-custom-react-renderers-aed7164a4199" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-custom-renderers.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,140 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок показывает, что React-подобные библиотеки могут рендерить во что угодно: канвас, терминал и 3D-сцены. Механизм reconcile независим от DOM.</p>
+      <h2>1. Архитектура рендереров React</h2>
+        <p>React состоит из двух полностью раздельных слоёв: <b>reconciler</b> (мозг: сравнение виртуального дерева и обнаружение изменений — тот самый алгоритм diff и построение Fiber) и <b>renderer</b> (руки: применение этих изменений в целевой среде; DOM, native, canvas и т. д.). По сути,</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// пакет react-reconciler — это фабрика:
+// если передать host config конкретной платформы, получается рендерер
+const Reconciler = require(&#x27;react-reconciler&#x27;);
+const reconciler = Reconciler(HostConfig);</code></pre>
+        <p><b>HostConfig</b> — мост: набор функций, задающих контракт «как разговаривать с целевой средой» — например, <code>createInstance</code>, <code>appendChild</code> и <code>commitUpdate</code>. Именно этот интерфейс включает React DOM для браузера, React Native для мобильных устройств и React ART для SVG.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Начальная структура рендерера</h2>
+        <p>Статья запускает проект через <code>create-react-app</code>, затем создаёт собственный рендерер в <code>src/renderer/index.js</code> и использует его в <code>index.js</code> вместо <code>react-dom</code>. Сначала — просто пустой корпус:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const CustomRenderer = {
+  render(element, renderDom, callback) {
+    // element: корневой элемент (компонент App)
+    // renderDom: DOM-элемент хоста
+    // callback: вызывается после окончания рендера
+    console.log(&#x27;render called&#x27;, element, renderDom, callback);
+  },
+};
+
+export default CustomRenderer;</code></pre>
+        <p>Теперь установим <code>react-reconciler</code> и создадим экземпляр reconciler с HostConfig. Сначала <code>createContainer</code> для создания корневого fiber, затем <code>updateContainer</code> для начала сравнения и рендера:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const Reconciler = require(&#x27;react-reconciler&#x27;);
+const HostConfig = {
+  /* функции платформы определяются здесь */
+};
+
+const reconcilerInstance = Reconciler(HostConfig);
+
+const CustomRenderer = {
+  render(element, renderDom, callback) {
+    const isAsync = false; // синхронный режим рендера
+    const container = reconcilerInstance.createContainer(renderDom, isAsync);
+    const parentComponent = null; // у корневого fiber нет родителя
+    reconcilerInstance.updateContainer(element, container, parentComponent, callback);
+  },
+};
+
+export default CustomRenderer;</code></pre>
+      </section>
+      <section>
+      <h2>3. Реализация HostConfig</h2>
+        <p>Сердце учебника — реализация функций HostConfig для DOM. Полная версия статьи делает это в трёх частях; краткое изложение основных функций:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const HostConfig = {
+  createInstance(type, props, rootContainerInstance, hostContext, internalInstanceHandle) {
+    // создание DOM-элемента по типу
+    const el = document.createElement(type);
+    return el;
+  },
+
+  createTextInstance(text, rootContainerInstance, hostContext, internalInstanceHandle) {
+    return document.createTextNode(text);
+  },
+
+  appendChildToContainer(container, child) {
+    container.appendChild(child);
+  },
+
+  appendChild(parent, child) {
+    parent.appendChild(child);
+  },
+
+  appendInitialChild(parent, child) {
+    parent.appendChild(child);
+  },
+
+  removeChildFromContainer(container, child) {
+    container.removeChild(child);
+  },
+
+  removeChild(parent, child) {
+    parent.removeChild(child);
+  },
+
+  insertInContainerBefore(container, child, before) {
+    container.insertBefore(child, before);
+  },
+
+  insertBefore(parent, child, before) {
+    parent.insertBefore(child, before);
+  },
+
+  prepareUpdate(instance, type, oldProps, newProps, rootContainerInstance, currentHostContext) {
+    // вычисляет разницу props и возвращает её
+    const changedProps = {};
+    for (const key in Object.assign({}, oldProps, newProps)) {
+      if (oldProps[key] !== newProps[key]) changedProps[key] = newProps[key];
+    }
+    return Object.keys(changedProps).length &gt; 0 ? changedProps : null;
+  },
+
+  commitUpdate(instance, updatePayload, type, oldProps, newProps, finishedWork) {
+    // применяет изменения на реальном узле
+    for (const key in updatePayload) {
+      if (key === &#x27;children&#x27;) continue;
+      instance[key] = updatePayload[key];
+    }
+  },
+
+  commitTextUpdate(textInstance, oldText, newText) {
+    textInstance.nodeValue = newText;
+  },
+
+  shouldSetTextContent(type, props) {
+    return false;
+  },
+
+  getChildHostContext() { return {}; },
+  getPublicInstance(instance) { return instance; },
+  getRootHostContext() { return {}; },
+  prepareForCommit() {},
+  resetAfterCommit() {},
+  finalizeInitialChildren() {},
+};
+</code></pre>
+        <p>Процесс построения в статье идёт шаг за шагом: сначала работает первоначальный рендер, затем обновление props (требующее <code>prepareUpdate</code> + <code>commitUpdate</code>) и в конце добавляется управление удалением и перемещением узлов. На каждом шаге вы получаете характерную ошибку от reconciler — и она же служит вашей подсказкой.</p>
+      </section>
+      <section>
+      <h2>4. Результат: вот и всё!</h2>
+        <p>После завершения HostConfig наше React-приложение запускается с собственным рендерером: компоненты управляют своим state, reconciler вычисляет изменения, а наши функции применяют их в DOM.</p>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> теперь понятно, почему React Native работает, не меняя мозг React: тот же reconciler с другим HostConfig (нативный мост). И почему существуют такие рендереры, как React Three Fiber для WebGL: нужен лишь новый HostConfig.
+        </div>
+        <p>Предлагаемый путь для продолжения:</p>
         <ul>
-          <li>Почему reconcile отделён от рендера</li>
-          <li>Рендер в canvas</li>
-          <li>Рендер в терминал</li>
-          <li>Полная свобода платформ</li>
+          <li>Видео <b>Sophie Alpert — Building a Custom React Renderer</b> (React Conf 2019), которое показывает те же концепции на более широком практическом примере.</li>
+          <li>Исходный код <code>react-dom</code> и <code>react-art</code> в основном репозитории React как эталонные примеры HostConfig.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Абстракция «элементы → дерево» не знает платформы: если рендерер умеет применить изменения, DOM не нужен. Такая сила позволяет React Native и react-canvas.</p>
-        <p>Кастомный рендерер — создание узла:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>const renderer = {
-  createInstance(type, props) {
-    return makeNode(type, props); // свой узел!
-  },
-  appendChild(parent, child) { /* своя логика */ },
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Взамен DOM — любой труп: урок откроет вам возможности WebGL, канваса и терминала через знакомый React API.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Нестандартные рендереры: React за пределами DOM» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Нестандартные рендереры: React за пределами DOM» принадлежит автору оригинала (Атул Р. (Atul R)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Атул Р. (Atul R)). Читайте оригинал на
         <a href="https://hackernoon.com/learn-you-some-custom-react-renderers-aed7164a4199" target="_blank" rel="noopener">https://hackernoon.com/learn-you-some-custom-react-renderers-aed7164a4199</a>.
       </div>
     </article>

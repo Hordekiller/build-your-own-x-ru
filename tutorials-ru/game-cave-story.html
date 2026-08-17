@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Клонируем Cave Story (серия)»
+          <b>Оригинальный источник:</b> ««Cave Story» — плейлист полной реконструкции»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PL006xsVEsbKjSKBmLu1clo85yLrwjY67X" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-cave-story.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,53 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия клонирует Cave Story с нуля: графика, уровни, враги и боссы — полный платформер на C++.</p>
+      <h2>О плейлисте</h2>
+        <p>Этот плейлист — долгосрочный проект реконструкции: Cave Story создаётся полностью — от запуска движка до уровней, врагов, оружия и босс-файтов — на C++. В отличие от одноразового видео, эта серия углубляется в игровые механики: система оружия с тремя уровнями прокачки, движок диалогов, порталы, сохранение игры и даже звуки.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> если вы смотрели видео «Cavestory Part 1» и хотите увидеть проект доведённым до конца, этот плейлист — его продолжение.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Движок панелей</li>
-          <li>Геймплей и ввод</li>
-          <li>Враги и ИИ</li>
-          <li>Сборка проекта</li>
-        </ul>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; весь плейлист — по ссылке на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/playlist?list=PL006xsVEsbKjSKBmLu1clo85yLrwjY67X" target="_blank" rel="noopener">▶ Смотреть плейлист «Cave Story»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Серия идёт от пустого файла к игре: рендер тайлов, физика, ИИ врагов, камера. Поэтапно и полноценно.</p>
-        <p>ИИ врага — ловушка и уход:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>if (player.x &lt; enemy.x) enemy.vel.x = -SPEED;
-else enemy.vel.x = +SPEED;</code></pre>
+      <h2>Компоненты игры</h2>
+        <p>Пример логики систем, реализуемых в серии, — прокачка оружия сбором кристаллов:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Трёхуровневая система оружия (как в Cave Story)
+class Weapon {
+public:
+  int level;        // 1, 2 или 3
+  int exp;          // опыт для прокачки
+
+  void addExp(int amount) {
+    exp += amount;
+    if (exp &gt;= REQUIREMENTS[level] &amp;&amp; level &lt; 3) {
+      exp -= REQUIREMENTS[level];
+      level++;      // прокачка
+    }
+  }
+
+  void takeDamage() {
+    // При получении урона опыт уменьшается, уровень может упасть
+    exp -= PENALTY;
+    if (exp &lt; 0 &amp;&amp; level &gt; 1) { level--; exp = REQUIREMENTS[level]; }
+  }
+};</code></pre>
+        <p>Другие части серии: построение карт в редакторе, управление триггерами, секретные двери, враги с разным поведением (птицы, пловцы, пушки), механика урона и здоровья, диалоги с NPC и полноценный геймплей босс-битв.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Клонирование культовых игр — лучший способ учиться: вы получите игру, в которую можно играть.</p>
+      <h2>Итоги</h2>
+        <p>Если вы хотите увидеть, как создаётся настоящая полная игра — со всеми системами — этот плейлист один из лучших ресурсов. Для старта достаточно среднего уровня C++, а в конце вы получите играбельную реконструкцию Cave Story.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Клонируем Cave Story (серия)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PL006xsVEsbKjSKBmLu1clo85yLrwjY67X" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PL006xsVEsbKjSKBmLu1clo85yLrwjY67X</a>.
       </div>
     </article>

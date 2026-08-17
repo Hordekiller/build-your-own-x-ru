@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Zero to Hero: нейросети с нуля (Крапат)»
+          <b>Оригинальный источник:</b> «Neural Networks: Zero to Hero»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-zero-to-hero.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,54 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Курс Zero to Hero: микро-градиенты, сети и GPT — от основ к языковым моделям без магии.</p>
-      </section>
+      <h2>Об этом курсе</h2>
+        <p>«От нуля до героя» — видеокурс <b>Андрея Карпати</b> (сооснователя OpenAI), который учит нейросетям через «реальное построение»: на каждом занятии совместно кодируется и обучается настоящая система — от одного скалярного значения до языковой модели. Всё машинное обучение начинается только с базового знания Python и небольших воспоминаний о школьном матанализе. Jupyter-ноутбуки всех занятий опубликованы в репозитории <a href="https://github.com/karpathy/nn-zero-to-hero" target="_blank" rel="noopener">karpathy/nn-zero-to-hero</a>.</p>
+        <p><a class="btn solid" href="https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ" target="_blank" rel="noopener">▶ Смотреть плейлист на YouTube</a></p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># micrograd: класс Value с вычислительным графом для autodiff
+class Value:
+    def __init__(self, data):
+        self.data = data
+        self.grad = 0
+        self._backward = lambda: None
 
-      <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Микроградиенты</li>
-          <li>Обратное распространение</li>
-          <li>Мини-GPT</li>
-          <li>Понимание обучения</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Курс Крапата — «нейросети с нуля»: вы строите всё из примитивов, включая сеть, способную на генерацию текста.</p>
-        <p>Микроградиент — производная по узлу:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>class Value:
     def __add__(self, other):
         out = Value(self.data + other.data)
-        out.backward = lambda: (
-            self.grad += out.grad,
-            other.grad += out.grad)
+        def _bw():                        # распространение градиента
+            self.grad += out.grad
+            other.grad += out.grad
+        out._backward = _bw
         return out</code></pre>
+        <p>Первое занятие строит именно этот класс, и все сети и языковые модели курса основаны на этом графе.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Zero to Hero — глубочайший курс по нейросетям: после него математика обучения станет родной.</p>
+      <h2>План занятий</h2>
+        <ul>
+          <li><b>Занятие 1 — строим micrograd:</b> пошаговое введение в нейросети и backpropagation: создание небольшого движка autodiff (класс <code>Value</code> с вычислительным графом) и нейросети на нём — без единой библиотеки.</li>
+          <li><b>Занятие 2 — строим makemore (bigram):</b> первая языковая модель: посимвольная биграммная модель, которая простым подсчётом учит распределение следующей буквы; введение <code>torch.Tensor</code> и понятий обучения (loss, сэмплирование, оценка).</li>
+          <li><b>Занятие 3 — MLP:</b> многослойный перцептрон для той же задачи — первая «настоящая сеть» с автоматическим backprop от PyTorch.</li>
+          <li><b>Занятие 4 — активации и BatchNorm:</b> почему активации (tanh, ReLU и др.) и пакетная нормализация позволяют обучать более глубокие сети.</li>
+          <li><b>Занятие 5 — ниндзя backprop:</b> ручная реализация обратного распространения для всей сети (без autograd) — отличный путь к глубокой интуиции.</li>
+          <li><b>Занятие 6 — строим WaveNet:</b> современная языковая модель по мотивам архитектуры WaveNet (свёртки с расширением), которая генерирует текст.</li>
+          <li><b>Дальнейшие занятия:</b> GPT с нуля — полное построение языкового трансформера, от токенизатора до сэмплирования, на данных Шекспира.</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Почему этот курс стоит посмотреть?</h2>
+        <ul>
+          <li><b>«Никакого чёрного ящика»:</b> каждое число и каждый градиент на виду — всё строится с нуля.</li>
+          <li><b>От школьной математики до трансформера:</b> прямой мост между основами и современными языковыми моделями (GPT).</li>
+          <li><b>Живой стиль преподавания:</b> ошибки и отладка прямо во время кодинга — сами по себе часть обучения.</li>
+          <li><b>Открытые материалы:</b> ноутбуки + задания каждого занятия + репозиторий micrograd (вместе с pytorch) доступны всем.</li>
+        </ul>
+        <div class="callout note">
+          <strong>Совет:</strong> курс видео — его содержимое здесь не хостится; переходите к плейлисту по кнопке выше. Для практики рекомендуют «метод прыжка с носом»: посмотреть видео, затем переписать занятие самостоятельно.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Zero to Hero: нейросети с нуля (Крапат)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Zero to Hero: нейросети с нуля (Крапат)» принадлежит автору оригинала (Andrej Karpathy). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Andrej Karpathy). Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLAqhIrjkxbuWI23v9cThsA9GvCAUhRvKZ</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Микро-шаблонизатор на JavaScript»
+          <b>Оригинальный источник:</b> «JavaScript Micro-Templating»
         </div>
         <a class="btn solid" href="https://medium.com/wdstack/understanding-javascript-micro-templating-f37a37b3b40e" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/template-engine-js-microtemplating.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,80 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Более полный микро-шаблонизатор на JS: переменные, условия и циклы в веб-шаблоне.</p>
+      <h2>Введение: функция, которая всё изменила</h2>
+        <p>В 2008 году Джон Резиг — создатель jQuery — опубликовал функцию из 33 строк под названием <b>JavaScript Micro-Templating</b>, которая совершила переворот в «использовании шаблонов в браузере»: это <code>tmpl(str, data)</code>, которая принимает шаблон, <b>компилирует</b> его (переводит в исполняемый код) и <b>кэширует</b> в памяти. В этом уроке мы разберём, как она работает, строку за строкой.</p>
+        <p>Способ использования:</p>
+        <pre class="code"><span class="lang-tag">html</span><code style="direction:ltr;text-align:left">&lt;script type=&quot;text/html&quot; id=&quot;item_tmpl&quot;&gt;
+  &lt;div id=&quot;&lt;%=id%&gt;&quot; class=&quot;&lt;%=klass%&gt;&quot;&gt;
+    &lt;div class=&quot;item&quot;&gt;&lt;%=name%&gt;&lt;/div&gt;
+  &lt;/div&gt;
+&lt;/script&gt;
+
+&lt;script&gt;
+  var results = tmpl(&quot;item_tmpl&quot;, { id: 1, klass: &quot;item&quot;, name: &quot;Иван&quot; });
+  document.getElementById(&quot;results&quot;).innerHTML = results;
+&lt;/script&gt;</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Ядро функции</h2>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Микро-шаблонизация JavaScript, Джон Резиг (лицензия MIT)
+(function(){
+  var cache = {};
+
+  this.tmpl = function tmpl(str, data){
+    // Определяем: это id тега или сама строка шаблона?
+    var fn = !/\W/.test(str) ?
+      cache[str] = cache[str] ||
+        tmpl(document.getElementById(str).innerHTML) :
+      new Function(&quot;obj&quot;,
+        &quot;var p=[],print=function(){p.push.apply(p,arguments);};&quot; +
+        &quot;with(obj){p.push(&#x27;&quot; +
+        str
+          .replace(/[\r\t\n]/g, &quot; &quot;)
+          .split(&quot;&lt;%&quot;).join(&quot;\t&quot;)
+          .replace(/((^|%&gt;)[^\t]*)&#x27;/g, &quot;$1\r&quot;)
+          .replace(/\t=(.*?)%&gt;/g, &quot;&#x27;,$1,&#x27;&quot;)
+          .split(&quot;\t&quot;).join(&quot;&#x27;);&quot;)
+          .split(&quot;%&gt;&quot;).join(&quot;p.push(&#x27;&quot;)
+          .split(&quot;\r&quot;).join(&quot;\\&#x27;&quot;)
+        + &quot;&#x27;);}return p.join(&#x27;&#x27;);&quot;);
+    return data ? fn( data ) : fn;
+  };
+})();</code></pre>
+        <div class="callout note">
+          <strong>Ключевая идея:</strong> шаблон остаётся «строкой», но с помощью <code>new Function</code> превращается в тело настоящей функции. То есть на выходе — «исполнение кода», а не разбор текста: быстро, просто и очень гибко.
+        </div>
+      </section>
+      <section>
+      <h2>Разбор функции по шагам</h2>
         <ul>
-          <li>Переменные</li>
-          <li>Условия</li>
-          <li>Циклы</li>
-          <li>Компиляция в функцию</li>
+          <li><b>Определение ввода:</b> если в <code>str</code> нет необычных символов (проверка <code>/\W/</code>), считаем его id тега <code>&lt;script type="text/html"&gt;</code>, читаем содержимое и сохраняем в <code>cache</code> — при последующих вызовах уже скомпилированный код берётся из кэша. Иначе сам <code>str</code> — это шаблон.</li>
+          <li><b>Очистка и разметка:</b> символы <code>[\r\t\n]</code> удаляются, <code>&lt;%</code> превращается в таб <code>\t</code> (чтобы позже стать «закрытием строки»), а апострофы внутри шаблона помечаются <code>\r</code>, чтобы не сломать строку кода при её построении.</li>
+          <li><b>Превращение меток в код:</b> <code>&lt;%=expr%&gt;</code> превращается в <code>',$1,'</code> — то есть «добавь вывод этого выражения в массив»; <code>\t</code> становится <code>');</code> (закрытие push), а <code>%&gt;</code> — <code>p.push('</code> (открытие push). В итоге получается строка тела функции.</li>
+          <li><b>Создание функции с <code>with(obj)</code>:</b> внутри созданной функции переменные шаблона доступны из объекта данных — <code>with(obj){ p.push('...') }</code> — а массив <code>p</code> собирает фрагменты, чтобы в конце <code>p.join('')</code> дал финальный вывод.</li>
+          <li><b>Вызов:</b> если переданы <code>data</code>, функция выполняется с данными и выдаёт вывод; если нет — возвращается сама функция (для последующего использования).</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Зрелый микро-движок компилирует шаблон в функцию: условия и циклы переходят в контрольные конструкции.</p>
-        <p>Компиляция конструкций:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>// {{if x}} ... {{/if}} превращается в if (x) {...}
-if (tokens[i].type === "if") code += "if (" + tokens[i].expr + ") {";</code></pre>
+      <h2>Зачем столько кода?</h2>
+        <ul>
+          <li><b>Настоящее исполнение JavaScript внутри шаблона:</b> всё, что вы напишете в шаблоне — циклы, условия, вызовы функций — действительно выполняется; например, <code>&lt;% for (var i=0; i&lt;items.length; i++) { %&gt;…&lt;% } %&gt;</code>.</li>
+          <li><b>Автоматический кэш:</b> шаблоны с id компилируются только один раз; скорость многократного выполнения достигает уровня обычных функций.</li>
+          <li><b>Без зависимостей:</b> чистая JavaScript-функция, работающая в любом окружении (браузер, Node), — и именно эта простота вдохновила последующие движки (например, движок на 20 строк из этого же раздела).</li>
+        </ul>
+        <div class="callout note">
+          <strong>Замечание по безопасности/практике:</strong> использование <code>new Function</code> означает исполнение кода внутри шаблона; в реальной практике (с пользовательским вводом) нужно быть осторожным. Но как «инженерное чудо» эти 33 строки стоит полчаса размышлений.
+        </div>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Микро-движки — фундамент фреймворков: вы увидите компиляцию и поймёте, почему шаблоны быстрые.</p>
+      <h2>Итоги</h2>
+        <p>Микро-шаблонизация Джона Резига показала, что «движок шаблонов» не обязательно должен быть большим проектом: строка, регулярное выражение, <code>new Function</code> и кэш — и всё. Поняв эту реализацию, вы легко прочитаете любой JavaScript-движок шаблонов (EJS, Underscore и т.д.), потому что все они питаются одной и той же идеей «шаблон → код».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Микро-шаблонизатор на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Микро-шаблонизатор на JavaScript» принадлежит автору оригинала (Джон Резиг (John Resig)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Джон Резиг (John Resig)). Читайте оригинал на
         <a href="https://medium.com/wdstack/understanding-javascript-micro-templating-f37a37b3b40e" target="_blank" rel="noopener">https://medium.com/wdstack/understanding-javascript-micro-templating-f37a37b3b40e</a>.
       </div>
     </article>

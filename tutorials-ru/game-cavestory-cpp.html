@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем Cave Story на C++»
+          <b>Оригинальный источник:</b> ««Cavestory» — видео-реконструкция на C++»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=ETvApbD5xRo&amp;list=PLNOBk_id22bw6LXhrGfhVwqQIa-M2MsLa" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-cavestory-cpp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,63 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Порт культового Cave Story на C++: платформенные уровни, физика и рендер — инженерный клон знаменитого инди.</p>
+      <h2>О проекте</h2>
+        <p><b>Cave Story</b> — сверхпопулярный экшн-платформер, созданный одним человеком (Daisuke «Pixel» Amaya) за 5 лет и считающийся отцом «инди-игр». В этой видео-серии игра воссоздаётся на C++: движение персонажа, физика прыжка и гравитации, оружие, враги, движок сцен и прокрутка — всё с нуля.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> эта серия — один из самых полных уроков «реконструкции игры»: у Cave Story есть реальная сложность (прокрутка камеры, анимация, точные коллизии).
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; по ссылке ниже вы перейдёте прямо на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/watch?v=ETvApbD5xRo&amp;list=PLNOBk_id22bw6LXhrGfhVwqQIa-M2MsLa" target="_blank" rel="noopener">▶ Смотреть видео «Cavestory Part 1»</a>
+        </div>
+      </section>
+      <section>
+      <h2>Что вы узнаете в первом видео</h2>
         <ul>
-          <li>Уровни и тайлы</li>
-          <li>Физика персонажа</li>
-          <li>Противники</li>
-          <li>Камера и миры</li>
+          <li>Настройка проекта и управление окном (обычно через SDL)</li>
+          <li>Загрузка спрайтов и тайлов</li>
+          <li>Главный игровой цикл и управление вводом</li>
+          <li>Движение игрока и базовая физика (гравитация и прыжок)</li>
         </ul>
-      </section>
+        <p>Пример структуры классов в серии:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Базовая структура игры в серии Cavestory
+class Entity {
+public:
+  Vector2 position;
+  Vector2 velocity;
+  bool grounded;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Cave Story — эталон инди-платформеров: его движок — сетка, физика и враги, которые можно воспроизвести.</p>
-        <p>Гравитация и прыжок:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>velocity.y += GRAVITY * dt;
-if (onGround &amp;&amp; jumpPressed) velocity.y = -JUMP_SPEED;
-position += velocity * dt;</code></pre>
-      </section>
+  virtual void update(float dt) = 0;   // логика каждого существа
+  virtual void render() = 0;           // отрисовка каждого существа
+};
 
+class Player : public Entity {
+public:
+  void update(float dt) override {
+    // Ввод → горизонтальное движение
+    velocity.x = input * MOVE_SPEED;
+    // Гравитация
+    velocity.y += GRAVITY * dt;
+    // Прыжок
+    if (jump_pressed &amp;&amp; grounded) velocity.y = -JUMP_SPEED;
+    // Применение движения с коллизиями
+    position += velocity * dt;
+    resolve_collisions();
+  }
+};</code></pre>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Крупный клон — крупный шаг: успешный порт Cave Story даст уверенность в платформенной инженерии.</p>
+      <h2>Итоги</h2>
+        <p>Пройти эту серию — значит построить полноценный платформер с фишками Cave Story: улучшаемое оружие, умные враги, порталы и босс-битвы. Отлично подходит тем, кто уверенно работает с C++ и ищет амбициозный проект.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Пишем Cave Story на C++» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=ETvApbD5xRo&amp;list=PLNOBk_id22bw6LXhrGfhVwqQIa-M2MsLa" target="_blank" rel="noopener">https://www.youtube.com/watch?v=ETvApbD5xRo&amp;list=PLNOBk_id22bw6LXhrGfhVwqQIa-M2MsLa</a>.
       </div>
     </article>

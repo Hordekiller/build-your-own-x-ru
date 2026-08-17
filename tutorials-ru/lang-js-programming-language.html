@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Свой язык программирования на JavaScript»
+          <b>Оригинальный источник:</b> «Implementing a programming language in JavaScript»
         </div>
         <a class="btn solid" href="http://lisperator.net/pltut/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-js-programming-language.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,54 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Свой язык на JS: синтаксис, парсер и интерпретатор — язык от дизайна до работы.</p>
+      <h2>О учебнике</h2>
+        <p>Эта серия реализует на JavaScript небольшой язык программирования под названием «PL»: функциональный язык с токенами, переменными, функциями и массивами. Отличает её стиль объяснения: каждая часть идёт короткими примерами кода с краткими пояснениями, без воды.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Дизайн синтаксиса</li>
-          <li>Парсер</li>
-          <li>Интерпретатор</li>
-          <li>Тестирование</li>
-        </ul>
+      <h2>Части учебника</h2>
+        <p><b>1) Токены:</b> построение простого lexer на regex; <b>2) Разбор:</b> парсер, превращающий грамматику в функции рекурсивного спуска; <b>3) Вычисление:</b> обход и исполнение AST; <b>4) Функции:</b> lambda и closures; <b>5) Окружение и область видимости:</b> локальные и глобальные переменные. Полученный язык может исполнять примеры вроде <code>sum(1,2,3)</code> и более реальные программы.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Проект идёт по-взрослому: сперва синтаксис, потом парсер, затем интерпретатор. Конечный результат — ваш собственный язык.</p>
-        <p>Определение грамматики:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>// Программа: print 1 + 2 * 3
-// Лексер разбивает на токены: print, 1, +, 2, *, 3</code></pre>
+      <h2>Пример кода: парсер выражений</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Минимальный парсер для математического диалекта (с приоритетом)
+function parse_atom() {
+  return function() {
+    if (is_punc(&quot;(&quot;)) {            // список или группировка
+      skip_punc(&quot;(&quot;);
+      var exp = parse_expression();
+      skip_punc(&quot;)&quot;);
+      return exp;
+    }
+    if (is_num()) return make_number(parse_num());
+    if (is_word()) return make_word(parse_word());
+    error(&quot;неожиданный токен&quot;);
+  };
+}
+
+// expr := atom ((&quot;+&quot;|&quot;-&quot;) atom)*
+function parse_expression() {
+  var left = parse_atom();
+  while (is_op(&quot;+&quot;) || is_op(&quot;-&quot;)) {
+    var op = parse_op();
+    var right = parse_atom();
+    left = { type: &quot;binary&quot;, operator: op, left: left, right: right };
+  }
+  return left;
+}</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Проект языка — проектирование ПО в чистом виде: вы пройдёте весь цикл от идеи до работающего кода.</p>
+      <h2>Часть вычисления</h2>
+        <p>Вычислитель реализуется через таблицу <code>env</code> и функции <code>evaluate</code>/<code>apply</code>. Эта серия особенно хороша для изучения «модели исполнения» — где хранятся переменные и как происходит вызов функции; всё на чистом компактном JavaScript.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Меньше чем за несколько часов чтения у вас функциональный язык с функциями, переменными и массивами. Для углубления предлагаются «mal» и «Crafting Interpreters»; но как быстрый и приятный десерт этот учебник отличен.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Свой язык программирования на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Свой язык программирования на JavaScript» принадлежит автору оригинала (lisperator.net). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (lisperator.net). Читайте оригинал на
         <a href="http://lisperator.net/pltut/" target="_blank" rel="noopener">http://lisperator.net/pltut/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Лексический сканер на Go»
+          <b>Оригинальный источник:</b> «Lexical Scanning in Go»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=HxaD_trXwRE" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-lexical-scanning-go.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,63 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Лексический анализ на Go: токены, позиции и состояния — первый этап любого компилятора.</p>
+      <h2>О докладе</h2>
+        <p>Роб Пайк в этом докладе объясняет реализацию сканера (лексера) пакетов <code>text/template</code> и <code>html/template</code> языка Go — паттерн, впоследствии широко использовавшийся при создании компиляторов и инструментов. Это классический урок по проектированию «машины состояний» (State Machine).</p>
+        <p><a class="btn solid" href="https://www.youtube.com/watch?v=HxaD_trXwRE" target="_blank" rel="noopener">▶ Смотреть видео</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Токены</li>
-          <li>Сканер</li>
-          <li>Состояния</li>
-          <li>Интеграция с парсером</li>
-        </ul>
-      </section>
+      <h2>Центральная идея: функция состояния вместо таблицы состояний</h2>
+        <p>В паттерне Пайка каждое «состояние» — это функция, которая принимает вход (сканер) и возвращает следующую функцию-состояние. Так лексер работает как главный цикл (<code>for state != nil</code>), и каждая функция-состояние отвечает за распознавание своей части входа:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">type stateFn func(*lexer) stateFn
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Лексер разбивает текст на токены: идентификаторы, числа, операторы — с позициями для ошибок.</p>
-        <p>Сканирование идентификатора:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>for isLetter(ch) {
-    buf.WriteRune(ch); ch = next()
+func (l *lexer) run() {
+  for state := l.state; state != nil; {
+    state = state(l)   // выполнение текущего состояния, получение следующего
+  }
 }
-// вернули токен идентификатора с текстом</code></pre>
-      </section>
 
+// Начальное состояние
+func lexText(l *lexer) stateFn {
+  for {
+    if strings.HasPrefix(l.input[l.pos:], &quot;{{&quot;) {
+      l.pos += 2
+      return lexLeftDelim   // переход в состояние внутри тега
+    }
+    l.next()
+    if l.pos &gt;= len(l.input) {
+      l.emit(itemEOF)
+      return nil   // конец
+    }
+  }
+}</code></pre>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Лексический анализ — первый шаг в языки: на Go он получается на удивление чистым.</p>
+      <h2>Выход сканера: элементы и канал</h2>
+        <p>Сканер отправляет все токены потребителю (парсеру) через <b>канал</b>; каждый элемент (<code>item</code>) имеет тип и текст. Этот паттерн полностью отделяет лексер от парсера и упрощает параллельное выполнение (goroutine):</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">type item struct {
+  typ itemType  // тип элемента (itemText, itemLeftDelim, ...)
+  val string    // сырой текст
+  line int      // номер строки для ошибок
+}
+
+func (l *lexer) emit(t itemType) {
+  l.items &lt;- item{t, l.input[l.start:l.pos], l.line}
+  l.start = l.pos
+}</code></pre>
+      </section>
+      <section>
+      <h2>Почему этот паттерн важен?</h2>
+        <p>Во-первых, фокус на «состоянии вместо условной логики» делает лексеры чистыми и тестируемыми. Во-вторых, именно этот доклад вдохновил множество реализаций лексеров на других языках (Rust, Python и др.). Если вы хотите создать свой язык и нужен лексер — этот паттерн лучший выбор.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>30 минут видео + несколько часов практики — и вы владеете проектированием лексера на машине состояний. С этим языком первая часть вашего компилятора (разбор текста) станет профессиональной и чистой.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Лексический сканер на Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Лексический сканер на Go» принадлежит автору оригинала (Rob Pike). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Rob Pike). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=HxaD_trXwRE" target="_blank" rel="noopener">https://www.youtube.com/watch?v=HxaD_trXwRE</a>.
       </div>
     </article>

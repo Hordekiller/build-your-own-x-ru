@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем свой React с нуля (серия)»
+          <b>Оригинальный источник:</b> «Build your own React»
         </div>
         <a class="btn solid" href="https://pomb.us/build-your-own-react/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-react-build-own.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,233 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия строит React с нуля: JSX-трансформация, elements, reconciliation, fiber и хуки — полная архитектура современного React.</p>
+      <h2>1. Обзор: восемь шагов</h2>
+        <p>Статья строит полный React за восемь шагов — ту самую архитектуру React 16.8: <code>createElement</code> ← <code>render</code> ← конкурентный рендер (Concurrent Mode) ← <b>Fiber</b> ← фазы Render и Commit ← Reconciliation ← функциональные компоненты ← <b>Hooks</b>. В конце у вас единый код, включающий все шаги; <b>краткое изложение всего кода — в конце статьи</b>.</p>
+        <p>Примечание: код статьи соответствует React 16.8 — никаких <code>propTypes</code> и классов; всё на функциях и хуках.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Компиляция JSX</li>
-          <li>Reconciliation и fiber</li>
-          <li>Хуки: useState, useEffect</li>
-          <li>Полный контур рендера</li>
-        </ul>
-      </section>
+      <h2>2. Шаги 1 и 2: createElement и render</h2>
+        <p>Виртуальное дерево строится через <code>createElement</code>, а <code>render</code> превращает его в DOM. Особенности: всё — даже тексты — является узлами, а <code>render</code> создаёт узлы <b>рекурсивно</b>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function createElement(type, props, ...children) {
+  return {
+    type,
+    props: {
+      ...props,
+      children: children.map((child) =&gt;
+        typeof child === &#x27;object&#x27; ? child : createTextElement(child)
+      ),
+    },
+  };
+}
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Серия повторяет путь React: от трансформации JSX до fiber-сравнения и хуков. Каждая концепция получает реализацию.</p>
-        <p>useState — реализация:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>let hookIndex = 0;
-function useState(initial) {
-  const index = hookIndex++;
-  hooks[index] = hooks[index] ?? initial;
-  return [hooks[index], (v) =&gt; (hooks[index] = v, scheduleRender())];
+function createTextElement(text) {
+  return { type: &#x27;TEXT_ELEMENT&#x27;, props: { nodeValue: text, children: [] } };
+}
+
+function createDom(fiber) {
+  const dom =
+    fiber.type === &#x27;TEXT_ELEMENT&#x27;
+      ? document.createTextNode(&#x27;&#x27;)
+      : document.createElement(fiber.type);
+
+  updateDom(dom, {}, fiber.props);
+  return dom;
+}
+
+function render(element, container) {
+  const rootFiber = {
+    dom: container,
+    props: { children: [element] },
+    alternate: currentRoot, // для сравнения при следующем рендере
+  };
+  deletions = [];
+  wipRoot = rootFiber;
+  nextUnitOfWork = rootFiber;
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Собственный React — самый глубокий уровень понимания: серия делает из вас знатока фронтенд-архитектуры.</p>
+      <h2>3. Шаги 3 и 4: конкурентный рендер и Fiber</h2>
+        <p>Проблема рекурсивного рендера: всё дерево рендерится разом, без остановок, блокируя поток. Решение: разбить работу на мелкие единицы и выполнять их порциями через <code>requestIdleCallback</code>. Структура данных <b>Fiber</b> и есть такая единица работы:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">let nextUnitOfWork = null;
+let wipRoot = null;      // корень строящегося дерева
+let currentRoot = null;  // прежнее закоммиченное дерево
+let deletions = [];      // удаляемые узлы
+
+// цикл работы: каждый раз, когда браузер простаивает, — одна единица работы
+function workLoop(deadline) {
+  let shouldYield = false;
+  while (nextUnitOfWork &amp;&amp; !shouldYield) {
+    nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+    shouldYield = deadline.timeRemaining() &lt; 1;
+  }
+  // когда вся работа завершена, коммитим всё дерево
+  if (!nextUnitOfWork &amp;&amp; wipRoot) {
+    commitRoot();
+  }
+  requestIdleCallback(workLoop);
+}
+requestIdleCallback(workLoop);
+
+// каждый fiber: { type, props, dom, parent, child, sibling, alternate, effectTag }
+function performUnitOfWork(fiber) {
+  const isFunctionComponent = fiber.type instanceof Function;
+  if (isFunctionComponent) {
+    updateFunctionComponent(fiber); // функциональные компоненты
+  } else {
+    updateHostComponent(fiber);     // DOM-узлы
+  }
+  // выбор следующей единицы работы: ребёнок ← сестра ← родитель
+  if (fiber.child) return fiber.child;
+  let nextFiber = fiber;
+  while (nextFiber) {
+    if (nextFiber.sibling) return nextFiber.sibling;
+    nextFiber = nextFiber.parent;
+  }
+}</code></pre>
+      </section>
+      <section>
+      <h2>4. Шаги 5 и 6: фазы Render/Commit и Reconciliation</h2>
+        <p>Строящееся дерево (wip) создаётся в фазе <b>render</b> и применяется к DOM разом — в фазе <b>commit</b> — только когда полностью готово. Сравнение нового дерева с прежним (через <code>alternate</code>) выполняется в <code>reconcileChildren</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function reconcileChildren(wipFiber, elements) {
+  let index = 0;
+  let oldFiber = wipFiber.alternate &amp;&amp; wipFiber.alternate.child;
+  let prevSibling = null;
+
+  while (index &lt; elements.length || oldFiber != null) {
+    const element = elements[index];
+    let newFiber = null;
+
+    const sameType = oldFiber &amp;&amp; element &amp;&amp; element.type === oldFiber.type;
+
+    if (sameType) {
+      // тот же тип: обновление props
+      newFiber = {
+        type: oldFiber.type,
+        props: element.props,
+        dom: oldFiber.dom,
+        parent: wipFiber,
+        alternate: oldFiber,
+        effectTag: &#x27;UPDATE&#x27;,
+      };
+    } else if (element) {
+      // новый элемент: создание узла
+      newFiber = {
+        type: element.type,
+        props: element.props,
+        dom: null,
+        parent: wipFiber,
+        alternate: null,
+        effectTag: &#x27;PLACEMENT&#x27;,
+      };
+    } else if (oldFiber) {
+      // удаляемый узел
+      oldFiber.effectTag = &#x27;DELETION&#x27;;
+      deletions.push(oldFiber);
+    }
+
+    // переход к сестре и детям ...
+    if (oldFiber) oldFiber = oldFiber.sibling;
+    if (index === 0) wipFiber.child = newFiber;
+    else prevSibling.sibling = newFiber;
+    prevSibling = newFiber;
+    index++;
+  }
+}
+
+// коммит: применение effectTag в DOM — один полный проход
+function commitRoot() {
+  deletions.forEach(commitWork); // сначала удаления
+  commitWork(wipRoot.child);
+  currentRoot = wipRoot;
+  wipRoot = null;
+}
+
+function commitWork(fiber) {
+  if (!fiber) return;
+  let domParentFiber = fiber.parent;
+  while (!domParentFiber.dom) {
+    domParentFiber = domParentFiber.parent; // у компонентов нет dom
+  }
+  const domParent = domParentFiber.dom;
+
+  if (fiber.effectTag === &#x27;PLACEMENT&#x27; &amp;&amp; fiber.dom != null) {
+    domParent.appendChild(fiber.dom);
+  } else if (fiber.effectTag === &#x27;UPDATE&#x27; &amp;&amp; fiber.dom != null) {
+    updateDom(fiber.dom, fiber.alternate.props, fiber.props);
+  } else if (fiber.effectTag === &#x27;DELETION&#x27;) {
+    commitDeletion(fiber, domParent);
+  }
+
+  commitWork(fiber.child);
+  commitWork(fiber.sibling);
+}</code></pre>
+      </section>
+      <section>
+      <h2>5. Шаги 7 и 8: функциональные компоненты и Hooks</h2>
+        <p>Функциональный компонент — это fiber, у которого <code>type</code> является функцией: вместо построения DOM вызывается функция с props, чтобы получить детей. Хуки работают через глобальные переменные <code>wipFiber</code> и <code>hookIndex</code> — именно это объясняет правило «не вызывай хуки условно»:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">let wipFiber = null;
+let hookIndex = null;
+
+function updateFunctionComponent(fiber) {
+  wipFiber = fiber;
+  hookIndex = 0;
+  wipFiber.hooks = [];
+  // вызов функции компонента для получения детей
+  const children = [fiber.type(fiber.props)];
+  reconcileChildren(fiber, children);
+}
+
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &amp;&amp;
+    wipFiber.alternate.hooks &amp;&amp;
+    wipFiber.alternate.hooks[hookIndex];
+
+  const hook = {
+    state: oldHook ? oldHook.state : initial,
+    queue: [],
+  };
+
+  // выполнение всех действий из очереди
+  const actions = oldHook ? oldHook.queue : [];
+  actions.forEach((action) =&gt; {
+    hook.state = typeof action === &#x27;function&#x27; ? action(hook.state) : action;
+  });
+
+  const setState = (action) =&gt; {
+    hook.queue.push(action);
+    // планирование перерисовки от корня
+    wipRoot = {
+      dom: currentRoot.dom,
+      props: currentRoot.props,
+      alternate: currentRoot,
+    };
+    nextUnitOfWork = wipRoot;
+    deletions = [];
+  };
+
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
+}</code></pre>
+        <p>Красивый момент: поскольку <code>useState</code> читает прежнее значение из <code>alternate</code>, при каждом рендере state сохраняется и применяются только изменившиеся значения.</p>
+      </section>
+      <section>
+      <h2>6. Итоги</h2>
+        <ul>
+          <li>React = дерево fiber + цикл работы + сравнение + commit; никакой магии.</li>
+          <li>Конкурентный рендер возможен благодаря разбиению работы на мелкие единицы и <code>requestIdleCallback</code>.</li>
+          <li>Хуки — просто массив state, хранимый по индексу, — и именно поэтому порядок их вызова критичен.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> если вам понравился этот путь, посмотрите статью «Didact» того же автора (шаг за шагом, с полным репозиторием кода) и видео «Building React From Scratch» Пола О'Шэннесси.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем свой React с нуля (серия)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем свой React с нуля (серия)» принадлежит автору оригинала (Родриго Помбо (Rodrigo Pombo)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Родриго Помбо (Rodrigo Pombo)). Читайте оригинал на
         <a href="https://pomb.us/build-your-own-react/" target="_blank" rel="noopener">https://pomb.us/build-your-own-react/</a>.
       </div>
     </article>

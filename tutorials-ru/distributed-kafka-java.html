@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Свой Kafka-подобный брокер с нуля: пошаговое руководство»
+          <b>Оригинальный источник:</b> «build-your-own-kafka»
         </div>
         <a class="btn solid" href="https://github.com/buildthingsuseful/build-your-own-kafka" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/distributed-kafka-java.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,98 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство воссоздаёт Kafka с нуля на Java: брокер сообщений с темами, партициями, продюсерами и консьюмерами, использующий протокол, совместимый с настоящими клиентами Kafka.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Создание системы, похожей на Kafka, с нуля — пошаговое руководство</h2>
+        <p>Если вы хотите по-настоящему понять архитектуру Kafka и готовы сделать это, реализовав её упрощённую версию, вы попали по адресу. Вместо того чтобы просто копировать код, мы будем постепенно строить «SimpleKafka» и на каждом шаге разбираться в каждом компоненте. Такой подход даёт глубокое понимание распределённых систем обмена сообщениями.</p>
+        <h3>Краткое описание рабочего процесса</h3>
+        <p>Этот пошаговый подход позволяет вам детально собрать и понять каждый компонент Kafka-подобной системы — с этапа 1 по этап 7:</p>
         <ul>
-          <li>Архитектура Kafka: темы, партиции, офсеты</li>
-          <li>Брокер: приём и хранение сообщений</li>
-          <li>API продюсера и консьюмера</li>
-          <li>Совместимость с реальными клиентами Kafka</li>
+          <li>Настройка структуры проекта</li>
+          <li>Создание основного протокольного слоя</li>
+          <li>Реализация интеграции с ZooKeeper</li>
+          <li>Построение слоя хранения</li>
+          <li>Построение брокера (Broker)</li>
+          <li>Разработка клиентской библиотеки</li>
+          <li>Создание API высокого уровня для производителя и потребителя</li>
+          <li>Тестирование системы</li>
+        </ul>
+        <h3>Этапы с 1 по 7</h3>
+        <p>Для этапов с 1 по 7 следуйте подробной пошаговой статье на <a href="https://medium.com/@buildthingsuseful/building-your-own-kafka-like-system-from-scratch-a-step-by-step-guide-d3c5f0a303c0" target="_blank" rel="noopener">Medium</a> и параллельно держите под рукой GitHub-репозиторий. Такое сочетание поможет вам планомерно продвигаться по каждому разделу.</p>
+        <p>Собирая каждый компонент вручную, вы получите глубокое понимание архитектуры Kafka и дизайнерских решений, стоящих за ней. Эти знания будут бесценны при работе с настоящей Kafka или при проектировании собственных распределённых систем.</p>
+      </section>
+      <section>
+      <h2>Тестирование системы</h2>
+        <h3>1. Сборка проекта с Maven:</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">mvn clean package</code></pre>
+        <h3>2. Запуск ZooKeeper</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Запуск ZooKeeper с конфигурацией по умолчанию
+zkServer start
+
+# Если не сработало — попробуйте так:
+zookeeper-server-start /usr/local/etc/kafka/zookeeper.properties
+
+# Или создайте простой файл конфигурации:
+echo &quot;tickTime=2000&quot; &gt; zk.cfg
+echo &quot;dataDir=/tmp/zookeeper&quot; &gt;&gt; zk.cfg
+echo &quot;clientPort=2181&quot; &gt;&gt; zk.cfg
+zookeeper-server-start zk.cfg</code></pre>
+        <h3>3. Запуск нескольких экземпляров брокера</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Терминал 1 — брокер 1
+java -cp target/simple-kafka-1.0-SNAPSHOT.jar com.simplekafka.broker.SimpleKafkaBroker 1 localhost 9091 2181
+
+# Терминал 2 — брокер 2
+java -cp target/simple-kafka-1.0-SNAPSHOT.jar com.simplekafka.broker.SimpleKafkaBroker 2 localhost 9092 2181
+
+# Терминал 3 — брокер 3
+java -cp target/simple-kafka-1.0-SNAPSHOT.jar com.simplekafka.broker.SimpleKafkaBroker 3 localhost 9093 2181</code></pre>
+        <h3>4. Производство сообщений</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">java -cp target/simple-kafka-1.0-SNAPSHOT.jar com.simplekafka.client.SimpleKafkaProducer localhost 9091 test-topic</code></pre>
+        <h3>5. Потребление сообщений</h3>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">java -cp target/simple-kafka-1.0-SNAPSHOT.jar com.simplekafka.client.SimpleKafkaConsumer localhost 9091 test-topic 0</code></pre>
+      </section>
+      <section>
+      <h2>Ключевые концепции, на которые стоит обратить внимание при тестировании</h2>
+        <h3>1. Партиционирование топиков и репликация (Replication)</h3>
+        <p>Наблюдайте, как топик разбивается на партиции и как эти партиции распределяются между брокерами.</p>
+        <h3>2. Механика лидера и ведомых</h3>
+        <ul>
+          <li>Как брокер становится лидером</li>
+          <li>Как ведомые реплицируют данные от лидера</li>
+          <li>Что происходит, когда лидер выходит из строя и выбирается новый</li>
+        </ul>
+        <h3>3. Роль контроллера (Controller)</h3>
+        <ul>
+          <li>Контроллер выбирается через ZooKeeper</li>
+          <li>Отвечает за управление распределением партиций</li>
+          <li>Управляет отказами брокеров</li>
+          <li>Если текущий контроллер выходит из строя, выбирается новый</li>
+        </ul>
+        <h3>4. Постоянство сообщений (Message Persistence)</h3>
+        <ul>
+          <li>Структура сегмента журнала (Log Segment)</li>
+          <li>Как сообщения добавляются последовательно (append)</li>
+          <li>Как индексы сопоставляют смещения (offset) с позициями в файле</li>
+        </ul>
+        <h3>5. Протокол «клиент–брокер»</h3>
+        <ul>
+          <li>Формат бинарного протокола</li>
+          <li>Паттерны запрос/ответ (Request/Response)</li>
+          <li>Как клиенты находят нужных брокеров и подключаются к ним</li>
+        </ul>
+      </section>
+      <section>
+      <h2>О проекте</h2>
+        <p>Проект «SimpleKafka» — учебная упрощённая реализация распределённой системы обмена сообщениями, похожей на Kafka, написанная на Java с Maven. В его структуру входят пакеты для брокера, клиента и слоёв хранения; он интегрируется с ZooKeeper для выбора лидера и управления контроллером. Репозиторий опубликован под лицензией MIT.</p>
+        <p>Для лучшего изучения:</p>
+        <ul>
+          <li>Репозиторий GitHub: <span dir="ltr">github.com/buildthingsuseful/build-your-own-kafka</span></li>
+          <li>Пошаговая статья на Medium: <span dir="ltr">medium.com/@buildthingsuseful/building-your-own-kafka-like-system-from-scratch-a-step-by-step-guide-d3c5f0a303c0</span></li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Kafka хранит потоки сообщений в темах, разбитых на партиции; продюсер пишет в конец партиции, консьюмер читает со своего офсета. Собственный брокер повторяет этот контракт.</p>
-        <p>Партиция — накопитель сообщений с офсетом:</p>
-        <pre class="code"><span class="lang-tag">Java</span><code>class Partition {
-    final List&lt;Message&gt; log = new ArrayList&lt;&gt;();
-    long append(Message m) { log.add(m); return log.size() - 1; }
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Kafka — нервная система миллионов сервисов: реализовав её мини-версию, вы поймёте, почему партиции и офсеты делают её масштабируемой и надёжной.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Свой Kafka-подобный брокер с нуля: пошаговое руководство» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Свой Kafka-подобный брокер с нуля: пошаговое руководство» принадлежит автору оригинала (buildthingsuseful). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (buildthingsuseful). Читайте оригинал на
         <a href="https://github.com/buildthingsuseful/build-your-own-kafka" target="_blank" rel="noopener">https://github.com/buildthingsuseful/build-your-own-kafka</a>.
       </div>
     </article>

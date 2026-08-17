@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Змейка на JavaScript»
+          <b>Оригинальный источник:</b> «Think like a programmer: How to build Snake»
         </div>
         <a class="btn solid" href="https://medium.freecodecamp.org/think-like-a-programmer-how-to-build-snake-using-only-javascript-html-and-css-7b1479c3339e" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-snake-js.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,97 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Змейка: сетка, рост и столкновения — игра, которую пишут все, и весело.</p>
+      <h2>Главная идея: мыслить как программист</h2>
+        <p>Цель статьи — не просто «сделать игру Змейка», а показать <b>образ мышления</b> программиста: вместо написания кода целиком разбейте задачу на маленькие решаемые части: (1) как отобразить змейку? (2) как она движется? (3) как ест и растёт? (4) как проигрываем? (5) как считать очки? В конце все части собираются в один файл <code>snake.html</code>.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Отображение змейки: массив координат</h2>
+        <p>Змейка — это «массив координат» на сетке 20×20; голова — первый элемент, еда — случайная точка:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Змейка: массив [x, y]
+let snake = [
+  [9, 9],  // голова
+  [8, 9],  // тело
+  [7, 9],
+];
+
+let direction = [1, 0]; // движение вправо
+
+// Сетка: canvas 400×400 с ячейками по 20 пикселей
+const CELL = 20;
+const GRID = 20;
+
+function draw() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  snake.forEach(([x, y]) =&gt; {
+    ctx.fillStyle = &#x27;green&#x27;;
+    ctx.fillRect(x * CELL, y * CELL, CELL - 1, CELL - 1);
+  });
+  // Еда
+  ctx.fillStyle = &#x27;red&#x27;;
+  ctx.fillRect(food[0] * CELL, food[1] * CELL, CELL - 1, CELL - 1);
+}</code></pre>
+      </section>
+      <section>
+      <h2>Движение: unshift и pop</h2>
+        <p>Движение змейки использует изящное правило: <b>добавь сегмент к голове (unshift) и, если еда не съедена, удали последний сегмент (pop)</b> — именно это обеспечивает движение и рост:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function gameStep() {
+  // Новая голова
+  const head = snake[0];
+  const newHead = [head[0] + direction[0], head[1] + direction[1]];
+
+  // Столкновение со стеной или собой → конец игры
+  const hitWall = newHead[0] &lt; 0 || newHead[0] &gt;= GRID ||
+                  newHead[1] &lt; 0 || newHead[1] &gt;= GRID;
+  const hitSelf = snake.some(([x, y]) =&gt; x === newHead[0] &amp;&amp; y === newHead[1]);
+  if (hitWall || hitSelf) { gameOver(); return; }
+
+  snake.unshift(newHead);
+
+  // Еда съедена?
+  if (newHead[0] === food[0] &amp;&amp; newHead[1] === food[1]) {
+    score++;
+    food = randomFood();      // новая еда
+  } else {
+    snake.pop();              // без роста: хвост удаляется
+  }
+  draw();
+}
+
+// Игровой цикл
+setInterval(gameStep, 100);</code></pre>
+      </section>
+      <section>
+      <h2>Ввод с клавиатуры</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">document.addEventListener(&#x27;keydown&#x27;, (e) =&gt; {
+  // Запрет движения сразу в обратную сторону
+  const keyMap = {
+    ArrowUp:    [0, -1],
+    ArrowDown:  [0, 1],
+    ArrowLeft:  [-1, 0],
+    ArrowRight: [1, 0],
+  };
+  const d = keyMap[e.key];
+  if (d) {
+    if (d[0] !== -direction[0] || d[1] !== -direction[1]) {
+      direction = d;
+    }
+    e.preventDefault();
+  }
+});</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
         <ul>
-          <li>Сетка и змейка</li>
-          <li>Еда и рост</li>
-          <li>Столкновения</li>
-          <li>Очки и рестарт</li>
+          <li>Разбейте задачу: отображение ← движение ← рост ← поражение ← очки; каждая часть укладывается в несколько строк кода.</li>
+          <li>Змейка как массив координат + unshift/pop — простейшая и самая правильная модель.</li>
+          <li>Вся игра в одном файле — открыл и играешь.</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Змейка — очевидная модель: тело — список клеток, рост — добавление хвоста. Элегантно и просто.</p>
-        <p>Голова змеи движется по направлению:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>head = { x: head.x + dx, y: head.y + dy };
-body.unshift(head);   // голова вперёд
-body.pop();           // хвост подтягивается</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Змейка — моментальный успех и база: вы освоите циклы, клавиатуру и игровое время.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Змейка на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://medium.freecodecamp.org/think-like-a-programmer-how-to-build-snake-using-only-javascript-html-and-css-7b1479c3339e" target="_blank" rel="noopener">https://medium.freecodecamp.org/think-like-a-programmer-how-to-build-snake-using-only-javascript-html-and-css-7b1479c3339e</a>.
       </div>
     </article>

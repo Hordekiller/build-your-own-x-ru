@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Перцептрон на Go»
+          <b>Оригинальный источник:</b> «Build a Multilayer Perceptron with Golang»
         </div>
         <a class="btn solid" href="https://made2591.github.io/posts/neuralnetwork" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-perceptron-golang.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,94 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Перцептрон на Go: веса, обучение и предсказание — классический нейрон с нуля.</p>
+      <h2>Идея: обучение подражанием (imitation learning)</h2>
+        <p>Автор начинает с простого эксперимента: вместо ручного кодирования поведения сеть обучается на «примерах» — то самое подражание демонстрации. Выбранная архитектура — <b>многослойный перцептрон (MLP)</b>: входной слой, один или несколько скрытых слоёв и выходной слой, где каждый нейрон работает с <b>нелинейной функцией активации</b>.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура кода: NeuralLayer и MultiLayerNetwork</h2>
+        <p>Код организован в одном файле Go (network.go) с тремя ключевыми частями: структура <code>NeuralLayer</code>, хранящая нейроны, смещение и активацию; структура <code>MultiLayerNetwork</code>, хранящая слои и матрицу весов; и главная функция, создающая сеть из массива вроде <code>[4, 3, 3]</code> — 4 входных нейрона, скрытый слой из 3 и выход из 3:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Нейронный слой: нейроны, смещения и функция активации
+type NeuralLayer struct {
+    neurons    int
+    activation ActivationFunction
+    bias       float64
+}
+
+// Многослойная сеть: слои + матрица весов + скорость обучения
+type MultiLayerNetwork struct {
+    layers      []NeuralLayer
+    weights     []*matrix.Matrix
+    lr          float64
+}
+
+// Создание сети с заданными размерами: вход 4, скрытый 3, выход 3
+network, err := NewMultiLayerNetwork([]int{4, 3, 3}, 0.1)</code></pre>
+      </section>
+      <section>
+      <h2>Прямое распространение матричным умножением</h2>
+        <p>Выход каждого слоя — произведение матрицы весов на выход предыдущего слоя, прошедшее через функцию активации (в этой реализации sigmoid). Преимущество матричного представления: все вычисления векторные, через библиотеку <code>gonum/matrix</code>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Вычисление выхода сети для входа (прямое распространение)
+func (nn *MultiLayerNetwork) Predict(input []float64) []float64 {
+    activation := matrix.NewDenseMatrix(len(input), 1, input)
+    for i := 0; i &lt; len(nn.layers); i++ {
+        activation = nn.weights[i].Times(activation)
+        activation = activation.Apply(nn.layers[i].activation)
+    }
+    return activation.Array()
+}</code></pre>
+      </section>
+      <section>
+      <h2>Обучение: обратное распространение и правка весов</h2>
+        <p>На каждой итерации выход сравнивается с верным ответом, и ошибка распространяется от выходного слоя назад (backpropagation). Веса корректируются на <code>lr × градиент</code>, чтобы ошибка на следующей итерации уменьшилась:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Обучение на одном образце: backprop + обновление весов
+func (nn *MultiLayerNetwork) BackPropagation(input, target []float64) error {
+    // вычисление выхода каждого слоя и сохранение промежуточных значений (для производных)
+    outputs := nn.feedForward(input)
+
+    // ошибка выходного слоя, затем распространение назад послойно
+    // delta = error × производная активации; затем веса обновляются
+    error := matrix.NewDenseMatrix(len(target), 1, target)
+    error.MinusEquals(outputs[len(outputs)-1])
+
+    for i := len(nn.layers) - 1; i &gt;= 0; i-- {
+        delta := error.Apply(nn.layers[i].activationPrime).Times(nn.lr)
+        gradient := outputs[i].Times(delta.Transpose())
+        nn.weights[i].MinusEquals(gradient)
+        error = nn.weights[i].Transpose().Times(delta)
+    }
+    return nil
+}</code></pre>
+      </section>
+      <section>
+      <h2>Эксперимент: обучение на примерах</h2>
+        <p>Автор обучает сеть на простом примере и наблюдает, как ошибка постепенно уменьшается, а предсказания приближаются к верному ответу. Эксперимент показывает: та же структура без всякого знания предметной области выучивает закономерность из данных:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Проведение одного раунда обучения на нескольких примерах с печатью средней ошибки
+for epoch := 0; epoch &lt; 5000; epoch++ {
+    for i := range trainingInputs {
+        err := network.BackPropagation(trainingInputs[i], trainingTargets[i])
+        if err != nil {
+            panic(err)
+        }
+    }
+    if epoch%1000 == 0 {
+        fmt.Printf(&quot;Epoch %d — средняя ошибка: %.6f\n&quot;, epoch, network.ComputeError(...))
+    }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>Модель перцептрона</li>
-          <li>Правило обучения</li>
-          <li>Предсказание</li>
-          <li>Эксперименты</li>
+          <li>MLP = входной слой + скрытые слои + выходной слой, с нелинейной активацией.</li>
+          <li>Матричное представление делает код короче, а вычисления векторными (gonum).</li>
+          <li>Backpropagation с сохранением промежуточных значений каждого слоя прост и прослеживаем.</li>
+          <li>Обучение на примерах (подражание) заменяет ручные правила для сложного поведения.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Перцептрон — простейший нейрон: взвешенная сумма и порог. На Go модель видна без украшений.</p>
-        <p>Обновление весов:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>for i := range w {
-    w[i] += lr * (target - output) * x[i] // правило обучения
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Перцептрон — первый шаг в ИИ: на Go он нагляднее всего, и с него начинается всё глубокое обучение.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Перцептрон на Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Перцептрон на Go» принадлежит автору оригинала (Matteo Pagliuzzi). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Matteo Pagliuzzi). Читайте оригинал на
         <a href="https://made2591.github.io/posts/neuralnetwork" target="_blank" rel="noopener">https://made2591.github.io/posts/neuralnetwork</a>.
       </div>
     </article>

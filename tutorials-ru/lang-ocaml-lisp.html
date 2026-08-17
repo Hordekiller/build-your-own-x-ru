@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Lisp-интерпретатор на OCaml»
+          <b>Оригинальный источник:</b> «Writing a Lisp (in OCaml)»
         </div>
         <a class="btn solid" href="https://bernsteinbear.com/blog/lisp/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-ocaml-lisp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,44 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Интерпретатор Lisp на OCaml: S-выражения, eval и окружения — функциональный Lisp.</p>
+      <h2>О серии</h2>
+        <p>Макс Бернстайн (работавший над настоящими компиляторами вроде OCaml и CMUCL) в этой серии статей строит интерпретатор Lisp на OCaml, добавляя в каждой статье новый кусок: от парсинга и простого eval до closures, макросов и разговора о рантаймах. Код каждой статьи лежит в отдельной папке (part1 … partN).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Типы S-выражений</li>
-          <li>Парсер</li>
-          <li>Eval</li>
-          <li>Рекурсия</li>
-        </ul>
+      <h2>Структура статей</h2>
+        <p>По порядку: (1) базовый интерпретатор — массивы, списки, простой eval; (2) символы и переменные; (3) функции <code>lambda</code> и вложенные окружения; (4) продвинутые конструкции вроде <code>let*</code>; (5) обработка ошибок и представление «Error» в рантайме; (6) макросы; (7) завершение оптимизацией и обсуждением рантайма. Каждая статья сопровождается backend'ом на Python или OCaml и тестом сравнения поведения.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>OCaml + Lisp — пара от природы: выражения — варианты, eval — сопоставление. Красота в чистоте.</p>
-        <p>Тип значения Lisp:</p>
-        <pre class="code"><span class="lang-tag">OCaml</span><code>type value =
-  | Number of float
-  | Symbol of string
-  | List of value list
-  | Function of (value list -&gt; value)</code></pre>
+      <h2>Пример кода: eval с pattern matching</h2>
+        <pre class="code"><span class="lang-tag">ocaml</span><code style="direction:ltr;text-align:left">(* Вычисление: используем абстрактный тип данных *)
+let rec eval env = function
+  | Atom a -&gt; List.assoc a env      (* найди переменную в окружении *)
+  | Number n -&gt; Number n
+  | List (Atom &quot;quote&quot; :: [x]) -&gt; x (* quote: без вычисления *)
+  | List (Atom &quot;if&quot; :: [c; t; f]) -&gt;
+      if eval env c = Bool true then eval env t else eval env f
+  | List (Atom &quot;lambda&quot; :: [params; body]) -&gt;
+      (* closure: тело + параметры + окружение *)
+      Closure (params, body, env)
+  | List (Atom fn :: args) -&gt;
+      let f = eval env (Atom fn) in
+      let args&#x27; = List.map (eval env) args in
+      apply f args&#x27;
+  | _ -&gt; raise (Invalid_argument &quot;некорректное выражение&quot;)</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Функциональный Lisp на OCaml — двойная тренировка: вы усилите и язык, и интерпретаторы.</p>
+      <h2>Интересные моменты</h2>
+        <p>1) Сравнение разных стратегий представления (например, использование <code>Stone</code> против <code>Variant</code>); 2) разбор того, почему передача параметров call-by-value корректно работает для окружений; 3) в конце — обсуждение стоимости рантайма и оптимизации, знакомящее с инженерным взглядом на настоящие компиляторы.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Если вам нравится OCaml, эта серия — лучший выбор: хорошая глубина понимания, полный код и сравнение с другими реализациями. После неё можно перейти к «Write a C Compiler» Норы Сандлер, чтобы ощутить вес настоящего компилятора.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Lisp-интерпретатор на OCaml» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Lisp-интерпретатор на OCaml» принадлежит автору оригинала (Max Bernstein). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Max Bernstein). Читайте оригинал на
         <a href="https://bernsteinbear.com/blog/lisp/" target="_blank" rel="noopener">https://bernsteinbear.com/blog/lisp/</a>.
       </div>
     </article>

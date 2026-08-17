@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «React с нуля: пишем компоненты и рендер»
+          <b>Оригинальный источник:</b> «Building React From Scratch»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=_MAD4Oly9yg" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-react-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,48 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Статья пишет React с нуля на JS: элементы, рендеринг, update и события — маленький, но настоящий React-подобный движок.</p>
+      <h2>1. О докладе</h2>
+        <p>Пол О'Шэннесси — один из старших инженеров команды React в Facebook — в этом 33-минутном докладе показывает, что ядро React можно построить на чистом JavaScript (без JSX и без каких-либо библиотек). Он работает в среде разработки без инструментов сборки и пишет всё с нуля.</p>
+        <div class="callout note">
+          <strong>Примечание:</strong> этот доклад — один из лучших источников «о закулисье React», особенно для тех, кто хочет знать, что происходит в настоящем коде React, а не в упрощённой учебной версии.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Смотрите видео</h2>
+        <p>Это видео-доклад, и его содержание не может быть размещено на этой странице; прямая ссылка на YouTube (запись с конференции React Rally 2016):</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/watch?v=_MAD4Oly9yg" target="_blank" rel="noopener">▶ Смотреть видео «Building React From Scratch»</a>
+        </div>
+      </section>
+      <section>
+      <h2>3. Что вы узнаете из этого видео</h2>
         <ul>
-          <li>Элементы и рендер</li>
-          <li>Обновление DOM</li>
-          <li>Компоненты и пропсы</li>
-          <li>Мерж обновлений</li>
+          <li><b>Elements и Instance</b>: концептуальная разница между описанием UI (элементом) и реальным объектом, хранящим состояние (экземпляром/instance), и почему это разделение важно в архитектуре React.</li>
+          <li><b>Механизм рендера</b>: превращение дерева элементов в настоящий DOM, управление экземплярами и обновление.</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Идея: элементы описывают UI, рендер обновляет DOM. Урок показывает, как таблица обновлений (update queue) превращается в плавный интерфейс.</p>
-        <p>Рендер элемента в DOM:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function render(element, container) {
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Сердце React: превращение элемента в настоящий DOM
+function render(element, container) {
   const node = document.createElement(element.type);
-  for (const child of element.props.children) {
-    render(child, node);
+  node.textContent = element.props.children;
+  for (const name in element.props) {
+    node[name] = element.props[name];
   }
-  container.appendChild(node);
+  ...
 }</code></pre>
+        <p>В докладе эта простая функция дополняется Instance, state и полным diff.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Реализовав React в 100 строк, вы навсегда избавитесь от «волшебства»: вся индустрия виртуального DOM станет знакомой территорией.</p>
+      <h2>4. Почему это видео важно?</h2>
+        <p>Большинство уроков «построй свой React» дают упрощённую версию концепций; но О'Шэннесси, будучи членом основной команды, объясняет реальные дизайнерские решения React (например, зачем нужен Instance, отдельный от Element) из уст того, кто их принимал.</p>
+        <div class="callout note">
+          <strong>Продолжение:</strong> если вы не знакомы с Fiber и конкурентным рендером, после этого видео прочитайте архитектурные заметки команды React (например, объяснения Fiber от Andrew Clark), чтобы получить полную картину архитектуры.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «React с нуля: пишем компоненты и рендер» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «React с нуля: пишем компоненты и рендер» принадлежит автору оригинала (Пол О'Шэннесси (Paul O'Shannessy)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Пол О'Шэннесси (Paul O'Shannessy)). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=_MAD4Oly9yg" target="_blank" rel="noopener">https://www.youtube.com/watch?v=_MAD4Oly9yg</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «LSTM для музыки на Keras»
+          <b>Оригинальный источник:</b> «How to Generate Music using a LSTM Neural Network in Keras»
         </div>
         <a class="btn solid" href="https://towardsdatascience.com/how-to-generate-music-using-a-lstm-neural-network-in-keras-68786834d4c5" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-lstm-music-keras.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,115 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Генерация музыки на Keras: LSTM, ноты и обучение — нейросеть, сочиняющая мелодии.</p>
+      <h2>Идея: музыка как «язык»</h2>
+        <p>Музыка, как и текст, — это последовательность символов: нот и аккордов. Если выстроить ноты произведения подряд, задача превращается в «по последним N символам предскажи следующий» — то есть в задачу <b>моделирования последовательностей</b>. Рекуррентные сети (RNN) и особенно <b>LSTM</b> созданы именно для этого: у них есть внутренняя память, сохраняющая долгосрочные зависимости (например, возвращение главной темы через несколько тактов).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Извлечение нот из MIDI с помощью Music21</h2>
+        <p>Первый шаг — превратить MIDI-файлы в последовательность символов. Библиотека <b>Music21</b> упрощает это: <code>converter.parse()</code> читает файл, а <code>flat.notes</code> возвращает все ноты и аккорды по порядку. Каждая нота представляется как «имя + октава» (например, <code>D#4</code>), а каждый аккорд — списком своих нот (например, <code>D#4.F#4.A#4</code>):</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from music21 import converter
+
+# Чтение MIDI-файла и извлечение последовательности нот и аккордов
+notes = []
+for element in converter.parse(&quot;song.mid&quot;).flat.notes:
+    if element.isNote:
+        notes.append(str(element.pitch))            # например &quot;D#4&quot;
+    elif element.isChord:
+        notes.append(&quot;.&quot;.join(str(n) for n in element.pitches))  # например &quot;D#4.F#4.A#4&quot;
+
+print(&quot;Количество символов:&quot;, len(notes), &quot;| уникальных символов:&quot;, len(set(notes)))</code></pre>
+      </section>
+      <section>
+      <h2>Кодирование символов и построение окон</h2>
+        <p>Сеть понимает числа, а не строки. Поэтому символы переводятся в числовые индексы (через словарь). Затем последовательность делится на <b>перекрывающиеся окна</b>: входное окно содержит <code>sequence_length</code> символов, а выход — следующий символ. Выход кодируется <b>one-hot</b> (вектор из нулей и единицы на месте правильного символа):</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">sequence_length = 100  # длина памяти: 100 предыдущих символов
+
+network_input = []   # входные окна
+network_output = []  # следующий символ каждого окна
+
+for i in range(0, len(notes) - sequence_length, 1):
+    seq_in = notes[i:i + sequence_length]
+    seq_out = notes[i + sequence_length]
+    network_input.append([note_to_int[n] for n in seq_in])
+    network_output.append(note_to_int[seq_out])
+
+# Преобразование в массив numpy и one-hot кодирование выхода
+X = np.reshape(network_input, (len(network_input), sequence_length, 1))
+X = X / float(n_vocab)                     # нормализация входа
+y = to_categorical(network_output, num_classes=n_vocab)</code></pre>
+      </section>
+      <section>
+      <h2>Архитектура LSTM</h2>
+        <p>Модель состоит из двух слоёв LSTM и двух полносвязных. У LSTM-слоёв две важные детали: <code>return_sequences=True</code> на первом, чтобы полный выход последовательности дошёл до второго слоя, и <code>return_state=True</code> на последнем LSTM, чтобы при генерации сохранять состояние памяти. Финальный выход через softmax — распределение вероятностей по всем символам:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+
+model = Sequential()
+model.add(LSTM(512, return_sequences=True, input_shape=(X.shape[1], X.shape[2])))
+model.add(Dropout(0.3))
+model.add(LSTM(512, return_state=True))   # возвращаем состояние для генерации
+model.add(Dropout(0.3))
+model.add(Dense(256, activation=&quot;relu&quot;))
+model.add(Dense(n_vocab, activation=&quot;softmax&quot;))
+
+model.compile(loss=&quot;categorical_crossentropy&quot;, optimizer=&quot;rmsprop&quot;)
+model.fit(X, y, epochs=200, batch_size=64)</code></pre>
+      </section>
+      <section>
+      <h2>Генерация музыки: символ за символом</h2>
+        <p>Генерация — это «сцепление предсказаний»: случайная последовательность символов выбирается как стартовая точка; на каждом шаге сеть выдаёт распределение вероятностей следующего символа; следующий символ выбирается <b>сэмплированием</b> из этого распределения (не всегда самый вероятный!) — такая случайность даёт творческий выход и избегает бесконечных повторов. Затем окно сдвигается на один символ — и так до нужной длины:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def generate_notes(model, start, n_vocab, int_to_note):
+    pattern = start.copy()
+    output = []
+    for _ in range(500):
+        # подготовка текущего паттерна для сети
+        x = np.reshape(pattern, (1, len(pattern), 1)) / float(n_vocab)
+        prediction = model.predict(x, verbose=0)[0]
+
+        # сэмплирование из распределения вероятностей (со случайным творчеством)
+        index = np.argmax(prediction)
+        output.append(int_to_note[index])
+        pattern.append(index)
+        pattern = pattern[1:]   # сдвигаем окно на один шаг
+    return output</code></pre>
+      </section>
+      <section>
+      <h2>Преобразование выхода в MIDI-файл</h2>
+        <p>В конце последовательность символов снова превращается в объект Music21 и сохраняется как MIDI-файл, чтобы её можно было воспроизвести в любой музыкальной программе. Чтобы мелодия звучала, задаётся <b>фиксированный ритм</b> (например, каждая нота — одна доля):</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from music21 import stream, note, chord, tempo
+
+def notes_to_midi(notes, output_file):
+    offset = 0
+    stream_notes = []
+    for pattern in notes:
+        if &quot;.&quot; in pattern:          # аккорд
+            notes_list = [note.Note(n) for n in pattern.split(&quot;.&quot;)]
+            c = chord.Chord(notes_list)
+            c.quarterLength = 0.5
+            stream_notes.append(c)
+        else:                       # простая нота
+            n = note.Note(pattern)
+            n.quarterLength = 0.5
+            stream_notes.append(n)
+        offset += 0.5
+
+    midi_stream = stream.Stream(stream_notes)
+    midi_stream.write(&quot;midi&quot;, fp=output_file)</code></pre>
+      </section>
+      <section>
+      <h2>Итоги и улучшения</h2>
         <ul>
-          <li>Представление музыки</li>
-          <li>LSTM</li>
-          <li>Обучение на нотах</li>
-          <li>Генерация</li>
+          <li>Музыка = последовательность символов; LSTM отлично подходит для последовательностей.</li>
+          <li>Music21 берёт на себя чтение/запись MIDI — фокус остаётся на модели.</li>
+          <li>Случайное сэмплирование (вместо вечного argmax) даёт творчество в генерации.</li>
+          <li><b>Улучшения:</b> добавление длительности нот во вход, два двунаправленных слоя, обучение на датасете больше одной песни.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Музыка — последовательность, и LSTM для неё идеален: сеть учит переходы нот и продолжает композицию.</p>
-        <p>Генерация следующей ноты:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>model = Sequential([
-    LSTM(128, input_shape=(seq_len, n_notes)),
-    Dense(n_notes, activation="softmax")
-])
-pred = model.predict(seed)</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Музыка и ИИ — вдохновляющий проект: вы увидите, как LSTM оживляют данные и создают новое.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «LSTM для музыки на Keras» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «LSTM для музыки на Keras» принадлежит автору оригинала (Sigurður Skúli). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Sigurður Skúli). Читайте оригинал на
         <a href="https://towardsdatascience.com/how-to-generate-music-using-a-lstm-neural-network-in-keras-68786834d4c5" target="_blank" rel="noopener">https://towardsdatascience.com/how-to-generate-music-using-a-lstm-neural-network-in-keras-68786834d4c5</a>.
       </div>
     </article>

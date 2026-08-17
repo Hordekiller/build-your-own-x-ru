@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Scheme за 48 часов: интерпретатор»
+          <b>Оригинальный источник:</b> «Write Yourself a Scheme in 48 Hours»
         </div>
         <a class="btn solid" href="https://en.wikibooks.org/wiki/Write_Yourself_a_Scheme_in_48_Hours" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-scheme-48h.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,56 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Интерпретатор Scheme на Haskell за 48 часов: REPL, парсер и eval — язык на функциональном стеке.</p>
+      <h2>Знакомство с книгой</h2>
+        <p>Этот учебник, растущий на Wikibooks с 2007 года, написан с двумя целями: обучить Haskell на практике и построить полный интерпретатор Scheme. По пути вы знакомитесь с концепциями Haskell (композиция функций, Functor/Monad, Parsec и т.д.) и концепциями компиляторов (представление данных, окружение, вычисление).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Парсер S-выражений</li>
-          <li>REPL</li>
-          <li>Eval и окружения</li>
-          <li>Числа и операции</li>
-        </ul>
+      <h2>Структура пути</h2>
+        <p>Книга идёт в 7 главах: (1) представление и простое вычисление (числа, атомы); (2) парсинг через Parsec (определение <code>LispVal</code> и грамматики); (3) вычисление и обработка ошибок (Either/Error); (4) добавление типов данных (списки, булевы, строки) и функций; (5) переменные и окружение (через State monad, ключевые слова <code>define</code> и <code>set!</code>); (6) функции как значения (lambda) и функции с аргументами; (7) настоящий ввод/вывод и базовые функции (readFile, writeFile).</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>«48 часов» — известная книга: интерпретатор Scheme на Haskell вырастает шаг за шагом, от REPL до замыканий.</p>
-        <p>Eval примитива в Scheme-интерпретаторе:</p>
-        <pre class="code"><span class="lang-tag">Haskell</span><code>eval :: Env -&gt; LispVal -&gt; IOThrowsError LispVal
-eval env (List [Atom "add1", arg]) = do
-    v &lt;- eval env arg
-    return $ case v of Number n -&gt; Number (n + 1)</code></pre>
+      <h2>Пример кода: тип данных и вычисление</h2>
+        <pre class="code"><span class="lang-tag">haskell</span><code style="direction:ltr;text-align:left">-- Представление представимых значений
+data LispVal = Atom String
+             | List [LispVal]
+             | DottedList [LispVal] LispVal
+             | Number Integer
+             | String String
+             | Bool Bool
+
+-- Сердце интерпретатора: вычисление в окружении
+eval :: Env -&gt; LispVal -&gt; IOThrowsError LispVal
+eval env val@(String _) = return val
+eval env val@(Number _) = return val
+eval env val@(Bool _)   = return val
+
+eval env (List [Atom &quot;quote&quot;, val]) = return val
+
+eval env (List [Atom &quot;if&quot;, cond, t, f]) = do
+  result &lt;- eval env cond
+  case result of
+    Bool False -&gt; eval env f
+    _          -&gt; eval env t
+
+eval env (List (Atom func : args)) = do
+  funcVal &lt;- eval env (Atom func)
+  argVals &lt;- mapM (eval env) args
+  apply funcVal argVals</code></pre>
+        <p>Все важные детали интерпретатора — от quote до вызова функций — видны в этих нескольких строках.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Книга «Scheme за 48 часов» — классика: вы получите свой интерпретатор и глубокое понимание Lisp-семантики.</p>
+      <h2>Заметки и уроки</h2>
+        <p>В средних главах вы знакомитесь с типичными ошибками интерпретаторщиков (ошибки show и неправильное отображение) и учитесь комбинировать <code>MonadError</code> и <code>State</code>. В последней главе интерпретатор получает возможность читать примитивы и базовые функции I/O — вы сможете запускать настоящие Scheme-скрипты.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Лучшее начало для сочетания «построение интерпретатора» и «Haskell»: коротко, пошагово и с поддержкой сообщества. Если после этого захочется глубже — книги вроде «Write You a Haskell» продолжают путь.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Scheme за 48 часов: интерпретатор» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Scheme за 48 часов: интерпретатор» принадлежит автору оригинала (авторы Wikibooks). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (авторы Wikibooks). Читайте оригинал на
         <a href="https://en.wikibooks.org/wiki/Write_Yourself_a_Scheme_in_48_Hours" target="_blank" rel="noopener">https://en.wikibooks.org/wiki/Write_Yourself_a_Scheme_in_48_Hours</a>.
       </div>
     </article>

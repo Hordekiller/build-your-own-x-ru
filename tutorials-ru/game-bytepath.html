@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Bytepath: игры на Lua»
+          <b>Оригинальный источник:</b> «BYTEPATH — создание игры на Lua и LÖVE»
         </div>
         <a class="btn solid" href="https://github.com/SSYGEN/blog/issues/30" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-bytepath.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,58 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Bytepath — серия написанных на Lua 2D-игр: спрайты, тайлы и ввод — дружелюбные игры на скриптовом языке.</p>
+      <h2>Об обучении</h2>
+        <p>BYTEPATH — обучающая серия из пятнадцати частей, в которой создаётся полный космический шутер с деревом навыков — комбинация <b>Bit Blaster XL</b> и <b>пассивного дерева Path of Exile</b>. Аудитория: программисты с небольшим опытом (не совсем новички). Все части читаются в issues блога a327ex (SSYGEN/blog), и каждая часть содержит полный код.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> структура серии отличная: каждая часть — независимая система (движение, враги, очки, дерево навыков, сохранение игры), и в сумме они показывают архитектуру целой игры.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта частей</h2>
         <ul>
-          <li>Lua и LÖVE</li>
-          <li>Спрайты и тайлы</li>
-          <li>Ввод</li>
-          <li>Пример игры</li>
+          <li>#0 Введение и структура проекта</li>
+          <li>Система движения игрока, стрельба и враги</li>
+          <li>Паттерны и subs (расходники)</li>
+          <li>Система навыков: <b>дерево навыков</b> с узлами и прогрессией</li>
+          <li>Игровые режимы, сохранение, карта и эффекты</li>
+          <li>И далее — до готовой оформленной игры</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Lua + LÖVE — лёгкий стек для 2D: быстрый прототип, понятный код и мгновенный запуск.</p>
-        <p>Загрузка тайла в LÖVE:</p>
-        <pre class="code"><span class="lang-tag">Lua</span><code>function love.load()
-  tile = love.graphics.newImage("tile.png")
+      <h2>Пример кода</h2>
+        <pre class="code"><span class="lang-tag">lua</span><code style="direction:ltr;text-align:left">-- Движение игрока (в стиле аркады)
+function Player:update(dt)
+    -- Физика с ускорением/затуханием вместо постоянной скорости
+    local move_speed = self.stats.move_speed
+    if input:down(&#x27;left&#x27;) then self.vx = self.vx - move_speed * dt end
+    if input:down(&#x27;right&#x27;) then self.vx = self.vx + move_speed * dt end
+    if input:down(&#x27;up&#x27;) then self.vy = self.vy - move_speed * dt end
+    if input:down(&#x27;down&#x27;) then self.vy = self.vy + move_speed * dt end
+
+    -- Затухание движения: постепенное возвращение к нулю
+    self.vx = self.vx * (1 - 0.5 * dt)
+    self.vy = self.vy * (1 - 0.5 * dt)
+
+    self.x = self.x + self.vx * dt
+    self.y = self.y + self.vy * dt
+end
+
+-- Дерево навыков: у каждого владельца есть узел, узлы соединены
+SkillTree = {}
+function SkillTree:new(skills)
+    self.skills = skills   -- таблица узлов
+    self.owners = {}       -- есть ли владелец у узла?
 end</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Lua-игры — скорость прототипирования: вы увидите, как скриптовый язык ускоряет игру.</p>
+      <h2>Итоги</h2>
+        <p>Серия — один из самых полных уроков разработки игр на LÖVE; по ходу вы практикуете все навыки разработчика игр (пропорции, системы, управление состоянием, UI). Одна только реализация дерева навыков — уже ценный учебный проект.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Bytepath: игры на Lua» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Bytepath: игры на Lua» принадлежит автору оригинала (a327ex). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (a327ex). Читайте оригинал на
         <a href="https://github.com/SSYGEN/blog/issues/30" target="_blank" rel="noopener">https://github.com/SSYGEN/blog/issues/30</a>.
       </div>
     </article>

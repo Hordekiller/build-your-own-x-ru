@@ -36,7 +36,7 @@
       </div>
       <h1>Baking Pi: ОС для Raspberry Pi</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: Assembly</span>
+        <span class="meta-badge">⚙ Язык: ARM Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="http://www.cl.cam.ac.uk/projects/raspberrypi/tutorials/os/index.html" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Baking Pi: ОС для Raspberry Pi»
+          <b>Оригинальный источник:</b> «Baking Pi — Operating Systems Development»
         </div>
         <a class="btn solid" href="http://www.cl.cam.ac.uk/projects/raspberrypi/tutorials/os/index.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-baking-pi.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,65 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Курс Baking Pi: операционная система для Raspberry Pi на ассемблере ARM — от включения до ввода-вывода.</p>
+      <h2>О курсе</h2>
+        <p>Baking Pi — бесплатный курс Кембриджского университета, который преподаёт основы разработки операционных систем на Raspberry Pi и почти полностью на ассемблере ARMv6. Подход курса необычен: вместо построения целой ОС каждый урок доводит до конца одну «маленькую задачу» — от включения светодиода до командной строки, — и каждый урок содержит необходимую теорию и полную практическую работу. Никаких предварительных знаний об ассемблере или ОС не предполагается.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Инструменты и окружение</h2>
+        <p>Требования: Raspberry Pi (с SD-картой и блоком питания) и отдельный компьютер для разработки с установленным кросс-компилятором ARMv6. Результат сборки — файл kernel.img, который заменяет ядро Linux на SD-карте (всегда храните копию оригинального ядра!). Установка кросс-компилятора в Linux проста:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Установка ARM-кросс-компилятора для Raspberry Pi (старый ARMv6)
+sudo apt install gcc-arm-none-eabi binutils-arm-none-eabi
+
+# Сборка проекта по шаблону Makefile OS Template
+make        # выход: kernel.img, kernel.list, kernel.map</code></pre>
+      </section>
+      <section>
+      <h2>Уроки: от LED до командной строки</h2>
+        <p>Курс делится на три серии, и каждый урок строится на предыдущем:</p>
         <ul>
-          <li>ARM и Raspberry Pi</li>
-          <li>Первый код</li>
-          <li>Мини-UART</li>
-          <li>Ввод и вывод</li>
+          <li><b>Серия OK LED (для начинающих)</b>: OK01 — включение LED через настройку GPIO; OK02 — мигание; OK03 — функции на ассемблере; OK04 — таймер для точного мигания; OK05 — азбука Морзе SOS.</li>
+          <li><b>Серия Screen (продвинутая)</b>: Screen01 — цветовой градиент на экране; Screen02 — рисование линий и случайные числа; Screen03 — вывод текста и знакомство с kernel command line; Screen04 — вывод вычисленных значений.</li>
+          <li><b>Серия Input (продвинутая)</b>: Input01 — теория драйверов, линковка и клавиатура — использование готового USB-драйвера и печать букв; Input02 — полноценная командная строка, выполняющая команды пользователя.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Курс строит ОС на реальном железе: ассемблер ARM, регистры и периферия — мини-ядро на плате.</p>
-        <p>Запись в регистр GPIO:</p>
-        <pre class="code"><span class="lang-tag">Assembly</span><code>@ Включение GPIO (Raspberry Pi)
-mov r0, #0x20200000
-mov r1, #1
-str r1, [r0, #4]</code></pre>
+      <h2>Пример кода: включение LED (OK01)</h2>
+        <p>Первая ОС отправляет сообщение контроллеру GPIO, чтобы активировать пин 16 (светодиод на плате). Любопытный факт: аппаратура спроектирована так, что LED загорается при выключении пина! А поскольку процессор никогда не останавливается, в конце нужно поставить бесконечный цикл:</p>
+        <pre class="code"><span class="lang-tag">arm</span><code style="direction:ltr;text-align:left">// main.s — включение OK/ACT LED на Raspberry Pi (ARMv6)
+.section .init          // эта секция выполняется первой
+.global _start
+
+_start:
+    ldr r0, =0x20200000  // базовый адрес контроллера GPIO
+    mov r1, #1           // настройка выходных битов для пина 16
+    lsl r1, #18          // (пин 16 — каждые 3 бита, значит бит 18)
+    str r1, [r0, #4]     // запись в GPFSEL1: пин 16 стал выходом
+
+    mov r1, #1
+    lsl r1, #16
+    str r1, [r0, #40]    // GPCLR0: «выключение» пина 16 ← LED горит!
+
+loop$:
+    b loop$              // бесконечный цикл</code></pre>
+        <p>Сборка через make создаёт три файла: kernel.img (загрузочный образ), kernel.list (реальный ассемблерный вывод) и kernel.map (карта адресов меток). После копирования на SD-карту и включения Pi зелёный LED загорится — это ваша первая операционная система!</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Реальное железо — лучший учитель: Baking Pi подарит вам ОС, которую можно потрогать руками.</p>
+      <h2>Почему этот курс стоит пройти</h2>
+        <ul>
+          <li><b>Реальное железо</b>: вы работаете на настоящей плате, а не только в эмуляторе.</li>
+          <li><b>Чистый ассемблер</b>: никакого C-компилятора посередине; связь между кодом и железом полностью прозрачна.</li>
+          <li><b>Теория + практика в каждом уроке</b>: каждая концепция (драйвер, линковка, таймер, таблица поиска) объясняется до кода.</li>
+          <li><b>Полные ответы к урокам</b>: эталонные решения каждого урока лежат на странице загрузки курса.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> этот курс — отличная отправная точка для тех, кто захочет затем взяться за более продвинутые ARM-учебники, например mini-arm-os — он тоже переведён в этом каталоге.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Baking Pi: ОС для Raspberry Pi» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Baking Pi: ОС для Raspberry Pi» принадлежит автору оригинала (Alex Chadwick (Кембриджский университет)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Alex Chadwick (Кембриджский университет)). Читайте оригинал на
         <a href="http://www.cl.cam.ac.uk/projects/raspberrypi/tutorials/os/index.html" target="_blank" rel="noopener">http://www.cl.cam.ac.uk/projects/raspberrypi/tutorials/os/index.html</a>.
       </div>
     </article>

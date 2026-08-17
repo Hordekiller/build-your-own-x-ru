@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Flappy Bird на JavaScript»
+          <b>Оригинальный источник:</b> «How to make Flappy Bird in HTML5 with Phaser»
         </div>
         <a class="btn solid" href="http://www.lessmilk.com/tutorial/flappy-bird-phaser-1" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-flappy-bird.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,107 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Flappy Bird клон: физика прыжка, трубы-препятствия и коллизии — механика, завоевавшая мир.</p>
+      <h2>Об уроке</h2>
+        <p>Томас Палф (создатель блога lessmilk.com и серии «одна игра в неделю») написал простую версию Flappy Bird на <b>Phaser 2.4</b> — всего <b>65 строк кода</b> — и объясняет её шаг за шагом: гравитация, прыжок по клику, движущиеся трубы и столкновения. Обновлённая версия для Phaser 3 есть на <a href="https://lessmilk.com/phaser-game-tutorial/" target="_blank" rel="noopener">lessmilk.com/phaser-game-tutorial</a>.</p>
+        <div class="callout note">
+          <strong>Замечание:</strong> это лучший первый урок по Phaser: вся структура игры (три сцены: Boot/Play/GameOver) показана в минимально возможном коде.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура файлов</h2>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">flappy-phaser/
+├── index.html        # загрузка Phaser и main.js
+├── main.js           # вся игра — 65 строк
+└── assets/
+    ├── bird.png      # птица
+    └── pipe.png      # труба</code></pre>
+      </section>
+      <section>
+      <h2>Код игры (полный)</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Вся игра в 65 строк!
+var game = new Phaser.Game(400, 490, Phaser.AUTO, &#x27;gameDiv&#x27;);
+
+// Главная сцена: пустая, потому что всё создаётся в состоянии Play
+var mainState = {
+  preload: function() {
+    game.load.image(&#x27;bird&#x27;, &#x27;assets/bird.png&#x27;);
+    game.load.image(&#x27;pipe&#x27;, &#x27;assets/pipe.png&#x27;);
+  },
+
+  create: function() {
+    // гравитация: птица каждое мгновение падает вниз
+    game.physics.startSystem(Phaser.Physics.ARCADE);
+
+    this.bird = game.add.sprite(100, 245, &#x27;bird&#x27;);
+    game.physics.arcade.enable(this.bird);
+    this.bird.body.gravity.y = 1000;
+
+    // прыжок по клику/нажатию
+    var spaceKey = game.input.keyboard.addKey(Phaser.Keyboard.SPACEBAR);
+    spaceKey.onDown.add(this.jump, this);
+
+    // группа труб + таймер их создания
+    this.pipes = game.add.group();
+    this.timer = game.time.events.loop(1500, this.addRowOfPipes, this);
+
+    this.score = 0;
+    this.labelScore = game.add.text(20, 20, &quot;0&quot;,
+      { font: &quot;30px Arial&quot;, fill: &quot;#ffffff&quot; });
+  },
+
+  update: function() {
+    // столкновение птицы с трубами → конец игры
+    game.physics.arcade.overlap(this.bird, this.pipes, this.restartGame, null, this);
+
+    if (this.bird.y &lt; 0 || this.bird.y &gt; 490) {
+      this.restartGame();
+    }
+  },
+
+  jump: function() {
+    this.bird.body.velocity.y = -350; // толчок вверх
+  },
+
+  addRowOfPipes: function() {
+    // случайный проход (расстояние от 1 до 5)
+    var hole = Math.floor(Math.random() * 5) + 1;
+
+    for (var i = 0; i &lt; 10; i++) {
+      if (i != hole &amp;&amp; i != hole + 1) {
+        var pipe = game.add.sprite(400, i * 49, &#x27;pipe&#x27;);
+        game.physics.arcade.enable(pipe);
+        pipe.body.velocity.x = -200; // движение влево
+        pipe.checkWorldBounds = true;
+        pipe.outOfBoundsKill = true;
+        this.pipes.add(pipe);
+      }
+    }
+    this.score += 1;
+    this.labelScore.text = this.score;
+  },
+
+  restartGame: function() {
+    game.state.start(&#x27;main&#x27;); // начать заново
+  },
+};
+
+game.state.add(&#x27;main&#x27;, mainState);
+game.state.start(&#x27;main&#x27;);</code></pre>
+        <p>Вот и всё! Полноценный Flappy Bird — достаточно открыть <code>index.html</code>, и он заработает.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>Птица и гравитация</li>
-          <li>Трубы и генерация</li>
-          <li>Коллизии</li>
-          <li>Очки и рестарт</li>
+          <li>Минимально возможный код полной игры на Phaser (физика, таймер, группы).</li>
+          <li>Подходит новичкам; каждая строка объяснена.</li>
+          <li>После него можно добавить звук, медали и растущую сложность.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Flappy Bird — физика и генератор: птица падает гравитацией, прыжок — импульс, трубы — случайные позиции.</p>
-        <p>Прыжок — изменение скорости:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>bird.vy = -JUMP;  // импульс вверх
-bird.y += bird.vy * dt; // и гравитация сверху</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Клоны хитов — опыт всех игровых студий: этот проект останется в портфолио и памяти.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Flappy Bird на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Flappy Bird на JavaScript» принадлежит автору оригинала (Thomas Palef). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Thomas Palef). Читайте оригинал на
         <a href="http://www.lessmilk.com/tutorial/flappy-bird-phaser-1" target="_blank" rel="noopener">http://www.lessmilk.com/tutorial/flappy-bird-phaser-1</a>.
       </div>
     </article>

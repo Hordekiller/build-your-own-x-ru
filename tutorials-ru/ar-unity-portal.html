@@ -53,40 +53,34 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок строит AR-портал в Unity: «телепортационный» проём, внутри которого виден другой мир. Портал размещается на плоскости, а вторая камера рендерит скрытую сцену в текстуру проёма.</p>
+      <h2>Об этом учебнике</h2>
+        <p>В этой видео-серии вы научитесь создавать AR-портал (например, дверь в другой мир) в Unity; практически осваиваются техники клиппинга, рендеринга второй камерой и визуальные эффекты.</p>
+        <pre class="code"><span class="lang-tag">C#</span><code style="direction:ltr;text-align:left">// Рендеринг второй камеры внутри портала в текстуру и применение её на дверь
+portalCamera.targetTexture = portalRT;   // RenderTexture портала
+portalMaterial.mainTexture = portalRT;   // вид «другого мира» на двери</code></pre>
+        <p>Секрет портала в этом: вторая камера, рендерящая скрытую сцену в текстуру двери; клиппинг не даёт показывать объекты за дверью.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/videoseries?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn" title="Видеоплейлист: AR-портал в Unity" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
         <ul>
-          <li>Портал как проём в другую сцену</li>
-          <li>Рендер в текстуру: камера внутреннего мира</li>
-          <li>Размещение портала на плоскости AR</li>
-          <li>Сквозное движение: портал без «перегородок»</li>
+          <li>Дизайн сцены портала</li>
+          <li>Техника Portal Clipping</li>
+          <li>Комбинирование основной камеры и камеры портала</li>
+          <li>Эффекты света и частиц</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Портал обманывает глаз: геометрия проёма остаётся, но сквозь него виден рендер скрытой камеры. Совмещение реальной сцены и внутреннего мира AR делает эффект телепортации.</p>
-        <p>Переключение камеры для внутренней сцены:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>// Внутренняя камера рисует мир в текстуру портала
-portalCamera.targetTexture = portalTexture;
-// Внешняя камера рисует реальный мир с проёмом
-RenderTexture.active = portalTexture;</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Порталы — зрелищный приём AR: освоив его, вы поймёте технику рендера в текстуру, из которой состоят зеркала, экраны и «окна в другие миры» в играх.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Создаём AR-портал в Unity» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLPCqNOwwN794Gz5fzUSi1p4OqLU0HTmvn</a>.
       </div>
     </article>

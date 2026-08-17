@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Регексп на JavaScript в 40 строках»
+          <b>Оригинальный источник:</b> «Build a Regex Engine in Less than 40 Lines of Code»
         </div>
         <a class="btn solid" href="https://nickdrane.com/build-your-own-regex/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/regex-40-lines.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,203 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Регексп-сопоставитель в 40 строках JS: шаблон → автомат → проверка — минимализм классики.</p>
+      <h2>Введение</h2>
+        <p>Несколько дней назад я наткнулся на статью, в которой Роб Пайк реализует начальный движок регулярных выражений на C. Я перевёл его код на JavaScript и добавил тестовую спецификацию, чтобы любой мог провести себя по созданию regex-движка. Спецификация и решение доступны в этом репозитории GitHub. Этот пост — путеводитель по моему решению.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Классический алгоритм</li>
-          <li>Токенизация</li>
-          <li>Сопоставление</li>
-          <li>Компактность</li>
-        </ul>
+      <h2>Задача</h2>
+        <p>Наш regex-движок поддерживает следующий синтаксис:</p>
+        <pre class="code"><span class="lang-tag">Синтаксис</span><code style="direction:ltr;text-align:left">синтаксис  значение                       пример   сопоставляется с
+a          конкретный литеральный символ  q        q
+*          ноль и более предыдущего       a*       &quot;&quot;, a, aa, aaa
+?          ноль или один предыдущего      a?       &quot;&quot;, a
+.          любой символ                   .        a, b, c, d, e ...
+^          начало строки                  ^c       c, ca, caa, cbb ...
+$          конец строки                   a$       ba, baaa, qwerta ...</code></pre>
+        <p>Цель — дать надёжный синтаксис, покрывающий большую часть случаев использования regex минимальным кодом.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>40 строк — вся суть: разбор и сопоставление в чистом виде. Отличный пример силы минимализма.</p>
-        <p>Сердце сопоставителя:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function match(pattern, text, pi = 0, ti = 0) {
-  if (pi === pattern.length) return ti === text.length;
-  const wild = pattern[pi + 1] === "*";
-  // ...по одной позиции паттерна за шаг
+      <h2>Сопоставление одного символа</h2>
+        <p>Первый шаг — функция, принимающая односимвольный шаблон и односимвольный текст и возвращающая булево значение: сопоставляются ли они. Шаблон <code>.</code> считается джокером и сопоставляется с любым символом.</p>
+        <p>Несколько примеров:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">matchOne(&#x27;a&#x27;, &#x27;a&#x27;) -&gt; true
+matchOne(&#x27;.&#x27;, &#x27;z&#x27;) -&gt; true
+matchOne(&#x27;&#x27;, &#x27;h&#x27;) -&gt; true
+matchOne(&#x27;a&#x27;, &#x27;b&#x27;) -&gt; false
+matchOne(&#x27;p&#x27;, &#x27;&#x27;) -&gt; false</code></pre>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function matchOne(pattern, text) {
+  if (!pattern) return true; // любой текст сопоставляется с пустым шаблоном
+  if (!text) return false; // если шаблон задан, а текст пуст, сопоставление невозможно
+  if (pattern === &quot;.&quot;) return true; // любой входной текст сопоставляется с джокером
+  return pattern === text;
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Маленькие регекспы — ясность: этот 40-строчный урок навсегда свяжет понятия «шаблон» и «автомат».</p>
+      <h2>Сопоставление строк одинаковой длины</h2>
+        <p>Теперь добавим поддержку более длинных шаблонов и текстов. Пока рассмотрим только пары шаблон/текст одинаковой длины. Я знаю, что решение напрашивается на рекурсию, поэтому используем рекурсию. Хотим многократно вызывать <code>matchOne</code> на последовательных парах символов из комбинации шаблон/текст.</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function match(pattern, text) {
+  if (pattern === &quot;&quot;) return true;
+  // базовый случай - если шаблон пуст, любой входной текст сопоставляется
+  else
+    return (
+      matchOne(pattern[0], text[0]) &amp;&amp; match(pattern.slice(1), text.slice(1))
+    );
+}</code></pre>
+        <p>Код выше идёт посимвольно по парам шаблон/текст. Сначала сравнивает <code>pattern[0]</code> с <code>text[0]</code>, затем <code>pattern[1]</code> с <code>text[1]</code> и так до <code>i === pattern.length - 1</code>. Если в любой точке они не сопоставились, знаем, что шаблон не может сопоставиться с текстом.</p>
+        <p>Приведём пример. Предположим, вызываем <code>match('a.c', 'abc')</code>, что превращается в <code>matchOne('a', 'a') &amp;&amp; match('.c', 'bc')</code>. Продолжая вычислять эти функции, приходим к <code>matchOne('a', 'a') &amp;&amp; matchOne('.', 'b') &amp;&amp; matchOne('c', 'c') &amp;&amp; match("", "")</code>, что равно <code>true &amp;&amp; true &amp;&amp; true &amp;&amp; true</code>. Сопоставление есть!</p>
+      </section>
+      <section>
+      <h2>Символ $</h2>
+        <p>Добавим поддержку специального символа шаблона <code>$</code>, позволяющего сопоставлять конец строки. Решение сводится к добавлению базового случая в функцию match:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function match(pattern, text) {
+  if (pattern === &quot;&quot;) return true;
+  if (pattern === &quot;$&quot; &amp;&amp; text === &quot;&quot;) return true;
+  else
+    return (
+      matchOne(pattern[0], text[0]) &amp;&amp; match(pattern.slice(1), text.slice(1))
+    );
+}</code></pre>
+      </section>
+      <section>
+      <h2>Символ ^</h2>
+        <p>Добавим поддержку специального символа шаблона <code>^</code>, позволяющего сопоставлять начало строки. Введём новую функцию <code>search</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function search(pattern, text) {
+  if (pattern[0] === &quot;^&quot;) {
+    return match(pattern.slice(1), text);
+  }
+}</code></pre>
+        <p>Эта функция станет новой точкой входа нашего кода. До сих пор мы сопоставляли только шаблоны, начинающиеся с начала текста. Теперь делаем это явным, требуя префикс <code>^</code>. А как же шаблоны, встречающиеся в любом месте текста?</p>
+      </section>
+      <section>
+      <h2>Сопоставления, начинающиеся с любого места</h2>
+        <p>Сейчас следующие случаи возвращают true:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">search(&quot;^abc&quot;, &quot;abc&quot;)
+search(&quot;^abcd&quot;, &quot;abcd&quot;)</code></pre>
+        <p>Но <code>search("bc", "abcd")</code> возвращает <code>undefined</code>. Хотим, чтобы возвращалось true.</p>
+        <p>Если пользователь не указал, что шаблон сопоставляется с началом текста, хотим искать шаблон в любой возможной стартовой точке внутри текста. Если шаблон не начинается с <code>^</code>, переходим к этому поведению по умолчанию:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function search(pattern, text) {
+  if (pattern[0] === &quot;^&quot;) {
+    return match(pattern.slice(1), text);
+  } else {
+    // Этот код выполняет match(pattern, text.slice(index)) на каждом индексе текста.
+    // То есть пробуем шаблон в каждой стартовой точке текста.
+    return text.split(&quot;&quot;).some((_, index) =&gt; {
+      return match(pattern, text.slice(index));
+    });
+  }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Символ ?</h2>
+        <p>Хотим сопоставлять ноль или один символ перед <code>?</code>.</p>
+        <p>Несколько примеров:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">search(&quot;ab?c&quot;, &quot;ac&quot;) -&gt; true
+search(&quot;ab?c&quot;, &quot;abc&quot;) -&gt; true
+search(&quot;a?b?c?&quot;, &quot;abc&quot;) -&gt; true
+search(&quot;a?b?c?&quot;, &quot;&quot;) -&gt; true</code></pre>
+        <p>Первый шаг — изменить <code>match</code>, чтобы распознавать присутствие символа <code>?</code> и передавать работу функции <code>matchQuestion</code>, которую определим дальше:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function match(pattern, text) {
+  if (pattern === &quot;&quot;) {
+    return true;
+  } else if (pattern === &quot;$&quot; &amp;&amp; text === &quot;&quot;) {
+    return true;
+    // обратите внимание: смотрим на pattern[1], а не pattern[0].
+    // pattern[0] - символ, который должен сопоставляться ноль или один раз.
+  } else if (pattern[1] === &quot;?&quot;) {
+    return matchQuestion(pattern, text);
+  } else {
+    return (
+      matchOne(pattern[0], text[0]) &amp;&amp; match(pattern.slice(1), text.slice(1))
+    );
+  }
+}</code></pre>
+        <p><code>matchQuestion</code> должен обрабатывать два случая:</p>
+        <ul>
+          <li>Символ перед <code>?</code> не сопоставляется, но текст сопоставляется с остатком шаблона (всем, что после <code>?</code>).</li>
+          <li>Символ перед <code>?</code> сопоставляется, и остаток текста (минус один сопоставленный символ) сопоставляется с остатком шаблона.</li>
+        </ul>
+        <p>Если любой из этих случаев truthy, <code>matchQuestion</code> может вернуть true.</p>
+        <p>Рассмотрим первый случай. Как проверить, что текст сопоставляется со всем шаблоном, кроме синтаксиса <code>_?</code>? Иными словами, как проверить, что символ перед <code>?</code> появился ноль раз? Отрезаем два символа от шаблона (первый — символ перед <code>?</code>, второй — сам <code>?</code>) и вызываем функцию match:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function matchQuestion(pattern, text) {
+  return match(pattern.slice(2), text);
+}</code></pre>
+        <p>Второй случай чуть сложнее, но, как и раньше, переиспользует уже написанные функции:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function matchQuestion(pattern, text) {
+  if (matchOne(pattern[0], text[0]) &amp;&amp; match(pattern.slice(2), text.slice(1))) {
+    return true;
+  } else {
+    return match(pattern.slice(2), text);
+  }
+}</code></pre>
+        <p>Если <code>text[0]</code> сопоставляется с <code>pattern[0]</code> и остаток текста (минус часть, сопоставленная matchOne) сопоставляется с остатком шаблона — мы успешны. Можно переписать код так:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function matchQuestion(pattern, text) {
+  return (
+    (matchOne(pattern[0], text[0]) &amp;&amp; match(pattern.slice(2), text.slice(1))) ||
+    match(pattern.slice(2), text)
+  );
+}</code></pre>
+        <p>Что мне нравится во втором подходе — булев OR явно показывает: есть два случая, каждый из которых может быть истинным.</p>
+      </section>
+      <section>
+      <h2>Символ *</h2>
+        <p>Хотим сопоставлять символ перед <code>*</code> ноль или более раз.</p>
+        <p>Всё это должно возвращать true:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">search(&quot;a*&quot;, &quot;&quot;)
+search(&quot;a*&quot;, &quot;aaaaaaa&quot;)
+search(&quot;a*b&quot;, &quot;aaaaaaab&quot;)</code></pre>
+        <p>Как и при поддержке <code>?</code>, передаём работу функции <code>matchStar</code> из <code>match</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function match(pattern, text) {
+  if (pattern === &quot;&quot;) {
+    return true;
+  } else if (pattern === &quot;$&quot; &amp;&amp; text === &quot;&quot;) {
+    return true;
+  } else if (pattern[1] === &quot;?&quot;) {
+    return matchQuestion(pattern, text);
+  } else if (pattern[1] === &quot;*&quot;) {
+    return matchStar(pattern, text);
+  } else {
+    return (
+      matchOne(pattern[0], text[0]) &amp;&amp; match(pattern.slice(1), text.slice(1))
+    );
+  }
+}</code></pre>
+        <p><code>matchStar</code>, как и <code>matchQuestion</code>, должен обрабатывать два случая:</p>
+        <ul>
+          <li>Символ перед <code>*</code> не сопоставляется, но текст сопоставляется с остатком шаблона (всем, что после <code>*</code>).</li>
+          <li>Символ перед <code>*</code> сопоставляется один или более раз, и остаток текста сопоставляется с остатком шаблона.</li>
+        </ul>
+        <p>Поскольку есть два случая, оба ведущих к сопоставлению, знаем, что <code>matchStar</code> можно реализовать булевым OR. Более того, случай 1 для <code>matchStar</code> — в точности случай 1 для <code>matchQuestion</code>, и его можно реализовать одинаково: <code>match(pattern.slice(2), text)</code>. Значит, остаётся построить выражение, удовлетворяющее случаю 2:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function matchStar(pattern, text) {
+  return (
+    (matchOne(pattern[0], text[0]) &amp;&amp; match(pattern, text.slice(1))) ||
+    match(pattern.slice(2), text)
+  );
+}</code></pre>
+      </section>
+      <section>
+      <h2>Рефакторинг</h2>
+        <p>Теперь можно вернуться и умно упростить <code>search</code> трюком, которому я научился у Питера Норвига:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function search(pattern, text) {
+  if (pattern[0] === &quot;^&quot;) {
+    return match(pattern.slice(1), text);
+  } else {
+    return match(&quot;.*&quot; + pattern, text);
+  }
+}</code></pre>
+        <p>Используем сам символ <code>*</code>, чтобы позволить шаблону появляться в любом месте строки. Префикс <code>.*</code> говорит: любое число любых символов может стоять перед нашим шаблоном.</p>
+      </section>
+      <section>
+      <h2>Заключение</h2>
+        <p>Удивительно, насколько прост и элегантен код такой обобщённой и сложной программы. Полный исходник доступен в этом репозитории GitHub. (Автор также написал продолжение о fuzz-тестировании этого движка.)</p>
+        <div class="callout note">
+          <strong>Сноска:</strong> в коде намеренно оставлен маленький баг: не покрыт случай пустой строки в <code>search</code>. Когда <code>text === ''</code>, <code>text.split("")</code> возвращает пустой массив и <code>match</code> корректно не вызывается.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Регексп на JavaScript в 40 строках» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Регексп на JavaScript в 40 строках» принадлежит автору оригинала (Nick Drane). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Nick Drane). Читайте оригинал на
         <a href="https://nickdrane.com/build-your-own-regex/" target="_blank" rel="noopener">https://nickdrane.com/build-your-own-regex/</a>.
       </div>
     </article>

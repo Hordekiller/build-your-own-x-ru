@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем свой front-end фреймворк»
+          <b>Оригинальный источник:</b> «Create Your Own Frontend Framework»
         </div>
         <a class="btn solid" href="https://mfrachet.github.io/create-frontend-framework/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-framework.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,115 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Полносценный урок о том, как свой фреймворк: MV*, привязка, маршрутизация и состояние — сборка каркаса с нуля.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>1. О книге</h2>
+        <p>Эта обучающая книга шаг за шагом показывает, как строится front-end фреймворк (вроде Vue или React). В конце книги у нас есть фреймворк под названием <b>«Кодоминар»</b> с тремя основными возможностями:</p>
         <ul>
-          <li>Архитектура MV*</li>
-          <li>Маршрутизация</li>
-          <li>Привязка и рендер</li>
-          <li>Экосистема компонентов</li>
+          <li><b>Шаблонизация (Templating)</b>: поглощение декларативного HTML вместе с директивами;</li>
+          <li><b>Управление state</b>: автоматическое обновление интерфейса при изменении модели;</li>
+          <li><b>Virtual DOM</b>: эффективное обновление DOM с diff.</li>
         </ul>
+        <p>Любопытная деталь: каждая глава книги — объяснение концепции + полный код + интерактивное упражнение, а в конце итоговый код можно взять из репозитория <a href="https://github.com/mfrachet/create-frontend-framework" target="_blank" rel="noopener">GitHub</a>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Фреймворк решает 4 задачи: состояние, представление, маршруты и привязка. Урок проходит каждую с кодом и объяснением.</p>
-        <p>Роутер на основе location:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>window.addEventListener("hashchange", () =&gt; {
-  const path = location.hash.slice(1);
-  render(routes[path] || notFound);
-});</code></pre>
+      <h2>2. Первый шаг: проектирование движка шаблонов (Templating)</h2>
+        <p>Наш фреймворк должен «компилировать» HTML. Сначала определим понятие «компонент»: функция, принимающая props и возвращающая виртуальное дерево; затем работа движка шаблонов — превращение этого дерева в DOM:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// компонент: функция, принимающая props и возвращающая виртуальное дерево
+function HelloWorld({ name }) {
+  return {
+    type: &#x27;h1&#x27;,
+    props: { class: &#x27;title&#x27; },
+    children: [&#x27;Привет, &#x27; + name + &#x27;!&#x27;],
+  };
+}
+
+// компиляция виртуального дерева в DOM
+function compileTree(vnode) {
+  if (typeof vnode === &#x27;string&#x27;) {
+    return document.createTextNode(vnode);
+  }
+
+  const el = document.createElement(vnode.type);
+
+  for (const key in vnode.props) {
+    // наши директивы (события) начинаются с префикса on
+    if (key.startsWith(&#x27;on&#x27;)) {
+      el.addEventListener(key.slice(2).toLowerCase(), vnode.props[key]);
+    } else {
+      el.setAttribute(key, vnode.props[key]);
+    }
+  }
+
+  vnode.children.forEach((child) =&gt; el.appendChild(compileTree(child)));
+  return el;
+}
+
+const root = document.getElementById(&#x27;app&#x27;);
+root.appendChild(compileTree(HelloWorld({ name: &#x27;мир&#x27; })));</code></pre>
+        <p>Этот движок шаблонов может поддерживать и простые HTML-директивы (циклы и условия): в книге вы познакомитесь с «директивами шаблонов», которые добавляются к сырому HTML.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Проектирование фреймворка — высшая школа инженерии: после этого урока вас не смутят внутренности Vue или Svelte.</p>
+      <h2>3. Второй шаг: управление state и перерисовка</h2>
+        <p>Чтобы интерфейс обновлялся при изменении state, нужны «центральное состояние» и механизм подписки. Книга выбирает простой подход, похожий на Vue, — реактивный объект:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function createReactiveState(initialState, listeners = []) {
+  return new Proxy(initialState, {
+    set(target, key, value) {
+      target[key] = value;
+      // любое изменение = уведомление всех слушателей (перерисовка)
+      listeners.forEach((listener) =&gt; listener());
+      return true;
+    },
+  });
+}
+
+// пример: каждое изменение state вызывает перерисовку дерева
+const state = createReactiveState({ count: 0 }, () =&gt; renderApp());
+
+function renderApp() {
+  const vnode = Counter();
+  diff(previousVnode, vnode, root); // diff и patch (следующий шаг)
+}</code></pre>
+        <p>Обратите внимание: использование <code>Proxy</code> означает, что <b>каждый доступ к state отслеживается</b>, и фреймворк знает, какие компоненты зависят от какой части state, — та же идея реактивности во Vue 3.</p>
+      </section>
+      <section>
+      <h2>4. Третий шаг: Virtual DOM и diff</h2>
+        <p>Заключительная часть книги реализует алгоритм diff, чтобы между рендерами применялись только реальные изменения. Книга вводит три главные функции:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// 1) построение прежнего и нового виртуальных деревьев
+// 2) их сравнение (diff) → результат: список изменений
+// 3) применение изменений в DOM (patch)
+
+function diff(oldVnode, newVnode, parentDom) {
+  if (oldVnode === undefined) {
+    // новый узел — создаём и добавляем
+    parentDom.appendChild(compileTree(newVnode));
+  } else if (oldVnode.type === newVnode.type) {
+    // тот же тип — обновляем атрибуты и детей (рекурсивно)
+    updateProps(parentDom.childNodes[0], oldVnode, newVnode);
+    const max = Math.max(oldVnode.children.length, newVnode.children.length);
+    for (let i = 0; i &lt; max; i++) {
+      diff(oldVnode.children[i], newVnode.children[i], parentDom.childNodes[0]);
+    }
+  } else {
+    // другой тип — полная замена узла
+    parentDom.replaceChild(compileTree(newVnode), parentDom.childNodes[0]);
+  }
+}</code></pre>
+      </section>
+      <section>
+      <h2>5. Итоги книги</h2>
+        <ul>
+          <li>Фреймворк состоит из трёх независимых слоёв: движок шаблонов, система state и Virtual DOM.</li>
+          <li>Реактивность через Proxy проще и точнее dirty checking; именно поэтому новые фреймворки (Vue 3, MobX) пошли этим путём.</li>
+          <li>В конце книги вы можете расширить свой фреймворк: добавить события, локальные компоненты и серверный рендер.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> книга полностью интерактивна — примеры редактируются и запускаются прямо в браузере. Для старта достаточно начального знакомства с JavaScript.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем свой front-end фреймворк» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем свой front-end фреймворк» принадлежит автору оригинала (Марвин Фраше (Marvin Frachet)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Марвин Фраше (Marvin Frachet)). Читайте оригинал на
         <a href="https://mfrachet.github.io/create-frontend-framework/" target="_blank" rel="noopener">https://mfrachet.github.io/create-frontend-framework/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Little Lisp на JavaScript»
+          <b>Оригинальный источник:</b> «Little Lisp Interpreter»
         </div>
         <a class="btn solid" href="https://maryrosecook.com/blog/post/little-lisp-interpreter" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-little-lisp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,89 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Маленький Lisp на JS: парсер, eval и REPL — язык с минималистичной красотой.</p>
+      <h2>История: интерпретатор меньше чем в 150 строках</h2>
+        <p>Мэри Роуз Кук этой статьёй доказала, что построить интерпретатор Lisp на JavaScript (языке браузеров) очень просто: весь проект — 4 функции: <code>tokenize</code>, <code>parse</code>, <code>evaluate</code> и <code>apply</code>. На выходе — язык с функциями, переменными, условиями и рекурсией.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Парсер списков</li>
-          <li>Eval</li>
-          <li>Стандартные функции</li>
-          <li>REPL</li>
-        </ul>
+      <h2>Шаг первый: tokenize</h2>
+        <p>Превращает входную строку в массив токенов — например, <code>(begin (define r 10) (* pi (* r r)))</code> превращается в <code>['(', 'begin', '(', 'define', 'r', '10', ')', '(', '*', 'pi', ...]</code>. Используется простая потоковая обработка через объект <code>memory</code>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Little Lisp сохраняет суть Lisp: списки как данные, eval как программа. На JS — коротко и понятно.</p>
-        <p>Сердце Little Lisp:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function evaluate(ast, env) {
-  if (Array.isArray(ast)) {
-    // вызов функции: eval всех элементов
+      <h2>Шаг второй: parse</h2>
+        <p>Превращает токены в дерево (вложенные списки). Если токен «(» — рекурсивно строится внутренний список до «)»:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function parse(tokens, memory) {
+  if (typeof memory === &#x27;undefined&#x27;) {
+    memory = { index: 0 };
   }
-  return env[ast] || parseInt(ast);
+
+  if (tokens[memory.index] === &#x27;(&#x27;) {           // начало списка
+    memory.index++;
+    let list = [];
+    while (tokens[memory.index] !== &#x27;)&#x27;) {
+      list.push(parse(tokens, memory));         // рекурсия для следующего элемента
+    }
+    memory.index++;                             // пропускаем &#x27;)&#x27;
+    return list;
+  } else if (tokens[memory.index] === &#x27;)&#x27;) {
+    throw new Error(&#x27;лишняя скобка!&#x27;);
+  } else {
+    const atomicToken = tokens[memory.index];
+    memory.index++;
+    return atomicToken;                         // атом: имя или число
+  }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Маленькие Lisp-ы — отличная практика: за вечер вы получите работающий язык и удовольствие.</p>
+      <h2>Шаг третий: evaluate</h2>
+        <p>Теперь вычисляется дерево: если атом «число» — его значение; если «имя» — значение переменной из окружения; если «список» — первый элемент функция, остальные аргументы (<code>apply</code>). Понятия closure и вложенного окружения пишутся прямо здесь:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function evaluate(ast, environment) {
+  if (typeof environment === &#x27;undefined&#x27;) {
+    environment = globalEnvironment;
+  }
+
+  // атомы
+  if (typeof ast === &#x27;string&#x27;) {
+    if (parseInt(ast) === NaN) {
+      return lookupVariable(ast, environment);   // имя переменной
+    } else {
+      return parseInt(ast);                       // число
+    }
+  }
+
+  // список: оператор и аргументы
+  const operator = ast[0];
+  const operands = ast.slice(1);
+
+  if (operator === &#x27;define&#x27;) {
+    const variable = operands[0];
+    const value = evaluate(operands[1], environment);
+    environment[variable] = value;                // определение переменной
+    return value;
+  }
+
+  if (operator === &#x27;begin&#x27;) {
+    // последовательное выполнение всех выражений
+    return operands.reduce((last, exp) =&gt; evaluate(exp, environment), undefined);
+  }
+
+  const closure = evaluate(operator, environment);
+  const args = operands.map(o =&gt; evaluate(o, environment));
+  return closure.apply(null, args);
+}</code></pre>
+      </section>
+      <section>
+      <h2>Что вы узнаете?</h2>
+        <p>1) Понятие AST и рекурсии; 2) окружение (environment) как таблицу имя→значение; 3) closure через <code>apply</code>; 4) что Lisp — это «рекурсивные правила», а не что-то магическое. Для определения функции <code>lambda</code> достаточно тех же паттернов.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Лучшая отправная точка для построения интерпретатора на JavaScript: коротко, читаемо и полно (переменные + функции). Если захотите потом локальные переменные, closures и GC — смотрите «Crafting Interpreters» или «mal».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Little Lisp на JavaScript» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Little Lisp на JavaScript» принадлежит автору оригинала (Mary Rose Cook). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Mary Rose Cook). Читайте оригинал на
         <a href="https://maryrosecook.com/blog/post/little-lisp-interpreter" target="_blank" rel="noopener">https://maryrosecook.com/blog/post/little-lisp-interpreter</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «OCR на C#: распознавание текста»
+          <b>Оригинальный источник:</b> «Neural Network OCR»
         </div>
         <a class="btn solid" href="https://www.codeproject.com/Articles/11285/Neural-Network-OCR" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-ocr-csharp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,88 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Система распознавания символов на C#: нейросеть для OCR — от нормализации до классификации букв.</p>
+      <h2>Введение: почему нейросеть для OCR</h2>
+        <p>Оптическое распознавание символов (OCR) — превращение изображения текста в редактируемый текст. Классический метод сравнения шаблонов (template matching) хрупок перед изменением шрифтов, размеров и поворотами букв. Статья Кириллова вместо этого использует <b>многослойную нейронную сеть с обучением обратным распространением</b> (backpropagation): сеть обучается на образцах букв, а затем распознаёт незнакомые. Реализация на <b>C#</b> с открытой библиотекой <b>AForge.NET</b> и без внешних зависимостей для обучения/работы.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Архитектура сети: вход, скрытый слой и выход</h2>
+        <p>Главная идея: каждое изображение буквы превращается в числовой вектор, и сеть должна сопоставить этот вектор одной из букв алфавита. Для буквы с изображением 12×12 пикселей вход имеет 144 нейрона. Выход сети тоже размером с алфавит; каждый выходной нейрон представляет одну букву, а предсказание сети — тот нейрон, у которого значение максимально.</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Определение нейронной сети: вход 144 нейрона, скрытый слой 50, выход = число букв
+NeuralNetwork network = new ActivationNetwork(
+    new SigmoidFunction(2),     // сигмоидная функция активации
+    144,                        // число входных нейронов (пиксели изображения)
+    50,                         // скрытый слой
+    alphabetSize);              // выходной слой (число букв)</code></pre>
+        <p>Выбор числа нейронов скрытого слоя — эмпирическая настройка: слишком мало = неспособность учить сложные закономерности, слишком много = риск переобучения (overfitting) и медленное обучение.</p>
+      </section>
+      <section>
+      <h2>Создание обучающих образцов</h2>
+        <p>Сердце обучения — данные. У Кириллова два источника образцов: <b>рукописные буквы</b> (пользователь рисует мышью в области 48×48) и <b>печатные буквы</b>, рендерящиеся из шрифтов Windows через GDI+: <b>Arial, Courier New, Tahoma, Times New Roman и Verdana</b>. Каждая буква рендерится в нескольких размерах и стилях (жирный/курсив), чтобы сеть выучила разнообразие.</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Рендер печатной буквы из шрифта и превращение в входной вектор сети
+Bitmap bitmap = DrawChar(letter, font, size);
+double[] input = ImageToVector(bitmap);   // серый уровень каждого пикселя, нормированный от 0 до 1
+double[] output = new double[alphabetSize]; // выходной вектор «one-hot»
+output[letterIndex] = 1;</code></pre>
+        <div class="callout note">
+          <strong>Замечание:</strong> для рукописных букв изображение сначала подвыборочно сжимается в сетку 12×12; это и уменьшает размер входа, и отчасти делает сеть устойчивой к небольшим смещениям.
+        </div>
+      </section>
+      <section>
+      <h2>Обучение обратным распространением</h2>
+        <p>Обучение идёт алгоритмом <b>backpropagation</b>: сеть предсказывает выход, вычисляется ошибка предсказания, и эта ошибка «просачивается» от выходного слоя к предыдущим, чтобы веса корректировались в сторону уменьшения ошибки. В AForge это делает класс <code>BackPropagationLearning</code>:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Создание обучающего устройства с обратным распространением
+BackPropagationLearning teacher = new BackPropagationLearning(network);
+teacher.LearningRate = 0.1;   // скорость обучения
+teacher.Momentum = 0.9;       // момент для ухода от колебаний
+
+// Цикл обучения: подача всех образцов, десятки повторов (epoch)
+for (int epoch = 0; epoch &lt; 100; epoch++)
+{
+    for (int sample = 0; sample &lt; samples.Length; sample++)
+    {
+        teacher.Run(samples[sample].Input, samples[sample].Output);
+    }
+}</code></pre>
+        <p>Скорость обучения и момент — критические параметры: высокая скорость обучения ускоряет тренировку, но делает её нестабильной; момент придаёт весам «инерцию», помогая проходить локальные минимумы.</p>
+      </section>
+      <section>
+      <h2>Распознавание (recognition)</h2>
+        <p>После обучения на каждом входном изображении сеть выдаёт выходной вектор; предсказанная буква — индекс наибольшего значения. Важный момент статьи: качество предсказания можно оценить разницей между двумя наибольшими выходами — если сеть колеблется между двумя буквами, лучше объявить «неизвестно», чем ошибиться:</p>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Запуск сети на изображении и поиск победившей буквы
+network.Compute(ImageToVector(bitmap));
+
+int best = 0, second = 1;
+if (network.Output[1] &gt; network.Output[0]) { best = 1; second = 0; }
+for (int i = 2; i &lt; network.Output.Length; i++)
+{
+    if (network.Output[i] &gt; network.Output[best])
+    {
+        second = best;
+        best = i;
+    }
+    else if (network.Output[i] &gt; network.Output[second])
+    {
+        second = i;
+    }
+}
+
+double diff = network.Output[best] - network.Output[second];
+char recognized = (diff &gt; Threshold) ? (char)(&#x27;A&#x27; + best) : &#x27;?&#x27;;</code></pre>
+      </section>
+      <section>
+      <h2>Результаты и ограничения</h2>
         <ul>
-          <li>Предобработка изображений</li>
-          <li>Нейросеть для символов</li>
-          <li>Обучение на наборе данных</li>
-          <li>Распознавание текста</li>
+          <li><b>Печатные буквы</b> с несколькими шрифтами распознаются хорошо, но чем декоративнее шрифт, тем больше обучающих образцов нужно.</li>
+          <li><b>Рукописные</b> сложнее; разброс почерка каждого человека велик, поэтому больше рукописных образцов = выше точность.</li>
+          <li>Сеть чувствительна к <b>масштабированию</b> входа; изображения нужно стандартизировать до подачи.</li>
+          <li>Той же идеей вместо букв можно учить цифры, символы или любые другие классы изображений.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>OCR — это цепочка: изображение → сегментация → классификация символа нейросетью. Урок строит её целиком.</p>
-        <p>Классификация символа сетью:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>double[] output = network.FeedForward(pixels);
-int letter = Array.IndexOf(output, output.Max());</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>OCR — классика ML-приложений: вы получите и нейросеть, и обработку изображений в одном проекте.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «OCR на C#: распознавание текста» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «OCR на C#: распознавание текста» принадлежит автору оригинала (Andrew Kirillov). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Andrew Kirillov). Читайте оригинал на
         <a href="https://www.codeproject.com/Articles/11285/Neural-Network-OCR" target="_blank" rel="noopener">https://www.codeproject.com/Articles/11285/Neural-Network-OCR</a>.
       </div>
     </article>

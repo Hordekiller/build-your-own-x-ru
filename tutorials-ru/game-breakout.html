@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Breakout на C++»
+          <b>Оригинальный источник:</b> «LearnOpenGL — Breakout»
         </div>
         <a class="btn solid" href="https://learnopengl.com/In-Practice/2D-Game/Breakout" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-breakout.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,70 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Клон Breakout на C++: ракетка, мяч, блоки и коллизии — аркада, которую просто начать.</p>
+      <h2>Предпосылки и место главы</h2>
+        <p>Эта глава — часть «In Practice → 2D Game» книги LearnOpenGL: прикладной проект, применяющий весь предыдущий материал книги в виде реальной игры. Предпосылка: знакомство с главами «Getting Started» и «Lighting» (особенно шейдеры, текстуры и матричная математика).</p>
+        <p>Игра Breakout (Atari, 1976): ракетка внизу, мяч, отскакивающий от стен и блоков, а блоки уничтожаются. Что делает именно эту реализацию особенной — графические технологии: <b>particles</b> (частицы), <b>рендеринг текста</b>, <b>power-ups</b> и <b>постобработка</b> — всё на чистом OpenGL.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Ракетка и мяч</li>
-          <li>Коллизии и отскоки</li>
-          <li>Стена из блоков</li>
-          <li>Очки и стекхалы</li>
-        </ul>
+      <h2>Архитектура проекта</h2>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">├── Breakout/           # проект
+│   ├── src/
+│   │   ├── shader.h          # класс шейдера (GLSL)
+│   │   ├── texture.h         # загрузка текстур
+│   │   ├── game.h/.cpp       # класс Game: игровой цикл и состояние
+│   │   ├── game_level.h      # построение уровней из текстовых файлов
+│   │   ├── ball_object.h     # мяч и физика столкновений
+│   │   ├── particle.h        # система частиц
+│   │   ├── post_processor.h  # постобработка
+│   │   └── text_renderer.h   # рендеринг текста
+│   └── shaders/              # шейдеры
+└── ...</code></pre>
+        <p>Уровни определяются в текстовых файлах: каждая строка — ряд блоков, а каждый символ задаёт цвет блока — создать новый уровень значит просто написать файл!</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Breakout — канонический старт: мяч, ракетка, блоки, коллизии. Урок даёт структуру, а не только код.</p>
-        <p>Отскок мяча от ракетки:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>if (ball.intersects(racket)) {
-    ball.vel.x += (ball.x - racket.x) * 0.1f;
-    ball.vel.y = -abs(ball.vel.y);
+      <h2>Логика столкновений: AABB и круг</h2>
+        <p>Сердце игры — столкновение мяча (круга) с блоками и ракеткой (прямоугольниками AABB). <b>Техника bounce-off</b> — определение того, с какой стороны мяч столкнулся, и отражение на его основе:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Определение столкновения круга (мяча) с прямоугольником (блок/ракетка)
+Collision CheckCollision(BallObject &amp;ball, GameObject &amp;box) {
+  // Ближайшая точка прямоугольника к центру круга
+  glm::vec2 closest = glm::clamp(ball.Position, box.Position,
+                                 box.Position + box.Size);
+  // Расстояние от центра круга до этой точки
+  glm::vec2 diff = ball.Position - closest;
+  float distance = glm::length(diff);
+
+  // Если расстояние меньше радиуса, произошло столкновение
+  if (distance &lt;= ball.Radius) {
+    // Определение направления удара сравнением diff с размерами
+    glm::vec2 overlap = glm::abs(diff);
+    if (overlap.x &lt; overlap.y) {
+      ball.Velocity.x = -ball.Velocity.x;  // сбоку
+    } else {
+      ball.Velocity.y = -ball.Velocity.y;  // сверху/снизу
+    }
+    return { true, ball.Position - closest };
+  }
+  return { false, glm::vec2(0.0f) };
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждая аркада начинается с Breakout: этот урок останется в вашей памяти как первый «живой» игровой код.</p>
+      <h2>Визуальные эффекты</h2>
+        <ul>
+          <li><b>Particles</b>: шлейф частиц за мячом и умирающими блоками; каждая частица — маленький четырёхугольник с GLSL-шейдером, который умирает и возрождается.</li>
+          <li><b>Postprocessing</b>: с помощью FrameBuffer сцена рендерится в текстуру, после чего применяется эффект shake со случайными смещениями сэмплирования.</li>
+          <li><b>Text rendering</b>: вывод счёта и сообщений через FreeType на одном шейдере.</li>
+          <li><b>Power-ups</b>: падающие «горшочки» с эффектами вроде большой ракетки, липкого мяча, проходящих (пробивающих блоки) мячей и множественных мячей.</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Этот урок — мост от «компьютерной графики» к «разработке игр»: все техники OpenGL (буферы, шейдеры, текстуры, FBO) собраны в одной полноценной игре. Полный код доступен в GitHub-репозитории LearnOpenGL.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Breakout на C++» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Breakout на C++» принадлежит автору оригинала (Йоахим де Врис (Joey de Vries)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Йоахим де Врис (Joey de Vries)). Читайте оригинал на
         <a href="https://learnopengl.com/In-Practice/2D-Game/Breakout" target="_blank" rel="noopener">https://learnopengl.com/In-Practice/2D-Game/Breakout</a>.
       </div>
     </article>

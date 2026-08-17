@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Регексп-движок на Python»
+          <b>Оригинальный источник:</b> «build-your-own.org — Regex Engines (b2a)»
         </div>
         <a class="btn solid" href="https://build-your-own.org/b2a/r0_intro" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/regex-engine-python-b2a.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,268 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Движок regexp на Python: компиляция и сопоставление — регулярные выражения с нуля.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Проект R: движки регулярных выражений</h2>
+        <p>Регулярные выражения — не магия. Можно понять их, построив один-два движка regex своими руками.</p>
+        <p>Это не так уж сложно: мы можем разобрать regex примерно в 100 строк Python и выполнить его примерно в 50 строк с backtracking. А для читателей среднего уровня NFA кодируется примерно в 100 строк Python.</p>
         <ul>
-          <li>Компиляция</li>
-          <li>Автомат</li>
-          <li>Сопоставление</li>
-          <li>Расширения</li>
+          <li><strong>R1. Разбор регулярных выражений</strong> (новичок)</li>
+          <li><strong>R2. Regex с backtracking</strong> (новичок)</li>
+          <li><strong>R3. Обход графа и Regex</strong> (средний)</li>
+          <li><strong>R4. Детерминированные конечные автоматы</strong> (продвинутый)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Python-движок — прозрачный учебник: токены, автоматы и сопоставление. Python подходит для чтения кода.</p>
-        <p>Определение автомата на Python:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>class NFA:
-    def __init__(self, start, end):
-        self.start, self.end = start, end
-        self.end.nfa = self  # связь для повторений</code></pre>
+      <h2>R1. Разбор регулярных выражений (новичок)</h2>
+        <h3>Введение</h3>
+        <p><strong>Что вы узнаете:</strong></p>
+        <ul>
+          <li>Regex — не магия.</li>
+          <li>Деревья и структурированные данные.</li>
+          <li>Рекурсия и техники разбора.</li>
+        </ul>
+        <p><strong>Какие возможности regex вы реализуете:</strong></p>
+        <ul>
+          <li><code>ab</code> — конкатенация: сначала сопоставь подвыражение <code>a</code>, затем <code>b</code>.</li>
+          <li><code>a|b</code> — альтернатива: сопоставь либо <code>a</code>, либо <code>b</code>.</li>
+          <li><code>a*</code>, <code>a+</code>, <code>a{n}</code>, <code>a{x,y}</code> — повторение: ноль или более раз, минимум один раз, <em>n</em> раз и от <em>x</em> до <em>y</em> раз.</li>
+          <li><code>(a)</code> — подвыражение: процитируй подвыражение. Выражения могут быть вложенными.</li>
+          <li><code>x</code>, <code>.</code> — сопоставление одного символа: литеральный символ или произвольный символ.</li>
+        </ul>
+        <h3>Анализ задачи</h3>
+        <p>Regex — это кусок строки. Эта строка представляет структуру. Часто мы работаем не со строкой, а со структурой, которую она обозначает. Процесс превращения строки в структуру называется «разбор» (parsing).</p>
+        <p>Структура regex рекурсивна. Рекурсия означает иерархию и подструктуры, похожие на саму структуру. Возможно, не очевидно, как regex рекурсивен; начнём с того, что вам знакомо.</p>
+        <p>Формула <code>(1+2)+3</code> рекурсивна; у второго + два подвыражения: <code>1+2</code> и <code>3</code>. <code>1+2+3</code> эквивалентно <code>(1+2)+3</code>, просто скобки неявные. <code>1+2×3</code> неявно <code>1+(2×3)</code>; × имеет больший приоритет, чем +.</p>
+        <p>Вернёмся к regex. <code>abc</code> неявно <code>((a)b)c</code>; просто считайте невидимый оператор конкатенации как ×: <code>((a)×b)×c</code>. Точно так же <code>a|bc</code> равно <code>a|(bc)</code>, как <code>a+(b×c)</code>.</p>
+        <p>Конкатенация и альтернатива — «инфиксные» операторы; их подвыражения — слева и справа от оператора. Оператор повторения — «постфиксный», как факториал (<code>n!</code>).</p>
+        <p>Три оператора, три приоритета. Постфиксный оператор — самый высокий, затем конкатенация, затем альтернатива.</p>
+        <p>Чтобы разобрать regex рекурсией, оператор с самым высоким приоритетом должен разбираться на самом нижнем (самом глубоком) уровне иерархии. Самый нижний уровень regex — либо одиночный символ, либо процитированное подвыражение. На уровень выше добавляется оператор повторения (может, ни одного). Затем конкатенация, затем альтернатива.</p>
+        <h3>Начало кода</h3>
+        <p>Во-первых, определяем форму наших разобранных структур. Это деревья, очевидно.</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">assert re_parse(&#x27;&#x27;) is None
+assert re_parse(&#x27;.&#x27;) == &#x27;dot&#x27;
+assert re_parse(&#x27;a&#x27;) == &#x27;a&#x27;
+assert re_parse(&#x27;ab&#x27;) == (&#x27;cat&#x27;, &#x27;a&#x27;, &#x27;b&#x27;)
+assert re_parse(&#x27;a|b&#x27;) == (&#x27;split&#x27;, &#x27;a&#x27;, &#x27;b&#x27;)
+assert re_parse(&#x27;a+&#x27;) == (&#x27;repeat&#x27;, &#x27;a&#x27;, 1, float(&#x27;inf&#x27;))
+assert re_parse(&#x27;a{3,6}&#x27;) == (&#x27;repeat&#x27;, &#x27;a&#x27;, 3, 6)
+assert re_parse(&#x27;a|bc&#x27;) == (&#x27;split&#x27;, &#x27;a&#x27;, (&#x27;cat&#x27;, &#x27;b&#x27;, &#x27;c&#x27;))</code></pre>
+        <p>Самый верхний уровень разбора — оператор альтернативы.</p>
+        <p>Аргументы:</p>
+        <ul>
+          <li><code>r</code>: строка regex.</li>
+          <li><code>idx</code>: текущая позиция разбора.</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># a|b|c...
+def parse_split(r, idx):
+    idx, prev = parse_concat(r, idx)
+    while idx &lt; len(r):
+        if r[idx] == &#x27;)&#x27;:
+            # вернуться к внешнему parse_node
+            break
+        assert r[idx] == &#x27;|&#x27;, &#x27;BUG&#x27;
+        idx, node = parse_concat(r, idx + 1)
+        prev = (&#x27;split&#x27;, prev, node)
+    return idx, prev</code></pre>
+        <p>С первого взгляда <code>parse_split</code> получает подвыражения от <code>parse_concat</code> и строит узел «split».</p>
+        <p><code>parse_concat</code> — на уровень ниже. Очень похож на <code>parse_split</code>.</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># abc...
+def parse_concat(r, idx):
+    prev = None
+    while idx &lt; len(r):
+        if r[idx] in &#x27;|)&#x27;:
+            # вернуться к parse_split или внешнему parse_node
+            break
+        idx, node = parse_node(r, idx)
+        if prev is None:
+            prev = node
+        else:
+            prev = (&#x27;cat&#x27;, prev, node)
+    # когда prev всё ещё None, это обозначает пустую строку
+    return idx, prev</code></pre>
+        <p>И <code>parse_split</code>, и <code>parse_concat</code> останавливаются на «)». «)» обычно означает, что разбор идёт внутри внешнего процитированного подвыражения, и при достижении конца подвыражения нужно вернуться к внешнему разборщику. Точно так же <code>parse_concat</code> останавливается на «|», чтобы вернуться к внешнему <code>parse_split</code>.</p>
+        <p>Спускаемся к <code>parse_node</code>. Он разбирает либо одиночный символ, либо процитированное подвыражение, а затем может добавить оператор повторения.</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># разбор одного элемента
+def parse_node(r, idx):
+    ch = r[idx]
+    idx += 1
+    assert ch not in &#x27;|)&#x27;
+    if ch == &#x27;(&#x27;:
+        idx, node = parse_split(r, idx)
+        if idx &lt; len(r) and r[idx] == &#x27;)&#x27;:
+            idx += 1
+        else:
+            raise Exception(&#x27;unbalanced parenthesis&#x27;)
+    elif ch == &#x27;.&#x27;:
+        node = &#x27;dot&#x27;
+    elif ch in &#x27;*+{&#x27;:
+        raise Exception(&#x27;nothing to repeat&#x27;)
+    else:
+        node = ch
+
+    idx, node = parse_postfix(r, idx, node)
+    return idx, node</code></pre>
+        <p>Обратите внимание: вызов <code>parse_split</code> рекурсирует на самый верхний уровень иерархии.</p>
+        <p><code>parse_postfix</code> намного длиннее, но это просто утомительный последовательный код.</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># a*, a+, a{x}, a{x,}, a{x,y}
+def parse_postfix(r, idx, node):
+    if idx == len(r) or r[idx] not in &#x27;*+{&#x27;:
+        return idx, node
+
+    ch = r[idx]
+    idx += 1
+    if ch == &#x27;*&#x27;:
+        rmin, rmax = 0, float(&#x27;inf&#x27;)
+    elif ch == &#x27;+&#x27;:
+        rmin, rmax = 1, float(&#x27;inf&#x27;)
+    else:
+        # первое число внутри {}
+        idx, i = parse_int(r, idx)
+        if i is None:
+            raise Exception(&#x27;expect int&#x27;)
+        rmin = rmax = i
+        # второе число необязательно
+        if idx &lt; len(r) and r[idx] == &#x27;,&#x27;:
+            idx, j = parse_int(r, idx + 1)
+            rmax = j if (j is not None) else float(&#x27;inf&#x27;)
+        # закрыть скобку }
+        if idx &lt; len(r) and r[idx] == &#x27;}&#x27;:
+            idx += 1
+        else:
+            raise Exception(&#x27;unbalanced brace&#x27;)
+
+    # проверки корректности
+    if rmax &lt; rmin:
+        raise Exception(&#x27;min repeat greater than max repeat&#x27;)
+    if rmin &gt; RE_REPEAT_LIMIT:
+        raise Exception(&#x27;the repetition number is too large&#x27;)
+
+    node = (&#x27;repeat&#x27;, node, rmin, rmax)
+    return idx, node</code></pre>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def parse_int(r, idx):
+    save = idx
+    while idx &lt; len(r) and r[idx].isdigit():
+        idx += 1
+    return idx, int(r[save:idx]) if save != idx else None</code></pre>
+        <p>Реальный интерфейс:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def re_parse(r):
+    idx, node = parse_split(r, 0)
+    if idx != len(r):
+        # разбор остановился на неуместной &quot;)&quot;
+        raise Exception(&#x27;unexpected &quot;)&quot;&#x27;)
+    return node</code></pre>
+        <h3>Заключение</h3>
+        <p>Мы научились разбирать regex рекурсией. Эти знания полезны и для разбора других вещей. Хотя разбор занимает значительные страницы в книгах по компиляторам, многие языки реального мира можно разобрать просто рекурсией, и часто простейший способ разобрать что-то — рукописный рекурсивный код. Следующая глава научит вас выполнять разобранный regex с «backtracking», который тоже использует рекурсию.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Свой движок на Python — удобный старт: вы увидите и реализацию, и интерфейс регулярных выражений.</p>
+      <h2>R2. Regex-движок с backtracking (новичок)</h2>
+        <h3>Введение</h3>
+        <p><strong>Что вы узнаете:</strong></p>
+        <ul>
+          <li>Разложение задачи на подзадачи.</li>
+          <li>Поиск и backtracking.</li>
+        </ul>
+        <p>В предыдущей главе мы научились разбирать regex в древесные структуры. Из древесной структуры можно начать строить движок regex. Метод, используемый в этой главе, называется «backtracking». Backtracking — не самый эффективный способ реализации regex; другие методы представлены в следующих главах.</p>
+        <h3>Анализ задачи</h3>
+        <p>Часто первый шаг решения задачи — разложить её на меньшие куски или подзадачи. Древесная природа структуры делает это даже очевиднее.</p>
+        <ul>
+          <li><strong>Конкатенация, <code>ab</code>:</strong> выполни подвыражение <code>a</code>, затем <code>b</code> с позиции результата <code>a</code>.</li>
+          <li><strong>Альтернатива, <code>a|b</code>:</strong> объедини результаты <code>a</code> и <code>b</code>.</li>
+        </ul>
+        <p>Для конкатенаций первое может порождать любое число кандидатов на сопоставление. А второе зависит от результатов первого: если второе не может найти сопоставление с конкретной позиции результатов первого, поиск возобновляется с другой позиции. Это и есть «backtracking». Для повторений всё как с конкатенацией.</p>
+        <p>Кратко:</p>
+        <ul>
+          <li>Подвыражение с данной позиции строки порождает список кандидатов.</li>
+          <li>Оператор конкатенации: для каждого результата первого подвыражения выполни и передай результаты второму.</li>
+          <li>Оператор повторения ведёт себя как конкатенация.</li>
+          <li>Объедини результаты подвыражений альтернативы.</li>
+        </ul>
+        <h3>Начало кода</h3>
+        <p>Код короткий:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># метод backtracking — почти полный перебор.
+# можно добавить кэш для удаления повторяющихся idx.
+def match_backtrack(node, text, idx):
+    if node is None:
+        yield idx   # пустая строка
+    elif node == &#x27;dot&#x27;:
+        if idx &lt; len(text):
+            yield idx + 1
+    elif isinstance(node, str):
+        assert len(node) == 1   # односимвольный
+        if idx &lt; len(text) and text[idx] == node:
+            yield idx + 1
+    elif node[0] == &#x27;cat&#x27;:
+        # yield from эквивалентно:
+        # for idx1 in match_backtrack_concat(node, text, idx):
+        #     yield idx1
+        yield from match_backtrack_concat(node, text, idx)
+    elif node[0] == &#x27;split&#x27;:
+        yield from match_backtrack(node[1], text, idx)
+        yield from match_backtrack(node[2], text, idx)
+    elif node[0] == &#x27;repeat&#x27;:
+        yield from match_backtrack_repeat(node, text, idx)
+    else:
+        assert not &#x27;reachable&#x27;</code></pre>
+        <p>Для тех, кто не знаком с Python: оператор <code>yield</code> приостанавливает исполнение и возвращает значение вызывающему, а вызывающий обычно итерирует по результатам. <code>yield from</code> — сокращение цикла и передачи всего.</p>
+        <p>Каждый раз, когда сопоставление найдено, результат передаётся через <code>yield</code> вызывающему. Вызывающий может сделать с ним что-то и попросить следующий результат (продолжив итерацию).</p>
+        <p>Передача управления вперёд и назад делает написание кода backtracking на Python безболезненным. Но если вы впервые пытаетесь понять backtracking, рекомендуется сделать это без оператора <code>yield</code> и управлять состояниями backtracking явно — упражнение для тех, кто не использует Python.</p>
+        <p>Код конкатенации:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def match_backtrack_concat(node, text, idx):
+    met = set()
+    for idx1 in match_backtrack(node[1], text, idx):
+        if idx1 in met:
+            continue    # дубликат
+        met.add(idx1)
+        yield from match_backtrack(node[2], text, idx1)</code></pre>
+        <p>Обратите внимание: я добавил hash set, чтобы отбрасывать повторяющиеся результаты первого подвыражения.</p>
+        <p>Код повторения длиннее:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def match_backtrack_repeat(node, text, idx):
+    _, node, rmin, rmax = node
+    rmax = min(rmax, RE_REPEAT_LIMIT)
+    # вывод буферизуется и затем разворачивается
+    output = []
+    if rmin == 0:
+        # ничего не должно сопоставляться
+        output.append(idx)
+    # позиции предыдущего шага
+    start = {idx}
+    # пробуем все возможные числа повторений
+    for i in range(1, rmax + 1):
+        found = set()
+        for idx1 in start:
+            for idx2 in match_backtrack(node, text, idx1):
+                found.add(idx2)
+                if i &gt;= rmin:
+                    output.append(idx2)
+        # TODO: выйти, если единственное сопоставление — нулевой длины
+        if not found:
+            break
+        start = found
+    # повторение жадно; первым выдай сопоставление с наибольшим числом повторений.
+    yield from reversed(output)</code></pre>
+        <p>Повторение обрабатывается повторным исполнением подвыражения, пока оно может сопоставляться. Каждый шаг начинается с результатов предыдущего, и позиции стартов дедуплицируются.</p>
+        <p>Ещё заметьте: повторение regex «жадное»; нужно найти сопоставление с максимальным числом повторений и выдать его первым.</p>
+        <p>Функция проверки того, сопоставляется ли строка с regex полностью:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def re_full_match_bt(node, text):
+    for idx in match_backtrack(node, text, 0):
+        # idx — размер сопоставленного префикса
+        if idx == len(text):
+            # примечание: жадность regex кажется
+            # нерелевантной, если мы принимаем только полное сопоставление.
+            return True
+    return False</code></pre>
+        <p>Поиск тестовых случаев оставлен читателю как упражнение.</p>
+        <h3>Заключение</h3>
+        <p>Мы научились сопоставлять regex с backtracking. Отсюда можно добавлять больше возможностей regex.</p>
+        <p>Однако подход backtracking — сравнительно грубая сила и может выполнять повторяющиеся поиски. Можно добавить кэш для их уменьшения; но не беспокойтесь, в следующей главе вы исследуете новый метод: недетерминированные конечные автоматы (NFA).</p>
+        <div class="callout note">
+          Этот проект — часть книги <em>Miscellaneous build-your-own-X projects</em> Джеймса Смита. Главы R3 (обход графа и Regex с NFA) и R4 (DFA) — продолжения этого учебника.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Регексп-движок на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Регексп-движок на Python» принадлежит автору оригинала (James Smith). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (James Smith). Читайте оригинал на
         <a href="https://build-your-own.org/b2a/r0_intro" target="_blank" rel="noopener">https://build-your-own.org/b2a/r0_intro</a>.
       </div>
     </article>

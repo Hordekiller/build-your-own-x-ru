@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Компилятор с нуля на Ruby»
+          <b>Оригинальный источник:</b> «A Compiler From Scratch (Destroy All Software)»
         </div>
         <a class="btn solid" href="https://www.destroyallsoftware.com/screencasts/catalog/a-compiler-from-scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-compiler-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,58 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Компилятор на Ruby: парсер и генерация — свой компилятор на выразительном языке.</p>
+      <h2>О видео</h2>
+        <p>Гэри Бернхардт в этом скринкасте показывает, что создание компилятора не обязано пугать. Он начинает с маленького и сфокусированного определения и примерно за 90 минут компилирует простой язык программирования в ассемблерный код — не в промежуточное представление, а прямо в реальные инструкции CPU.</p>
+        <p>Главная ценность видео — «увидеть процесс»: как настоящий компилятор принимает решения, где ищет ошибки и как генерирует ассемблерный вывод.</p>
+        <p><a class="btn solid" href="https://www.destroyallsoftware.com/screencasts/catalog/a-compiler-from-scratch" target="_blank" rel="noopener">▶ Смотреть видео</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Парсер</li>
-          <li>AST</li>
-          <li>Генерация</li>
-          <li>Пример компиляции</li>
-        </ul>
+      <h2>Путь: от токена к ассемблеру</h2>
+        <p>Язык в этой части имеет C-подобную структуру (переменные, функции, арифметические выражения). Проходятся классические этапы: <b>lexer</b> разбивает текст на токены, <b>parser</b> строит дерево синтаксиса (AST), и наконец <b>генератор ассемблера</b> превращает дерево в инструкции x86. Отличие от интерпретаторов здесь в том, что результат — самостоятельный исполняемый файл.</p>
+        <p>Самый захватывающий раздел — устройство стека вызовов с <code>push/ret</code> и соглашения о вызовах, то есть то, что вы уже видели в курсе по ОС или ассемблеру.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Ruby делает компилятор почти прозрачным: парсер — классы, код — строки. Идеально для знакомства.</p>
-        <p>Генерация вызова:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code>def generate(node)
-  case node
-  when Number then node.value.to_s
-  when Add    then "(#{generate(node.left)} + #{generate(node.right)})"
+      <h2>Пример кода: структура парсера на Ruby</h2>
+        <p>Хотя видео написано на Ruby, понятия общи для любого языка. Структура парсера обычно пишется циклом «читай и продвигайся»:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Пошаговый обходчик токенов
+class Parser
+  def initialize(tokens)
+    @tokens = tokens
+    @pos = 0
+  end
+
+  def peek
+    @tokens[@pos]
+  end
+
+  def next_token
+    tok = @tokens[@pos]
+    @pos += 1
+    tok
+  end
+
+  # Разбор выражения: умножение имеет приоритет над сложением
+  def parse_expression
+    left = parse_term
+    while peek.to_s == &quot;+&quot; || peek.to_s == &quot;-&quot;
+      op = next_token.to_s
+      right = parse_term
+      left = Emitter.binary(op, left, right)
+    end
+    left
   end
 end</code></pre>
+        <p>Важный момент — управление приоритетом операторов: чем ниже уровень (parse_term), тем выше приоритет, и дерево строится точнее.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Компилятор на Ruby — минимальный барьер: вы увидите суть компиляции без сложных инструментов.</p>
+      <h2>Итоги</h2>
+        <p>Этот скринкаст — отличная отправная точка: после просмотра общая структура компилятора (от токенов до ассемблера) становится ясной, и можно переходить к большим текстовым проектам вроде Crafting Interpreters или Compilers: Principles.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Компилятор с нуля на Ruby» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Компилятор с нуля на Ruby» принадлежит автору оригинала (Gary Bernhardt). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Gary Bernhardt). Читайте оригинал на
         <a href="https://www.destroyallsoftware.com/screencasts/catalog/a-compiler-from-scratch" target="_blank" rel="noopener">https://www.destroyallsoftware.com/screencasts/catalog/a-compiler-from-scratch</a>.
       </div>
     </article>

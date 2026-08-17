@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Глубокое обучение с нуля на Python»
+          <b>Оригинальный источник:</b> «Build-Deep-Learning-From-Scratch»
         </div>
         <a class="btn solid" href="https://github.com/roiamiel1/Build-Deep-Learning-From-Scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-deep-learning-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,80 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Реализация глубокого обучения на Python с нуля: слои, обратное распространение и обучение — мини-фреймворк.</p>
+      <h2>Философия проекта: «вы — сама библиотека autodiff»</h2>
+        <p>Курс начинается с ясной идеи: чтобы понять глубокое обучение, лучше всего его построить. Путь организован в виде <b>35 небольших независимых шагов</b>, которые начинаются с самого простого кирпичика — класса <code>Value</code>, ядра <b>micrograd</b> Карпати, — и с каждым шагом добавляют один слой сложности, пока мы не получим «мини-PyTorch» (MiniPyTorch).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Шаги 01–05: переписываем micrograd</h2>
+        <p>Первые пять шагов повторяют путь знаменитого видео Карпати: класс <code>Value</code> со значением и производной (<code>grad</code>); построение <b>вычислительного графа</b> через хранение <code>_prev</code> (родителей) и <code>_backward</code> (локальной производной); операции сложения, умножения и возведения в степень; и наконец <code>backward()</code>, который с помощью топологической сортировки распространяет градиенты по всему графу:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Шаги 1–5: ядро autodiff — узел, помнящий своих родителей
+class Value:
+    def __init__(self, data, _children=(), _op=&quot;&quot;):
+        self.data = data
+        self.grad = 0.0
+        self._prev = set(_children)   # родители в вычислительном графе
+        self._backward = lambda: None # локальная производная — задаётся в каждой операции
+
+    def __add__(self, other):
+        other = other if isinstance(other, Value) else Value(other)
+        out = Value(self.data + other.data, (self, other), &quot;+&quot;)
+        def _backward():
+            self.grad += out.grad            # + означает равное распределение градиента
+            other.grad += out.grad
+        out._backward = _backward
+        return out
+
+    def backward(self):
+        # распространение градиентов топологической сортировкой (справа налево)
+        order = []
+        seen = set()
+        def visit(v):
+            if v not in seen:
+                seen.add(v)
+                for c in v._prev:
+                    visit(c)
+                order.append(v)
+        visit(self)
+        self.grad = 1.0
+        for v in reversed(order):
+            v._backward()</code></pre>
+      </section>
+      <section>
+      <h2>От скаляров к тензорам</h2>
+        <p>Следующие шаги превращают скалярные значения в <b>тензоры</b> (многомерные массивы), чтобы можно было обучать настоящие сети на настоящих данных. Именно здесь правило цепочки видно в действии: каждая операция определяет свою локальную производную, а backward склеивает их вместе. Затем очередь доходит до компонентов сети:</p>
         <ul>
-          <li>Слои и граф</li>
-          <li>Обратное распространение</li>
-          <li>Оптимизация</li>
-          <li>Обучение сети</li>
+          <li><b>Слои (Layers):</b> Linear, Embedding и функции активации (ReLU, tanh, GELU и другие).</li>
+          <li><b>Оптимизаторы (Optimizers):</b> SGD, Adam и другие — полный цикл обучения с forward, loss и backward.</li>
+          <li><b>Функции потерь:</b> Mean Squared Error, Cross Entropy и другие.</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Дальше: CNN, attention и Transformer</h2>
+        <p>После полносвязных сетей современные архитектуры строятся с нуля:</p>
+        <ul>
+          <li><b>Свёрточные сети (CNN):</b> слои Conv2d, Pooling и их применение в компьютерном зрении.</li>
+          <li><b>Механизм внимания (Attention):</b> устройство Self-Attention и Multi-Head Attention — сердце моделей-трансформеров.</li>
+          <li><b>Transformer:</b> полное построение трансформера, а затем ViT (vision transformer) для изображений.</li>
+          <li><b>Языковая модель:</b> обучение маленькой языковой модели со всеми построенными компонентами.</li>
+        </ul>
+        <div class="callout note">
+          <strong>Совет:</strong> каждый шаг независим и запускаем (Notebook или Python-скрипт); рекомендуемый подход — прочитать шаг, закрыть его и переписать самостоятельно, затем сравнить с ответом.
+        </div>
+      </section>
+      <section>
+      <h2>Почему этот путь обучения ценен?</h2>
+        <ul>
+          <li><b>От монолита к деталям:</b> «волшебная вещь» под названием PyTorch превращается в серию понятных инженерных решений.</li>
+          <li><b>Без чёрного ящика:</b> после курса backpropagation и autodiff больше не «магия» — вы построили каждую строку сами.</li>
+          <li><b>Мост между micrograd и Transformer:</b> закрывает огромный разрыв между базовыми уроками и современными статьями.</li>
+          <li><b>Глубокая практика:</b> 35 шагов — это практика за практикой; переписывание заново — лучший тест на понимание.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Проект строит мини-фреймворк: слои, прямые/обратные проходы и оптимизаторы. Всё на NumPy.</p>
-        <p>Класс слоя с градиентами:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>class Layer:
-    def forward(self, x): return x @ self.W + self.b
-    def backward(self, dout):
-        self.gradW = x.T @ dout
-        return dout @ self.W.T</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Мини-фреймворк — контроль над всей математикой: вы поймёте PyTorch изнутри до последнего градиента.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Глубокое обучение с нуля на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Глубокое обучение с нуля на Python» принадлежит автору оригинала (roiamiel1). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (roiamiel1). Читайте оригинал на
         <a href="https://github.com/roiamiel1/Build-Deep-Learning-From-Scratch" target="_blank" rel="noopener">https://github.com/roiamiel1/Build-Deep-Learning-From-Scratch</a>.
       </div>
     </article>

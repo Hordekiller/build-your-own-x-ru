@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Курс игрового программирования на C»
+          <b>Оригинальный источник:</b> ««Learn Video Game Programming in C» — плейлист»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLT6WFYYZE6uLMcPGS3qfpYm7T_gViYMMt" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-c-game-programming.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,41 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия каталога «abyteofcode» о играх на C: SDL, коллизии, меню и звук — игровое программирование на C по шагам.</p>
+      <h2>Об обучении</h2>
+        <p>Этот плейлист — полный видеокурс для изучения C через разработку игр, рассчитанный на новичков и тех, кто только начинает с C. Вместо сухих терминальных примеров вы сразу создаёте запускаемые игры (например, Pong и простые игры на графике), а по пути изучаете концепции C: переменные, циклы, функции, массивы и указатели.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>SDL и окно</li>
-          <li>Коллизии</li>
-          <li>Звук и музыка</li>
-          <li>Полная игра</li>
-        </ul>
+      <h2>Смотрите видео</h2>
+        <p>Это видео-обучение, и его содержание не размещается на этой странице; весь плейлист — по ссылке на YouTube:</p>
+        <div style="text-align:center;margin:18px 0">
+          <a class="btn solid" style="font-size:1.05rem" href="https://www.youtube.com/playlist?list=PLT6WFYYZE6uLMcPGS3qfpYm7T_gViYMMt" target="_blank" rel="noopener">▶ Смотреть плейлист «Learn Video Game Programming in C»</a>
+        </div>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Серия строит настоящую игру на C с SDL2: окно, спрайты, звук, меню — вся палитра игровой инженерии.</p>
-        <p>Загрузка спрайта через SDL_Image:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>SDL_Surface *s = IMG_Load("hero.png");
-SDL_Texture *t = SDL_CreateTextureFromSurface(renderer, s);</code></pre>
+      <h2>Ключевые концепции</h2>
+        <p>Пример структуры игрового цикла, используемой в курсе:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Главный цикл игры — три постоянных шага
+while (game_is_running) {
+  // 1) Обработка ввода
+  handle_events();
+
+  // 2) Обновление логики (движение мяча, коллизии, счёт)
+  update();
+
+  // 3) Рендер: отрисовка на экране
+  render();
+}</code></pre>
+        <p>В ходе курса создаётся такая игра, как Pong: движение ракетки клавишами, движение мяча, отскок от стен, столкновение с ракеткой и подсчёт очков — а затем добавляются более продвинутые концепции (массив врагов, системы очков, уровни).</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Серия по C дарит целостный взгляд: вы освоите SDL и научитесь собирать игровые проекты начисто.</p>
+      <h2>Итоги</h2>
+        <p>Если вы не знаете C, но хотите учить его ради увлекательной цели, этот плейлист — хороший выбор: темы языка C сочетаются с реальными играми, и мотивация сохраняется на всём пути.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Курс игрового программирования на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLT6WFYYZE6uLMcPGS3qfpYm7T_gViYMMt" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLT6WFYYZE6uLMcPGS3qfpYm7T_gViYMMt</a>.
       </div>
     </article>

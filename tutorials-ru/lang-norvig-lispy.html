@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Norvig's Lispy: вариант 1–2»
+          <b>Оригинальный источник:</b> «How to Write a Lisp Interpreter in Python (lispy)»
         </div>
         <a class="btn solid" href="http://norvig.com/lispy.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-norvig-lispy.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,57 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Два варианта Lispy: минимальный интерпретатор и его усложнённая версия с макросами и вводом-выводом.</p>
+      <h2>История lis.py</h2>
+        <p>Питер Норвиг (директор по исследованиям Google и автор знаменитой книги по ИИ) написал этот интерпретатор в <b>около 90 строк Python</b>, а позже продолжил его в самолёте: полный Lisp с функциями, переменными, условиями и даже <code>quote</code>. Три главных понятия: окружение (Environment), eval и apply — в точности как в знаменитой статье «The roots of Lisp» Джона Маккарти.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Минимальный eval</li>
-          <li>Усложнённая версия</li>
-          <li>Макросы</li>
-          <li>Стандартная библиотека</li>
-        </ul>
+      <h2>Пример кода: главный eval/apply</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def eval(x, env=global_env):
+    if isinstance(x, Symbol):      # переменная
+        return env.find(x)[x]
+    elif not isinstance(x, list):  # число или строка
+        return x
+    elif x[0] == &#x27;quote&#x27;:          # quote: без вычисления
+        (_, exp) = x
+        return exp
+    elif x[0] == &#x27;if&#x27;:             # условие
+        (_, test, conseq, alt) = x
+        exp = (conseq if eval(test, env) else alt)
+        return eval(exp, env)
+    elif x[0] == &#x27;define&#x27;:         # определение переменной
+        (_, var, exp) = x
+        env[var] = eval(exp, env)
+    elif x[0] == &#x27;lambda&#x27;:         # определение функции
+        (_, parms, body) = x
+        return Procedure(parms, body, env)
+    else:                          # вызов функции
+        proc = eval(x[0], env)
+        args = [eval(arg, env) for arg in x[1:]]
+        return proc(*args)
+
+class Procedure(object):           # closure
+    def __init__(self, parms, body, env):
+        self.parms, self.body, self.env = parms, body, env
+    def __call__(self, *args):
+        return eval(self.body, Env(self.parms, args, self.env))</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Норвиг предлагает две ступени: базовый Lispy и продвинутый с макросами и I/O — эволюция языка на глазах.</p>
-        <p>Макрос через eval:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def do_macro(exp, env):
-    # макросы — это функции, вызываемые на форме
-    name, params, body = exp
-    return eval(build_fn(name, params, body), env)</code></pre>
+      <h2>Понятие окружения (Env) и цепочки</h2>
+        <p>Класс <code>Env</code> — это dict с «родителем»; <code>find</code> поднимается по цепочке родителей, чтобы найти переменную. Это ровно тот же механизм области видимости, что и в реальных языках, — поняв его, вы поймёте все языки.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Две версии одного интерпретатора — учебник эволюции: вы увидите, как растёт язык от минимума к полноте.</p>
+      <h2>Примеры программ</h2>
+        <p>Статья завершается несколькими реальными программами: функции <code>fact</code> (факториал) и <code>count</code>, которые выполняются на этом интерпретаторе. Это доказательство того, что маленький интерпретатор — настоящий. Есть и дополнительный раздел «введение функций Scheme-Паскаль».</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Самый короткий, читаемый и известный источник по созданию интерпретаторов: если вы просто хотите «понять, что такое интерпретатор» — прочтите это. Для реального масштаба позже обратитесь к «Crafting Interpreters».</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Norvig's Lispy: вариант 1–2» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Norvig's Lispy: вариант 1–2» принадлежит автору оригинала (Peter Norvig). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Peter Norvig). Читайте оригинал на
         <a href="http://norvig.com/lispy.html" target="_blank" rel="noopener">http://norvig.com/lispy.html</a>.
       </div>
     </article>

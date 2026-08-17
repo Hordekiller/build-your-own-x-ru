@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Cradle: крошечный компилятор на Haskell»
+          <b>Оригинальный источник:</b> «Let's build a compiler (Cradle)»
         </div>
         <a class="btn solid" href="https://g-ford.github.io/cradle/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-cradle.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,64 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Курс «Let's Build a Compiler» на Haskell: парсер, трансляция и выражения — компилятор в функциональном стиле.</p>
+      <h2>Знакомство с Cradle</h2>
+        <p>Серия «Давайте построим компилятор» Джека Креншоу (1988) — один из самых известных ресурсов по обучению построению компилятора методом одного прохода. Оригинал написан на Паскале для процессора 68000; проект Cradle переносит её на <b>Haskell</b>, чтобы работать на современных архитектурах и использовать мощь Haskell (сильная типизация и чистые функции).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Классический курс</li>
-          <li>Парсер выражений</li>
-          <li>Трансляция в код</li>
-          <li>Функциональные трансформации</li>
-        </ul>
+      <h2>Отличия от оригинала</h2>
+        <p>В Паскале хранить «состояние» (текущий символ входа и т.д.) было просто; в Haskell нужно использовать монаду. Проект Cradle использует <b>State monad</b> для управления состоянием чтения входа — в результате и смысл трансляции сохранён, и код полностью чистый и доказуемый:</p>
+        <pre class="code"><span class="lang-tag">haskell</span><code style="direction:ltr;text-align:left">-- Состояние компилятора: текущий символ + поток вперёд
+data CradleState = CradleState { input :: String, cur :: Char }
+
+type P a = State CradleState a
+
+-- Получение следующего символа из входа
+getChar&#x27; :: P Char
+getChar&#x27; = do
+  st &lt;- get
+  case input st of
+    []     -&gt; return &#x27;\0&#x27;          -- конец входа
+    (c:cs) -&gt; put (st { input = cs, cur = c }) &gt;&gt; return c
+
+-- Печать выходного кода
+emit :: String -&gt; P ()
+emit s = liftIO $ putStrLn s</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Cradle переносит классику на Haskell: выражения разбираются рекурсивно, трансляция — чистые функции.</p>
-        <p>Разбор термина:</p>
-        <pre class="code"><span class="lang-tag">Haskell</span><code>factor :: Parser Expr
-factor = do
-  sign &lt;- optional (char '-')
-  n &lt;- number
-  return (if sign == Nothing then Num n else Neg (Num n))</code></pre>
+      <h2>Путь обучения: от сложения до функций</h2>
+        <p>Как и в оригинальной серии, шаги постепенно усложняются: (1) четырёхоперационный калькулятор; (2) приоритет операторов (term/expression); (3) переменные и присваивание; (4) условия if/else; (5) циклы; (6) функции и параметры. Каждая часть находится в отдельном файле (Part1.hs … Part16.hs, как в оригинале).</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Функциональная реализация классики — двойной урок: компиляторы и Haskell в одном проекте.</p>
+      <h2>Пример: разбор выражения с приоритетом</h2>
+        <pre class="code"><span class="lang-tag">haskell</span><code style="direction:ltr;text-align:left">-- expr := term ((&#x27;+&#x27;|&#x27;-&#x27;) term)*
+expression :: P ()
+expression = do
+  term
+  whilePlusOrMinus
+  where
+    whilePlusOrMinus = do
+      c &lt;- peek
+      case c of
+        &#x27;+&#x27; -&gt; add
+        &#x27;-&#x27; -&gt; subtract_
+        _   -&gt; return ()
+
+add :: P ()
+add = do
+  match &#x27;+&#x27;
+  term
+  emit &quot;pop ebx&quot;
+  emit &quot;add eax, ebx&quot;</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Если вам интересны Haskell и функциональные языки, этот проект — отличная возможность: вы выучите принципы компиляторов методом Креншоу и получите практику работы с State monad и проектированием функционального кода. На выходе — исполняемый ассемблер x86.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Cradle: крошечный компилятор на Haskell» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Cradle: крошечный компилятор на Haskell» принадлежит автору оригинала (g-ford). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (g-ford). Читайте оригинал на
         <a href="https://g-ford.github.io/cradle/" target="_blank" rel="noopener">https://g-ford.github.io/cradle/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Нейросеть на Go с нуля (deep learning)»
+          <b>Оригинальный источник:</b> «Neural Net With Go»
         </div>
         <a class="btn solid" href="https://datadan.io/blog/neural-net-with-go" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-go-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,98 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Глубокая нейросеть на Go с нуля: слои, обучение и данные — глубокое обучение без фреймворков.</p>
+      <h2>Цель: классификация цветов ириса</h2>
+        <p>Знаменитый датасет <b>iris</b> классифицирует три вида ирисов по четырём признакам (длина и ширина чашелистика и лепестка). Автор пишет нейросеть с нуля — без единой ML-библиотеки — чтобы и решить эту реальную задачу, и показать внутреннюю механику сети: структуру, инициализацию, прямое распространение, обратное распространение и обучение.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Модель и типы данных</h2>
+        <p>Сеть определяется struct: веса (матрицы), число нейронов каждого слоя и функция активации. При матричном представлении прямое распространение — всего несколько матричных умножений:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Определение сети: веса между каждой парой слоёв + активация
+type NeuralNet struct {
+    config  NeuralNetConfig
+    wHidden *mat.Dense   // веса скрытого слоя
+    wOut    *mat.Dense   // веса выходного слоя
+    bHidden *mat.Dense   // смещение скрытого слоя
+    bOut    *mat.Dense   // смещение выходного слоя
+}
+
+// Конфигурация: размеры слоёв, скорость обучения и число эпох
+type NeuralNetConfig struct {
+    InputNeurons  int
+    OutputNeurons int
+    HiddenNeurons int
+    NumEpochs     int
+    LearningRate  float64
+}</code></pre>
+      </section>
+      <section>
+      <h2>Случайная инициализация весов</h2>
+        <p>Сеть стартует с небольшими случайными весами. Функция <code>NewNetwork</code> принимает конфигурацию, создаёт матрицы весов и инициализирует их нормальным распределением; смещения тоже инициализируются случайно (или нулём). Генератор случайных чисел снабжён seed, чтобы эксперименты были воспроизводимы:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Создание и случайная инициализация весов и смещений
+func NewNetwork(config NeuralNetConfig) *NeuralNet {
+    r := rand.New(rand.NewSource(time.Now().UnixNano()))
+    wHidden := mat.NewDense(config.InputNeurons, config.HiddenNeurons, nil)
+    bHidden := mat.NewDense(1, config.HiddenNeurons, nil)
+    wOut := mat.NewDense(config.HiddenNeurons, config.OutputNeurons, nil)
+    bOut := mat.NewDense(1, config.OutputNeurons, nil)
+
+    // случайная инициализация из нормального распределения с нулевым средним
+    for i := 0; i &lt; config.InputNeurons; i++ {
+        for j := 0; j &lt; config.HiddenNeurons; j++ {
+            wHidden.Set(i, j, r.NormFloat64())
+        }
+    }
+    // ... то же для остальных матриц
+}</code></pre>
+      </section>
+      <section>
+      <h2>Прямое распространение (feed forward)</h2>
+        <p>Для каждого образца: выход скрытого слоя = сигмоид(вход × скрытый вес + скрытое смещение), затем конечный выход = сигмоид(скрытый × выходной вес + выходное смещение). Функция активации сигмоид и её производная определены отдельными функциями, чтобы использоваться и в backprop:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Запуск сети на векторе признаков
+func (nn *NeuralNet) predict(x *mat.VecDense) mat.Matrix {
+    // вычисление выхода скрытого слоя и применение сигмоида
+    hiddenInputs := mat.NewDense(1, nn.config.HiddenNeurons, nil)
+    hiddenInputs.MulVec(nn.wHidden, x)
+    hiddenInputs.AddScaled(hiddenInputs, 1, nn.bHidden.RowView(0))
+    hiddenOutputs := applySigmoid(hiddenInputs)
+
+    // вычисление конечного выхода и применение сигмоида
+    finalInputs := mat.NewDense(1, nn.config.OutputNeurons, nil)
+    finalInputs.MulVec(nn.wOut, hiddenOutputs)
+    finalInputs.AddScaled(finalInputs, 1, nn.bOut.RowView(0))
+    return applySigmoid(finalInputs)
+}</code></pre>
+      </section>
+      <section>
+      <h2>Обучение: обратное распространение</h2>
+        <p>В каждой эпохе и для каждого образца: вычисляется выход, берётся ошибка от верного ответа, дельты выходного и скрытого слоёв считаются через производную сигмоида и правило цепочки, и все веса и смещения обновляются в сторону уменьшения ошибки:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Шаг обратного распространения на одном образце
+// delta выхода = (выход − ответ) ⊙ производная сигмоида(выход)
+// delta скрытого = (транспонированная wOut × delta выхода) ⊙ производная сигмоида(скрытый)
+// обновление: w ← w − η × входᵀ × delta
+
+// затем обновление весов на всех образцах (накопленный градиент)
+for i := 0; i &lt; nn.config.NumEpochs; i++ {
+    for j := 0; j &lt; len(inputs); j++ {
+        // вперёд ← вычисление дельт ← обновление wHidden, bHidden, wOut, bOut
+    }
+}</code></pre>
+        <p>После обучения сеть может через <code>predict</code> предсказывать на невиданных образцах — та самая оценка на тестовых данных, которая показывает реальное качество.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>Архитектура сети</li>
-          <li>Прямой и обратный проход</li>
-          <li>Градиенты</li>
-          <li>Обучение</li>
+          <li>С gonum и парой простых функций математики строится полная сеть с нуля.</li>
+          <li>Сигмоид и его производная — вся «математика», нужная простому backprop.</li>
+          <li>iris — идеальный датасет для наблюдения за прогрессом обучения (визуализируемый и маленький).</li>
+          <li>Тот же базовый код работает и для других задач — просто изменением конфигурации.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Глубокое обучение на Go — это математика и циклы: прямое распространение, градиенты, обновление весов.</p>
-        <p>Градиент одного слоя:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>delta := lr * lossGradient * activationDerivative
-for i := range weights {
-    weights[i] -= delta * prevOutput[i]
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Проект на Go с нуля — контроль над каждой строкой: глубокое понимание без абстракций.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Нейросеть на Go с нуля (deep learning)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Нейросеть на Go с нуля (deep learning)» принадлежит автору оригинала (Daniel Whitenack). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Daniel Whitenack). Читайте оригинал на
         <a href="https://datadan.io/blog/neural-net-with-go" target="_blank" rel="noopener">https://datadan.io/blog/neural-net-with-go</a>.
       </div>
     </article>

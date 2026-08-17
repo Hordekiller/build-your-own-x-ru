@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Тетрис на C»
+          <b>Оригинальный источник:</b> «Tetris Reimplementation»
         </div>
         <a class="btn solid" href="https://brennan.io/2015/06/12/tetris-reimplementation/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-tetris-c.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,102 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Тетрис на C: фигуры, повороты, падение и очистка линий — классическая головоломка в минимальной форме.</p>
+      <h2>История статьи</h2>
+        <p>Много лет назад Бреннан написал тетрис, и эта статья — рассказ о <b>переписывании</b> его с нуля: что было плохо в первой версии, какие уроки он вынес из разработки и как написал вторую версию с лучшей архитектурой и более чистым кодом. Итог работы — два файла: <code>tetris.c</code> (полная игровая логика — без каких-либо зависимостей от интерфейса) и <code>main.c</code> (слой отображения на ncurses).</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> разделение «игровой логики» и «рендера» — ровно та архитектура, что используют профессиональные игры: можно заменить интерфейс (например, на графический), не трогая логику.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура кода</h2>
+        <p>Логика тетриса включает: игровое поле (board), фигуры (тетромино), вращение, столкновения, удаление линий и систему очков:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// tetris.c — чистая логика игры
+// Игровое поле: матрица 20×10
+static int board[BOARD_ROWS][BOARD_COLS];
+
+// Определение 7 фигур матрицами 4×4 (каждая фигура со своими вращениями)
+typedef struct {
+  int shape[4][4];
+} Tetromino;
+
+static const Tetromino pieces[] = {
+  // I, O, T, S, Z, J, L
+};
+
+// Проверка столкновения фигуры с полем или предыдущими фигурами
+static int collides(const Tetromino *piece, int row, int col) {
+  for (int r = 0; r &lt; 4; r++)
+    for (int c = 0; c &lt; 4; c++)
+      if (piece-&gt;shape[r][c] &amp;&amp; (board[row + r][col + c] || out_of_bounds))
+        return 1;
+  return 0;
+}
+
+// Размещение фигуры на поле
+static void place_piece(const Tetromino *piece, int row, int col) {
+  for (int r = 0; r &lt; 4; r++)
+    for (int c = 0; c &lt; 4; c++)
+      if (piece-&gt;shape[r][c]) board[row + r][col + c] = 1;
+}
+
+// Удаление заполненных линий — снизу вверх
+static int clear_lines(void) {
+  int cleared = 0;
+  for (int r = BOARD_ROWS - 1; r &gt;= 0; r--) {
+    if (row_full(r)) {
+      shift_rows_down(r);
+      cleared++;
+      r++; // проверить ту же строку снова
+    }
+  }
+  return cleared;
+}</code></pre>
+      </section>
+      <section>
+      <h2>Интерфейс с ncurses</h2>
+        <p>Слой отображения (<code>main.c</code>) использует только ncurses: отрисовка поля, чтение клавиш (движение, вращение, быстрое падение) и вывод счёта. Каждые 100 удалённых линий добавляется новый уровень — игра ускоряется.</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// main.c — отображение и ввод
+#include &lt;curses.h&gt;
+#include &quot;tetris.h&quot;
+
+int main(void) {
+  initscr();      // запуск ncurses
+  cbreak();       // чтение клавиш без Enter
+  noecho();
+  keypad(stdscr, TRUE);
+  nodelay(stdscr, TRUE); // неблокирующий ввод
+
+  Game *game = game_new();
+  while (!game-&gt;over) {
+    int key = getch();
+    // Преобразование клавиш в игровые действия
+    if (key == KEY_LEFT)  game_move(game, LEFT);
+    if (key == KEY_RIGHT) game_move(game, RIGHT);
+    if (key == KEY_UP)    game_rotate(game);
+    if (key == KEY_DOWN)  game_tick(game);
+    // ...
+    draw(game);           // отрисовка поля, текущей и следующей фигур
+    usleep(100000 / game-&gt;level);
+  }
+
+  endwin();
+  return 0;
+}</code></pre>
+        <p>Запуск: <code>make</code>, затем <code>./tetris</code> — зависимости: терминал и библиотека ncurses.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
         <ul>
-          <li>Матрица поля</li>
-          <li>Повороты фигур</li>
-          <li>Столкновения</li>
-          <li>Очистка линий</li>
+          <li>Тетрис — лучшая «первая игра»: логика простая, но полная (фигура, вращение, столкновение, удаление линий).</li>
+          <li>Двухслойная архитектура (логика/отображение) оправдывает себя при переписывании.</li>
+          <li>Переписывание старого проекта — одно из лучших упражнений для обучения.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Тетрис — это матрица и фигуры: падение, поворот и очистка строк. Компактнее не бывает.</p>
-        <p>Поворот фигуры — перестановка координат:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void rotate(int *x, int *y) {
-    int t = *x; *x = -*y; *y = t; // поворот на 90°
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Тетрис — лучший урок игровой логики: матрицы, столкновения и редкие мощности в чистом виде.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Тетрис на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Тетрис на C» принадлежит автору оригинала (Бреннан (Brennan)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Бреннан (Brennan)). Читайте оригинал на
         <a href="https://brennan.io/2015/06/12/tetris-reimplementation/" target="_blank" rel="noopener">https://brennan.io/2015/06/12/tetris-reimplementation/</a>.
       </div>
     </article>

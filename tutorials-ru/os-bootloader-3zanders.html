@@ -36,7 +36,7 @@
       </div>
       <h1>Загрузчик на C++ (3 Zanders)</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C++</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="http://3zanders.co.uk/2017/10/13/writing-a-bootloader/" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Загрузчик на C++ (3 Zanders)»
+          <b>Оригинальный источник:</b> «Writing a Bootloader»
         </div>
         <a class="btn solid" href="http://3zanders.co.uk/2017/10/13/writing-a-bootloader/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-bootloader-3zanders.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Загрузчик и ядро на C++: 32-битный режим, GDT и первый выход — системный код на C++.</p>
+      <h2>Почему этот урок особенный</h2>
+        <p>Большинство учебников либо загружаются через GRUB (в обход написания загрузчика), либо делают только демонстрационный загрузочный сектор. Эта статья идёт средним путём: мы пишем настоящий двухэтапный загрузчик, где первый этап (ассемблер) читает второй этап с диска, переходит в 32-битный режим, а второй этап (C) загружает и запускает ядро. Результат — полное понимание цепочки «BIOS → загрузчик → ядро».</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Этап 1: загрузочный сектор на ассемблере</h2>
+        <p>Первый 512-байтный сектор диска делает три вещи: печатает сообщение, читает секторы второго этапа с диска сервисом int 0x13 и затем передаёт туда управление через jmp. Чтение диска в 16-битном режиме выполняется прерыванием BIOS:</p>
+        <pre class="code"><span class="lang-tag">nasm</span><code style="direction:ltr;text-align:left">; Чтение сектора с диска сервисом BIOS (int 0x13)
+read_sector:
+    mov ah, 0x02        ; функция: чтение сектора
+    mov al, 1           ; количество секторов: один
+    mov ch, 0           ; цилиндр 0
+    mov cl, 2           ; сектор 2 (первый был загрузчиком)
+    mov dh, 0           ; головка 0
+    mov dl, 0x80        ; первый диск (жёсткий)
+    mov bx, 0x7E00      ; адрес загрузки в память
+    int 0x13            ; вызов BIOS
+    jc read_sector      ; при ошибке — повторить
+    ret</code></pre>
+      </section>
+      <section>
+      <h2>Этап 2: вход в 32-битный режим</h2>
+        <p>Второй этап по-прежнему на ассемблере и теперь должен загрузить GDT, включить бит PE в cr0 и дальним прыжком (far jump) перейти в защищённый режим. Это тот самый ответственный шаг, который присутствует почти во всех проектах ОС:</p>
+        <pre class="code"><span class="lang-tag">nasm</span><code style="direction:ltr;text-align:left">; Вход в защищённый режим
+lgdt [gdt_descriptor]
+mov eax, cr0
+or eax, 1
+mov cr0, eax
+
+jmp 0x08:protected       ; far jump: полная перезагрузка сегментов
+
+[bits 32]
+protected:
+    mov ax, 0x10
+    mov ds, ax
+    mov ss, ax
+    mov esp, 0x90000     ; новый стек
+    ...</code></pre>
+      </section>
+      <section>
+      <h2>Этап 2: ядро на C</h2>
+        <p>После входа в 32-битный режим управление передаётся C-коду. Для простоты статья собирает ядро одним Makefile и запускает в QEMU, чтобы увидеть финальное сообщение:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Сборка загрузчика и ядра и запуск
+make
+qemu-system-i386 -fda os.img</code></pre>
+      </section>
+      <section>
+      <h2>Что вы узнаете</h2>
         <ul>
-          <li>32-битный режим</li>
-          <li>GDT</li>
-          <li>Ядро на C++</li>
-          <li>Терминал</li>
+          <li><b>Сервисы BIOS</b> для печати и чтения диска.</li>
+          <li><b>Структуру двухэтапного загрузчика</b> (в реальном мире используется тот же паттерн).</li>
+          <li><b>Переход из 16-битного в 32-битный режим с GDT</b>.</li>
+          <li><b>Совместную работу ассемблера и C в bare-metal-проекте</b>.</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Серия 3 Zanders идёт от 16-битного загрузчика к C++-ядру: GDT, 32 бита и первые функции.</p>
-        <p>Инициализация GDT:</p>
-        <pre class="code"><span class="lang-tag">Assembly</span><code>lgdt [gdt_descriptor]  ; загружаем таблицу дескрипторов
-jmp 0x08:protected_start  ; переходим в 32-битный сегмент</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>C++ и ассемблер вместе — полный стек: серия покажет современный подход к загрузчикам.</p>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> этот урок — лучший мост между «демонстрационным загрузочным сектором» (как урок Джо Бержерона) и «ядром через GRUB» (как Kernel 101) — все три переведены в этом каталоге.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Загрузчик на C++ (3 Zanders)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Загрузчик на C++ (3 Zanders)» принадлежит автору оригинала (Alex Parker). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Alex Parker). Читайте оригинал на
         <a href="http://3zanders.co.uk/2017/10/13/writing-a-bootloader/" target="_blank" rel="noopener">http://3zanders.co.uk/2017/10/13/writing-a-bootloader/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Didact: свой React — алгоритм рендеринга»
+          <b>Оригинальный источник:</b> «Didact»
         </div>
         <a class="btn solid" href="https://github.com/hexacta/didact" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-didact.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,86 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок Didact строит React с нуля: createElement, reconcile, итерации и fiber — алгоритм сравнения виртуального DOM, который отличает React.</p>
+      <h2>1. Введение: зачем Didact?</h2>
+        <p>Цель Родриго Помбо — показать, что в React нет никакой «магии»: из нескольких простых кусочков JavaScript можно собрать рабочую версию. Didact строится в шесть шагов и в итоге включает: <code>createElement</code>, виртуальное дерево, рендер, diff, компоненты и Hooks.</p>
+        <p>Любопытная деталь дизайна: у каждого шага своя отдельная папка в репозитории, и на каждом шаге предыдущий код переписывается, чтобы концепции прояснялись вместе с реализацией.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Шаги 1 и 2: createElement и рендер</h2>
+        <p>Первый шаг, как всегда, — фабрика узлов виртуального дерева. Вместо прямого построения DOM каждый элемент представляется простым объектом:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function createElement(type, props, ...children) {
+  return {
+    type,
+    props: {
+      ...props,
+      children: children.map((child) =&gt;
+        // тексты — тоже узлы: их тип &quot;TEXT_ELEMENT&quot;
+        typeof child === &quot;object&quot; ? child : createTextElement(child)
+      ),
+    },
+  };
+}</code></pre>
+        <p>Затем функция <code>render</code> превращает это дерево в настоящий DOM: рекурсивно для каждого узла создаёт DOM-элемент, навешивает props (такие как onClick и className) и присоединяет детей. Этих двух функций достаточно для рендера однократно.</p>
+      </section>
+      <section>
+      <h2>3. Шаг 3: рендер с Fiber</h2>
+        <p>Проблема рекурсивного рендера: если дерево большое, весь процесс выполняется <b>разом, без остановок</b>, блокируя главный поток (теряются кадры). Решение: разбить работу рендера на <b>мелкие единицы работы</b> и выполнять их порциями:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// каждый fiber хранит указатели на своего ребёнка, сестру и родителя
+{
+  type,        // тип узла (&quot;div&quot;, &quot;TEXT_ELEMENT&quot; или функция-компонент)
+  props,
+  parent,      // родитель в дереве
+  child,       // первый ребёнок
+  sibling,     // следующий ребёнок (сестра)
+  ...
+}</code></pre>
+        <p>Это планируется через <code>requestIdleCallback</code>, чтобы браузер выполнял очередной фрагмент работы каждый раз, когда он простаивает.</p>
+      </section>
+      <section>
+      <h2>4. Шаг 4: сравнение и обновление</h2>
+        <p>Чтобы следующий рендер применял только «различия», сохраняется предыдущее дерево fiber (через <code>alternate</code>), и при построении новых fiber узлы сравниваются:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function reconcileChildren(wipFiber, elements) {
+  let index = 0;
+  let oldFiber = wipFiber.alternate &amp;&amp; wipFiber.alternate.child;
+  let prevSibling = null;
+
+  while (index &lt; elements.length || oldFiber != null) {
+    ...
+  }
+}</code></pre>
+        <p>В конце выполняется фаза <b>commit</b>: дерево проходится один раз, и на основе <code>effectTag</code> узлы добавляются, обновляются или удаляются в DOM.</p>
+      </section>
+      <section>
+      <h2>5. Шаги 5 и 6: функциональные компоненты и Hooks</h2>
+        <p>Функциональный компонент — это когда <code>type</code> сам является функцией; её нужно вызвать, чтобы получить дочерние элементы. Для Hooks хранятся глобальный массив и счётчик определений; <code>useState</code> использует старый хук из <code>alternate</code>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">let wipFiber = null;
+let hookIndex = null;
+
+function useState(initial) {
+  const oldHook =
+    wipFiber.alternate &amp;&amp;
+    wipFiber.alternate.hooks &amp;&amp;
+    wipFiber.alternate.hooks[hookIndex];
+
+  const hook = { ... };
+  wipFiber.hooks.push(hook);
+  hookIndex++;
+  return [hook.state, setState];
+}</code></pre>
+        <p>Примерно в 400 строках кода работают настоящие React-приложения (с state, props и эффективными обновлениями)!</p>
+      </section>
+      <section>
+      <h2>6. Итоги</h2>
         <ul>
-          <li>Элементы и компоненты</li>
-          <li>Сравнение (reconciliation)</li>
-          <li>Fiber: итеративная архитектура</li>
-          <li>Жизненный цикл обновлений</li>
+          <li>Виртуальное дерево — простая структура данных; вся сложность в <b>планировании</b> и <b>сравнении</b>.</li>
+          <li>Fiber — обходимая структура, делающая рендер дробимым; это основа конкурентного рендера и Suspense в настоящем React.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>React — это функция: состояние → элементы → дерево → обновление. Didact воспроизводит этот контур по шагам, показывая текущие идеи Fiber.</p>
-        <p>Создание элемента:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>const element = {
-  type: "div",
-  props: { children: ["Привет, мир"] },
-};</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Самая глубокое погружение в React: Didact объясняет, что такое reconcile и fiber — термины, которые вы будете использовать профессионально.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Didact: свой React — алгоритм рендеринга» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Didact: свой React — алгоритм рендеринга» принадлежит автору оригинала (Родриго Помбо (Rodrigo Pombo)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Родриго Помбо (Rodrigo Pombo)). Читайте оригинал на
         <a href="https://github.com/hexacta/didact" target="_blank" rel="noopener">https://github.com/hexacta/didact</a>.
       </div>
     </article>

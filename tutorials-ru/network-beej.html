@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Beej: руководство по сетевому программированию (C)»
+          <b>Оригинальный источник:</b> «Beej's Guide to Network Programming»
         </div>
         <a class="btn solid" href="http://beej.us/guide/bgnet/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/network-beej.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,142 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Классическое руководство по сокетам на C: адреса, TCP/UDP, серверы и клиенты, мультиплексирование — сетевой код от нуля.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Для кого это руководство</h2>
+        <p>Для всех, кто только знакомится с <b>интернет-сокетами</b> (Berkeley sockets, унаследованные из старинного программирования на Unix), особенно если у вас средний уровень C. В руководстве вы научитесь писать клиент-серверную программу, читающую и пишущую данные через сокеты, — и увидите, как это просто, когда отброшены сложности операционной системы.</p>
+        <p>Английская версия руководства всегда была бесплатной (это «штрейкбрехер» системы платного издательства!) и переведена на множество языков. Структура руководства — взгляд на оглавление:</p>
         <ul>
-          <li>Сокеты: socket, bind, listen</li>
-          <li>TCP-клиент и сервер</li>
-          <li>UDP-дейтаграммы</li>
-          <li>select/poll и неблокирование</li>
+          <li>Введение (что такое сокеты)</li>
+          <li>Что внутри (структуры, байты)</li>
+          <li>Системные вызовы (getaddrinfo, socket, bind, …)</li>
+          <li>Клиент-сервер (полный код stream и datagram)</li>
+          <li>Продвинутые техники (poll, select, broadcast, сериализация)</li>
+          <li>Справочные разделы (man pages, FAQ)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Beej — исчерпывающая база сетей: каждый вызов, каждая структура, каждый флоу — на живом примере, читаемый и практичный.</p>
-        <p>Создание и привязка сокета:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>int sock = socket(AF_INET, SOCK_STREAM, 0);
-struct sockaddr_in addr = { .sin_family = AF_INET,
-    .sin_port = htons(3490), .sin_addr.s_addr = INADDR_ANY };
-bind(sock, (struct sockaddr *)&amp;addr, sizeof(addr));</code></pre>
+      <h2>Два типа сокетов: Stream и Datagram</h2>
+        <p>Вы наверняка слышали о «двух типах сокетов в мире интернета»: <b>stream-сокеты</b> и <b>datagram-сокеты</b>. Разница важна:</p>
+        <ul>
+          <li><b><code>SOCK_STREAM</code></b>: доставляет данные «потоком» байтов. Надёжный (доставляет верно, сохраняет порядок), не дублирует. Напишите дважды в API, прочитайте один раз — как файловый поток. В сети эти «потоковые сокеты» используют протокол <b>TCP</b> (Transmission Control Protocol). TCP стоит за этими гарантиями — пакеты с номерами последовательности и повторной отправкой по ACK.</li>
+          <li><b><code>SOCK_DGRAM</code></b>: датаграммы <code>sendto</code>/<code>recvfrom</code>; каждое данное — независимый пакет с сохранённой длиной. Ненадёжный: сообщения теряются или приходят не по порядку. Эти «датаграммные сокеты» используют протокол <b>UDP</b> (User Datagram Protocol).</li>
+        </ul>
+        <p>Критерий выбора: нужны надёжность/порядок → stream (TCP); нужны лёгкость и «разговорность» → datagram (UDP). Оба работают на транспортном уровне (L4).</p>
+        <p>Сокеты можно описать как «клапан»: штекер на порту, через который проходят байты. Ваша программа работает только с этим шлюзом, создаваемым структурой <code>struct sockaddr</code>. В реальности: сокет → IP → протокол → сеть; физическая сетевая аппаратура на нижнем уровне имеет MAC-адреса для соседей.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Сетевой код на C — фундамент для всех языков: руководство Beej остаётся настольной книгой поколений сетевых инженеров.</p>
+      <h2>Адреса и порядок байтов</h2>
+        <p>Два типа интернет-адресов (на данный момент): <b>IPv4</b> с 4 байтами (2³² ≈ 4 миллиарда устройств) и <b>IPv6</b> с 16 байтами. Сегментация: адрес loopback <code>127.0.0.1</code> (своя машина), приватные диапазоны <code>10.0.0.0/8</code>, <code>172.16.0.0/12</code>, <code>192.168.0.0/16</code> из RFC 1918; UDP/TCP используют особые числа «порт» 0-65535 (ниже 1024 требуют root; известные порты — 22/80/443).</p>
+        <h3>Порядок байтов (endianness)</h3>
+        <p>Проблема: не все процессоры кладут числа в память одинаково. Некоторые «big endian» (сетевой порядок), некоторые «little endian» (порядок хоста). Решение: использовать стандартный «сетевой порядок» и конвертировать в него:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">htons(port)     /* Host TO Network Short */
+htonl(laddr)    /* Host TO Network Long  */
+ntohs(port)     /* Network TO Host Short */
+ntohl(laddr)    /* Network TO Host Long  */
+inet_pton(AF_INET, &quot;10.12.110.57&quot;, &amp;addr4);   /* строка ← число */
+inet_ntop(AF_INET, &amp;addr4, ipstr, sizeof ipstr); /* число ← строка */</code></pre>
+        <p>В <code>struct sockaddr_in</code> адрес хранится в <code>sin_addr.s_addr</code>, а порт — в <code>sin_port</code>; порт всегда приводится через htons. С помощью <b><code>getaddrinfo()</code></b> — моста для IPv4/IPv6-сокетов — адрес можно разрешать вручную, не заботясь о типе семейства:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">struct addrinfo hints, *res;
+memset(&amp;hints, 0, sizeof hints);
+hints.ai_family   = AF_UNSPEC;    /* IPv4 или IPv6 */
+hints.ai_socktype = SOCK_STREAM;  /* TCP */
+
+getaddrinfo(&quot;www.example.net&quot;, &quot;3490&quot;, &amp;hints, &amp;res);
+/* res — связный список узлов с готовыми sockaddr */
+freeaddrinfo(res);</code></pre>
+      </section>
+      <section>
+      <h2>Основные системные вызовы</h2>
+        <p>Системные вызовы ядра в руководстве — у каждого свой смысл и паттерн ошибок/использования. Краткая сводка сценария:</p>
+        <ul>
+          <li><b><code>socket(af, type, proto)</code></b>: создание сокета; возвращает его fd.</li>
+          <li><b><code>bind(fd, addr, len)</code></b>: привязка адреса/порта к сокету — обычно на стороне сервера, чтобы встретить <code>connect</code>.</li>
+          <li><b><code>connect(fd, addr, len)</code></b>: подключение к серверу (в TCP) и отправная точка для «соединительных датаграмм» в UDP (неявный bind).</li>
+          <li><b><code>listen(fd, backlog)</code></b>: сервер начинает «слушать»; очередь запросов.</li>
+          <li><b><code>accept(listenfd, clientaddr, len)</code></b>: принятие соединения; создаёт новый сокет для клиента, отдельный от слушающего.</li>
+          <li><b><code>send(fd, buf, len, flags)</code> / <code>recv(...)</code></b>: чтение/запись байтов в stream-сокет; внимание: может не получить весь <code>len</code> сразу!</li>
+          <li><b><code>sendto(fd, buf, len, flags, to_addr, to_len)</code> и <code>recvfrom</code></b>: датаграммные версии.</li>
+          <li><b><code>close(fd)</code> / <code>shutdown(fd, how)</code></b>: закрытие и полузакрытие (SHUT_WR — «больше не отправляем»).</li>
+          <li><b><code>getpeername(fd, addr, len)</code> / <code>gethostname(buf, len)</code></b>: информация о собеседнике.</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Простой stream-сервер/клиент (TCP)</h2>
+        <p>Самый известный пример руководства — сервер, который шлёт «Привет, мир!», и клиент, читающий ответ:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* server.c */
+#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;errno.h&gt;
+#include &lt;string.h&gt;
+#include &lt;sys/types.h&gt;
+#include &lt;sys/socket.h&gt;
+#include &lt;netinet/in.h&gt;
+#include &lt;netdb.h&gt;
+#include &lt;arpa/inet.h&gt;
+
+#define PORT &quot;3490&quot;
+#define BACKLOG 10
+
+int main(void)
+{
+    struct sockaddr_storage their_addr;
+    socklen_t addr_size;
+    struct addrinfo hints, *res;
+    int sockfd, new_fd;
+
+    memset(&amp;hints, 0, sizeof hints);
+    hints.ai_family   = AF_UNSPEC;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_flags    = AI_PASSIVE; /* мой IP подставится сам */
+
+    getaddrinfo(NULL, PORT, &amp;hints, &amp;res);
+    sockfd = socket(res-&gt;ai_family, res-&gt;ai_socktype, res-&gt;ai_protocol);
+    bind(sockfd, res-&gt;ai_addr, res-&gt;ai_addrlen);
+    listen(sockfd, BACKLOG);
+
+    addr_size = sizeof their_addr;
+    new_fd = accept(sockfd, (struct sockaddr *)&amp;their_addr, &amp;addr_size);
+
+    send(new_fd, &quot;Привет, мир!\n&quot;, 13, 0);
+    close(new_fd);
+    close(sockfd);
+    return 0;
+}</code></pre>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* client.c — подключаемся к серверу через getaddrinfo */
+char buf[512];
+int sockfd, numbytes;
+struct addrinfo hints, *res;
+
+memset(&amp;hints, 0, sizeof hints);
+hints.ai_family   = AF_UNSPEC;
+hints.ai_socktype = SOCK_STREAM;
+getaddrinfo(&quot;localhost&quot;, &quot;3490&quot;, &amp;hints, &amp;res);
+
+sockfd = socket(res-&gt;ai_family, res-&gt;ai_socktype, res-&gt;ai_protocol);
+connect(sockfd, res-&gt;ai_addr, res-&gt;ai_addrlen);
+
+numbytes = recv(sockfd, buf, sizeof buf - 1, 0);
+buf[numbytes] = &#x27;\0&#x27;;
+printf(&quot;%s&quot;, buf);
+close(sockfd);</code></pre>
+        <p>Заметки руководства: <code>fork()</code> для одновременного обслуживания нескольких клиентов, <code>SIGCHLD</code> для сбора зомби и <b>пакет-«мертвец»</b>, когда клиент не держит соединение. Для UDP: <code>sendto</code>/<code>recvfrom</code> без listen/accept.</p>
+      </section>
+      <section>
+      <h2>Продвинутые техники и итоги</h2>
+        <ul>
+          <li><b>Blocking / Non-blocking</b>: <code>fcntl(F_SETFL, O_NONBLOCK)</code> или <code>select()</code>, чтобы наблюдать за сокетами без ожидания.</li>
+          <li><b><code>poll()</code></b>: современная замена select с массивом <code>struct pollfd</code> и событиями <code>POLLIN</code>/<code>POLLOUT</code> — у Бижда есть полный пример клиента/сервера на poll.</li>
+          <li><b>Сериализация данных</b>: <code>pack()</code>/<code>unpack()</code> в духе Perl; bswap для «big-endian»; строка целиком с длиной плюс паддинг.</li>
+          <li><b>Broadcast</b>: <code>SO_BROADCAST</code> + <code>sendto(255.255.255.255)</code> или <code>SUBNET_DIRECTED</code>; ответы идут всем stream-слушателям…</li>
+          <li><b>Ресурсы</b>: man-страницы разделов 2/3 по сетям, энергичный <b>FAQ</b> Бижда (типичные проблемы: какой host/пакет? потеря порядка, <code>EADDRINUSE</code>…), таблицы сравнения socket/System V IPC.</li>
+        </ul>
+        <p>Финальное послание руководства — «любите компьютеры»: сокеты на самом деле инструмент связи людей друг с другом: программируя сети, вы кодируете идеи и доставляете их по всему миру. Поздравляем!</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Beej: руководство по сетевому программированию (C)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Beej: руководство по сетевому программированию (C)» принадлежит автору оригинала (Брайан «Бидж» Холл (Brian "Beej" Hall)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Брайан «Бидж» Холл (Brian "Beej" Hall)). Читайте оригинал на
         <a href="http://beej.us/guide/bgnet/" target="_blank" rel="noopener">http://beej.us/guide/bgnet/</a>.
       </div>
     </article>

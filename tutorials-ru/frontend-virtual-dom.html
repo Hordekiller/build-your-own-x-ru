@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Virtual DOM: как React рисует быстро»
+          <b>Оригинальный источник:</b> «How to write your own Virtual DOM»
         </div>
         <a class="btn solid" href="https://medium.com/@deathmood/how-to-write-your-own-virtual-dom-ee74acc13060" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-virtual-dom.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,130 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Virtual DOM своими руками: деревья, сравнения и патчи — как React обновляет только изменённые узлы и почему это быстро.</p>
+      <h2>1. Зачем Virtual DOM?</h2>
+        <p>Прямая манипуляция DOM для обновления интерфейса и медленна, и дорога; идея Virtual DOM: <b>сначала построй дерево UI в лёгком представлении данных</b> (простых JavaScript-объектах, не DOM), <b>затем вычисли разницу между старой и новой версией</b> и примени в реальном DOM только эти различия. Именно это делают React и Vue.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Виртуальные узлы и h()</h2>
+        <p>Каждый виртуальный узел — простой объект с тремя полями: тип элемента, свойства (props) и дети (children). Функция <code>h()</code> (вроде <code>React.createElement</code>) создаёт их:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// структура виртуального узла
+const vnode = {
+  tag: &#x27;div&#x27;,             // имя тега
+  props: { className: &#x27;card&#x27; },  // атрибуты
+  children: [/* виртуальные узлы или текст */],
+};
+
+// вспомогательная функция h — создание узла с упорядоченными аргументами
+function h(tag, props, ...children) {
+  return { tag, props, children: children.flat() };
+}
+
+const tree = h(&#x27;div&#x27;, { id: &#x27;app&#x27; },
+  h(&#x27;h1&#x27;, {}, &#x27;Привет!&#x27;),
+  h(&#x27;p&#x27;, {}, &#x27;Это виртуальное дерево.&#x27;),
+);</code></pre>
+      </section>
+      <section>
+      <h2>3. Рендер: превращение виртуального дерева в DOM</h2>
+        <p>Функция <code>render</code> рекурсивно превращает узлы в настоящие элементы; строковые дети становятся текстовыми узлами:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function render(vnode) {
+  if (typeof vnode === &#x27;string&#x27;) {
+    return document.createTextNode(vnode);
+  }
+
+  const el = document.createElement(vnode.tag);
+
+  // установка атрибутов (props)
+  for (const key in vnode.props) {
+    el.setAttribute(key, vnode.props[key]);
+  }
+
+  // рекурсивный рендер детей
+  vnode.children.forEach((child) =&gt; el.appendChild(render(child)));
+
+  return el;
+}</code></pre>
+      </section>
+      <section>
+      <h2>4. diff и patch: сравнение и применение изменений</h2>
+        <p>Сердце статьи — функция <code>diff</code>: она сравнивает прежнее виртуальное дерево с новым и применяет минимальные изменения в реальном DOM. Три главных случая:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function diff(oldVnode, newVnode, parentNode) {
+  // случай 1: одно из деревьев — текст, другое — элемент: полная замена
+  if (typeof oldVnode === &#x27;string&#x27; || typeof newVnode === &#x27;string&#x27;) {
+    if (oldVnode !== newVnode) {
+      // простое обновление текста
+      parentNode.childNodes[0].nodeValue = newVnode;
+    }
+    return;
+  }
+
+  // случай 2: теги разные — строим весь новый узел и заменяем
+  if (oldVnode.tag !== newVnode.tag) {
+    const newEl = render(newVnode);
+    parentNode.replaceChild(newEl, parentNode.childNodes[0]);
+    return;
+  }
+
+  // случай 3: тег тот же — обновляем атрибуты
+  const domNode = parentNode.childNodes[0];
+  updateProps(domNode, oldVnode.props, newVnode.props);
+
+  // а затем сравниваем детей (рекурсивно)
+  const max = Math.max(oldVnode.children.length, newVnode.children.length);
+  for (let i = 0; i &lt; max; i++) {
+    // ... diff на каждой паре детей с childNodes[i]
+  }
+}
+
+function updateProps(domNode, oldProps, newProps) {
+  // удаление убранных атрибутов
+  for (const key in oldProps) {
+    if (!(key in newProps)) domNode.removeAttribute(key);
+  }
+  // обновление новых атрибутов
+  for (const key in newProps) {
+    if (oldProps[key] !== newProps[key]) {
+      domNode.setAttribute(key, newProps[key]);
+    }
+  }
+}</code></pre>
+        <p>Деталь дизайна: сравнение идёт по <b>индексу детей</b>, а не по типу, — поэтому перемещение элементов для этого простого алгоритма «подозрительно»; именно здесь в React/Vue вступают <code>key</code>, делающие diff умнее.</p>
+      </section>
+      <section>
+      <h2>5. Полный пример</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">const app = document.getElementById(&#x27;app&#x27;);
+
+// первоначальный рендер
+const v1 = h(&#x27;div&#x27;, { className: &#x27;box&#x27; },
+  h(&#x27;h2&#x27;, {}, &#x27;Заголовок&#x27;),
+  h(&#x27;button&#x27;, { onclick: () =&gt; update() }, &#x27;Нажми&#x27;),
+);
+app.appendChild(render(v1));
+
+function update() {
+  // новое виртуальное дерево (например, после изменения state)
+  const v2 = h(&#x27;div&#x27;, { className: &#x27;box big&#x27; },
+    h(&#x27;h2&#x27;, {}, &#x27;Новый заголовок&#x27;),
+    h(&#x27;button&#x27;, { onclick: () =&gt; update() }, &#x27;Нажми&#x27;),
+  );
+  // в DOM применяются только различия
+  diff(v1, v2, app);
+}</code></pre>
+        <p>В этом примере меняется атрибут <code>className</code> и текст <code>h2</code>; остальные узлы (например, button) вообще не трогаются — вот та эффективность, которую даёт Virtual DOM.</p>
+      </section>
+      <section>
+      <h2>6. Итоги</h2>
         <ul>
-          <li>Что такое Virtual DOM</li>
-          <li>Сравнение деревьев</li>
-          <li>Патчи и обновления</li>
-          <li>Почему быстрее</li>
+          <li>Virtual DOM — просто структура данных; её сила в алгоритме diff, который понимает, «что изменилось».</li>
+          <li>Вся реализация умещается примерно в 100 строк чистого JavaScript.</li>
+          <li>React и Vue используют ту же идею и вместо индекса выполняют более умное сравнение с key.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Вместо перерисовки всего — сравнение виртуальных деревьев: различия превращаются в точечные операции DOM. Маленький код — большие уроки.</p>
-        <p>Сравнение двух узлов:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function diff(prev, next) {
-  if (prev.type !== next.type) return replaceWith(next);
-  if (prev.props.text !== next.props.text)
-    return patchText(next.props.text);
-  // рекурсия по детям...
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Virtual DOM — архитектурное достижение фронтенда: разобрав механизм, вы сможете обсуждать оптимизации React как инженер.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Virtual DOM: как React рисует быстро» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Virtual DOM: как React рисует быстро» принадлежит автору оригинала (Леонид Кутиумис (Leonid Kutiumis)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Леонид Кутиумис (Leonid Kutiumis)). Читайте оригинал на
         <a href="https://medium.com/@deathmood/how-to-write-your-own-virtual-dom-ee74acc13060" target="_blank" rel="noopener">https://medium.com/@deathmood/how-to-write-your-own-virtual-dom-ee74acc13060</a>.
       </div>
     </article>

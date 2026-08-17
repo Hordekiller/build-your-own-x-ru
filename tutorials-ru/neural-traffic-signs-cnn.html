@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «CNN для дорожных знаков на Python»
+          <b>Оригинальный источник:</b> «Traffic Sign Classification with a Convolutional Network»
         </div>
         <a class="btn solid" href="https://navoshta.com/traffic-signs-classification/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-traffic-signs-cnn.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,70 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Свёрточная нейросеть для распознавания дорожных знаков: CNN, данные и обучение — прикладное глубокое обучение.</p>
+      <h2>Задача и датасет</h2>
+        <p>Распознавание дорожных знаков критически важно для беспилотных автомобилей. Датасет <b>GTSRB (German Traffic Sign Recognition Benchmark)</b>: 39 209 изображений для обучения и 12 630 для теста, 43 класса, все размером 32×32. Сложности: переменное освещение, угол обзора, заслонение и похожесть классов (например, ограничения скорости 50 и 80). Цель — высокая точность на тестовых данных.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Предобработка: серый канал, локальная гистограмма</h2>
+        <p>Автор останавливается на важном выборе: оставить изображения цветными или сделать их серыми? Итог экспериментов: использование <b>канала Y из цветового пространства YCbCr</b> (отделяет яркость от цвета) вместе с <b>локальным выравниванием гистограммы</b> (<code>equalize_adapthist</code> из scikit-image) даёт лучший результат — локальная гистограмма уравновешивает контраст светлых/тёмных участков, и сеть учит признаки, не зависящие от освещения:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from skimage import color, exposure
+
+def preprocess_image(image):
+    # 1) извлечение канала яркости (Y) из YCbCr
+    y_channel = color.rgb2ycbcr(image)[:, :, 0]
+    # 2) локальное выравнивание гистограммы для устойчивости к освещению
+    y_channel = exposure.equalize_adapthist(y_channel, clip_limit=0.1)
+    # 3) нормализация к диапазону [0, 1]
+    return (y_channel - np.min(y_channel)) / (np.max(y_channel) - np.min(y_channel))</code></pre>
+      </section>
+      <section>
+      <h2>Архитектура сети: уроки Sermanet & LeCun</h2>
+        <p>Архитектура вдохновлена известной статьёй <b>Sermanet & LeCun (2011)</b>: сеть с несколькими свёрточными слоями, порождающими <b>многомасштабные признаки</b> — выходы разных свёрточных слоёв объединяются (concat) и идут в полносвязный слой. Такое сочетание даёт классификатору и мелкие локальные признаки, и глобальные:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Сводка архитектуры: свёртки -&gt; многомасштабные признаки -&gt; softmax
+conv1:  Conv2D(32) -&gt; ReLU -&gt; MaxPool2x2
+conv2:  Conv2D(64) -&gt; ReLU -&gt; MaxPool2x2
+conv3:  Conv2D(128) -&gt; ReLU -&gt; MaxPool2x2
+
+# Соединение признаков разных масштабов:
+features = concat([flatten(conv1), flatten(conv2), flatten(conv3)])
+
+dense: Dense(512) -&gt; ReLU -&gt; Dropout(0.5)
+output: Dense(43) -&gt; Softmax</code></pre>
+      </section>
+      <section>
+      <h2>Обучение и настройка гиперпараметров</h2>
+        <p>Модель строится на TensorFlow. Несколько ключевых приёмов обучения:</p>
         <ul>
-          <li>Свёрточные слои</li>
-          <li>Архитектура CNN</li>
-          <li>Обучение</li>
-          <li>Оценка</li>
+          <li><b>Аугментация данных</b>: случайное вырезание 28×28 из изображения 32×32, повороты, масштаб и цветовые сдвиги — чтобы сеть стала устойчивой к разнообразию входов.</li>
+          <li><b>Постепенное снижение скорости обучения</b>: старт с 0,01 и деление на 10 после каждой эпохи — более точная сходимость на поздних этапах.</li>
+          <li><b>Dropout 0.5</b> в полносвязном слое для предотвращения переобучения.</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Ступенчатое снижение скорости обучения: деление на 10 в конце каждой эпохи
+learning_rate = 0.01 * (0.1 ** epoch)
+
+# Обучение с batch size 128 и оптимизатором Adam</code></pre>
+      </section>
+      <section>
+      <h2>Результаты: 99,33% точности на тесте</h2>
+        <p>Финальная сеть достигает <b>точности 99,33%</b> на тестовом датасете GTSRB — выше многих опубликованных современных решений. Поучительный момент: большая часть успеха приходит не от сложности сети, а от <b>правильной предобработки</b> (канал Y + локальная гистограмма) и аугментации данных. Автор показывает, что предобработка с локальным контрастом заметно снижает ошибку на тесте.</p>
+        <div class="callout note">
+          <strong>Дополнительно:</strong> с тем же рецептом — светоустойчивая предобработка + многомасштабная CNN + аугментация — можно получать почти идеальные результаты и на похожих датасетах (например, CIFAR).
+        </div>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>YCbCr + локальная гистограмма = выигрышная предобработка для изображений с переменным светом.</li>
+          <li>Соединение многомасштабных признаков (идея Sermanet & LeCun) повышает точность.</li>
+          <li>Аугментация + Dropout + ступенчатое снижение скорости обучения = стабильное обучение.</li>
+          <li>99,33% на GTSRB — точность на уровне лучших решений своего времени.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>CNN распознают изображения: свёртки, пулинг и полносвязные слои. Проект учит на реальном наборе знаков.</p>
-        <p>Модель CNN на Keras:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>model = Sequential([
-    Conv2D(32, (3,3), activation="relu", input_shape=(32,32,3)),
-    MaxPooling2D(),
-    Flatten(),
-    Dense(128, activation="relu"),
-    Dense(43, activation="softmax")
-])</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>CNN — сила современного CV: урок на дорожных знаках покажет пайплайн от данных до модели.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «CNN для дорожных знаков на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «CNN для дорожных знаков на Python» принадлежит автору оригинала (Alex Staravoitau). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Alex Staravoitau). Читайте оригинал на
         <a href="https://navoshta.com/traffic-signs-classification/" target="_blank" rel="noopener">https://navoshta.com/traffic-signs-classification/</a>.
       </div>
     </article>

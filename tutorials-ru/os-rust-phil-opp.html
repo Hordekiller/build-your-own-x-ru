@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «ОС на Rust: блог Phil Opp»
+          <b>Оригинальный источник:</b> «Writing an OS in Rust»
         </div>
         <a class="btn solid" href="https://os.phil-opp.com/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-rust-phil-opp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,76 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Знаменитый блог: ОС на Rust — память, прерывания и многозадачность с безопасностью типов.</p>
+      <h2>О серии</h2>
+        <p>Эта серия — самый популярный и полный урок по созданию операционной системы на Rust. Каждая статья покрывает одну тему с полным кодом и глубокими пояснениями, и все статьи строятся друг на друге единой цепочкой. Текущая (вторая) версия использует современную архитектуру: компиляция в <b>freestanding binary</b> без каких-либо зависимостей от ОС и загрузка через специальный crate под названием <code>bootloader</code>.</p>
+        <p>Интересная деталь о версиях: <b>первая версия</b> (старая) работала через стандартные GRUB и Multiboot, а <b>вторая версия</b> перешла на собственный загрузчик со стандартом, заточенным под Rust (загрузка в режимах UEFI и BIOS), и код полностью управляется инструментом <code>cargo</code>.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Список статей</h2>
         <ul>
-          <li>Rust-ядро</li>
-          <li>Память и страницы</li>
-          <li>Прерывания</li>
-          <li>Многозадачность</li>
+          <li><b>Freestanding Rust Binary:</b> сборка бинарника без ОС — объявление <code>#![no_std]</code> и специальной цели (target).</li>
+          <li><b>Minimal Rust Kernel:</b> первое ядро с функцией <code>_start</code> и выводом сообщения в память VGA; запуск через crate <code>bootloader</code> и выполнение в QEMU.</li>
+          <li><b>VGA Text Mode:</b> запись в видеопамять через модуль <code>vga_buffer</code> и управление println.</li>
+          <li><b>Testing:</b> инфраструктура модульных и интеграционных тестов для ядра.</li>
+          <li><b>CPU Exceptions:</b> таблица IDT, прерывания CPU и обработчики.</li>
+          <li><b>Double Faults:</b> обработка двойной ошибки и её стек.</li>
+          <li><b>Hardware Interrupts:</b> аппаратные прерывания, контроллер PIC и таймер — первая основа многозадачности.</li>
+          <li><b>Introduction to Paging:</b> страничная адресация и управление виртуальной памятью через четырёхуровневую таблицу страниц (P4..P1).</li>
+          <li><b>Heap Allocation:</b> аллокатор кучи внутри ядра.</li>
+          <li><b>Allocator Designs:</b> сравнение дизайнов аллокаторов (списки свободных блоков и т.д.).</li>
+          <li><b>Async/Await:</b> паттерн async на уровне ОС и построение исполнительного рантайма.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Блог Phil Opp строит ОС на Rust: типы защищают ядро, а статьи объясняют каждый шаг — от пустого проекта до многозадачности.</p>
-        <p>Обработчик прерывания на Rust:</p>
-        <pre class="code"><span class="lang-tag">Rust</span><code>extern "x86-interrupt" fn timer_handler(_: &amp;mut InterruptStackFrame) {
-    // планировщик получает управление
-    schedule();
+      <h2>Пример кода: минимальное ядро</h2>
+        <p>Маленькое ядро серии — это freestanding-бинарник, собираемый компилятором Rust, где выброшенное (например, <code>std</code>) заменяется обработчиком паник Rust:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">//! Минимальное ядро — freestanding Rust binary
+#![no_std]          // без стандартной библиотеки
+#![no_main]         // без обычного main
+
+use core::panic::PanicInfo;
+
+static HELLO: &amp;[u8] = b&quot;Hello World!&quot;;
+
+#[no_mangle]
+pub extern &quot;C&quot; fn _start() -&gt; ! {
+    let vga_buffer = 0xb8000 as *mut u8;
+
+    for (i, &amp;byte) in HELLO.iter().enumerate() {
+        unsafe {
+            *vga_buffer.offset(i as isize * 2) = byte;
+            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;  // зелёный
+        }
+    }
+
+    loop {}         // система «завершила работу»
+}
+
+#[panic_handler]
+fn panic(_info: &amp;PanicInfo) -&gt; ! {
+    loop {}
 }</code></pre>
+        <p>Сборка и запуск выполняются инструментами Rust; собственный загрузчик (crate <code>bootloader</code>) формирует загрузочный образ:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">cargo build
+cargo run    # со встроенной конфигурацией QEMU запускает ядро</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Rust-ОС — тренд системной разработки: блог — эталон, на который равняются целые поколения.</p>
+      <h2>Сильные стороны</h2>
+        <ul>
+          <li><b>Точность и глубина:</b> каждая концепция объяснена с деталями архитектуры x86_64.</li>
+          <li><b>Актуальность:</b> статьи постоянно обновляются под новые версии Rust и инструментов.</li>
+          <li><b>Тесты в проекте:</b> полная тестовая инфраструктура — вы учитесь тестировать своё ядро, как обычный софт.</li>
+          <li><b>Высокий уровень:</b> серия доходит до async/await — такого нет в C-уроках.</li>
+        </ul>
+        <div class="callout note">
+          <strong>Дополнительно:</strong> если вы знакомы с Rust (или хотите выучить Rust «под предлогом» ОС) — эта серия лучший выбор; иначе сначала пройдите C-путь (например, Little OS Book), а потом вернитесь сюда, чтобы увидеть разницу с безопасностью Rust.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «ОС на Rust: блог Phil Opp» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «ОС на Rust: блог Phil Opp» принадлежит автору оригинала (Philipp Oppermann). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Philipp Oppermann). Читайте оригинал на
         <a href="https://os.phil-opp.com/" target="_blank" rel="noopener">https://os.phil-opp.com/</a>.
       </div>
     </article>

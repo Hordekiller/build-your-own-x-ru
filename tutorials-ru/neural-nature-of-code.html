@@ -36,7 +36,7 @@
       </div>
       <h1>Nature of Code: нейросети в искусстве</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: JavaScript / Java</span>
+        <span class="meta-badge">⚙ Язык: JavaScript / p5.js</span>
         <span class="meta-badge">📁 Нейросеть</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://www.youtube.com/playlist?list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Nature of Code: нейросети в искусстве»
+          <b>Оригинальный источник:</b> «Neural Networks — The Nature of Code»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-nature-of-code.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,49 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Глава «Nature of Code» о нейросетях: перцептроны, обучение и креативные применения — нейросети для художников.</p>
+      <h2>О курсе</h2>
+        <p>В книге и видео-серии <b>Nature of Code</b> Шиффман симулирует природные явления кодом; десятая глава добирается до <b>нейронных сетей</b>: мозг как «природный алгоритм» и вдохновлённые им искусственные сети. Его подход обучающий и визуальный: каждое понятие (нейрон, перцептрон, слой, обучение) показывается визуальными скетчами на <b>p5.js</b>, чтобы была видна «механика» сети, а не только формулы. Для части материала референсом Шиффману служила книга <b>Make Your Own Neural Network</b> Тарика Рашида.</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">// Простой перцептрон в p5.js: взвешенная сумма + ступенчатая активация
+function guess(inputs) {
+  let sum = 0;
+  for (let i = 0; i &lt; inputs.length; i++) {
+    sum += inputs[i] * this.weights[i];   // взвешенная сумма входов
+  }
+  return sum &gt; 0 ? 1 : -1;                // ступенчатый выход
+}</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Смотреть плейлист</h2>
+        <p>Это видео-курс, и его содержание здесь не размещается; главную ссылку плейлиста смотрите по кнопке ниже:</p>
+        <p><a class="btn solid" href="https://www.youtube.com/playlist?list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh" target="_blank" rel="noopener">▶ Плейлист в YouTube</a></p>
+      </section>
+      <section>
+      <h2>Путь видео</h2>
         <ul>
-          <li>Перцептрон</li>
-          <li>Обучение</li>
-          <li>Визуализация</li>
-          <li>Креативные проекты</li>
+          <li><b>Введение:</b> что такое нейрон, почему нейросеть «естественна», обзор главы.</li>
+          <li><b>Перцептрон:</b> простейшая сеть — один нейрон с несколькими входами, пропускающий взвешенную сумму через активацию; и его ограничения (XOR не решается).</li>
+          <li><b>Многослойный перцептрон:</b> складываем перцептроны рядом — больше выразительной силы.</li>
+          <li><b>Обучение:</b> настройка весов по ошибке; идея backpropagation и градиентного спуска интуитивно.</li>
+          <li><b>Применения:</b> «умные» агенты, учащиеся на опыте, и взаимодействие перцептронов с симуляциями прошлых глав (движение и силы).</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Книга соединяет код и искусство: нейросети как инструмент генерации и взаимодействия — с живыми примерами.</p>
-        <p>Визуализация весов перцептрона:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>// Веса перцептрона рисуются линиями
-line(x, y, x + w[0] * 100, y + w[1] * 100);</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Искусство и ИИ — творческий вход в нейросети: Nature of Code остаётся вдохновляющим учебником.</p>
+      <h2>Почему смотреть этот курс полезно</h2>
+        <ul>
+          <li><b>Интуиция до формул:</b> видно, как веса меняют форму выхода, ещё до заучивания формул.</li>
+          <li><b>Мало кода, живой код:</b> примеры выполняются в браузере (p5.js Web Editor); можно манипулировать ими на лету.</li>
+          <li><b>Мост между искусством и ML:</b> для тех, кто хочет применить сеть в творческих проектах (движение, взаимодействие, дизайн).</li>
+          <li><b>Крепкая база для продолжения:</b> полная книга Nature of Code включает отдельные главы про сети и «нейроэволюцию» (neuroevolution).</li>
+        </ul>
+        <div class="callout note">
+          <strong>Замечание:</strong> это видео-курс, и его содержание здесь не размещается; главную ссылку плейлиста смотрите по кнопке выше. Все примеры написаны на p5.js (JavaScript), их код доступен на natureofcode.com и канале The Coding Train.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Nature of Code: нейросети в искусстве» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Nature of Code: нейросети в искусстве» принадлежит автору оригинала (Daniel Shiffman). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Daniel Shiffman). Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLRqwX-V7Uu6aCibgK1PTWWu9by6XFdCfh</a>.
       </div>
     </article>

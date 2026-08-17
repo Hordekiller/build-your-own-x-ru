@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Breakout на Phaser (JavaScript)»
+          <b>Оригинальный источник:</b> «2D breakout game using Phaser»
         </div>
         <a class="btn solid" href="https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_breakout_game_Phaser" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-phaser-breakout.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,79 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Клон Breakout на Phaser 3: спрайты, физика и сцены — веб-аркада на современном фреймворке.</p>
+      <h2>Об уроке</h2>
+        <p>Урок опубликован в разделе «Игры» (Games) сайта MDN и строит игру Breakout на <b>Phaser</b>. Его особенность: каждый шаг сопровождается <b>живым редактируемым примером</b> — можно менять код прямо в браузере и сразу видеть результат. Полный код есть на GitHub MDN. Предпосылка: JavaScript от начального до среднего уровня.</p>
+        <div class="callout note">
+          <strong>Замечание:</strong> MDN также ведёт версию той же игры на <b>чистом JavaScript</b> (Canvas); если хотите увидеть, как всё работает без фреймворка, сначала пройдите ту версию, а потом этот урок Phaser — различия очень наглядны.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта уроков</h2>
         <ul>
-          <li>Фреймворк Phaser 3</li>
-          <li>Спрайты и физика</li>
-          <li>Сцены и состояние</li>
-          <li>Сборка игры</li>
+          <li>Настройка Phaser и создание игровой сцены</li>
+          <li>Рендер и перемещение изображений (ракетка, мяч)</li>
+          <li>Обнаружение столкновений (collision detection)</li>
+          <li>Управление: мышь и клавиатура</li>
+          <li>Анимация: движение мяча, твины (tweens)</li>
+          <li>Состояния победы и поражения (win/lose states)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Phaser даёт аркады из коробки: физика, спрайты, сцены. Урок переносит классику в веб.</p>
-        <p>Настройка мяча с физикой:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>this.ball = this.physics.add.sprite(x, y, "ball");
-this.ball.setBounce(1, 1);  // идеальный отскок</code></pre>
+      <h2>Пример кода: игровая сцена</h2>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// Создание сцен игры: Boot → Preload → Create → Update
+class GameScene extends Phaser.Scene {
+  constructor() {
+    super({ key: &#x27;GameScene&#x27; });
+  }
+
+  preload() {
+    // загрузка изображений
+    this.load.image(&#x27;ball&#x27;, &#x27;images/ball.png&#x27;);
+    this.load.image(&#x27;paddle&#x27;, &#x27;images/paddle.png&#x27;);
+    this.load.image(&#x27;brick&#x27;, &#x27;images/brick.png&#x27;);
+  }
+
+  create() {
+    // мяч с физикой
+    this.ball = this.physics.add.image(400, 300, &#x27;ball&#x27;);
+    this.ball.setBounce(1);         // полное отражение
+    this.ball.setVelocity(160, 160); // начальная скорость
+
+    // ракетка: закреплена внизу, движется за мышью
+    this.paddle = this.physics.add.image(400, 550, &#x27;paddle&#x27;);
+    this.paddle.setImmovable(true);
+
+    // столкновение мяча с ракеткой
+    this.physics.add.collider(this.ball, this.paddle);
+
+    // кирпичи: сетка
+    for (let row = 0; row &lt; 3; row++) {
+      for (let col = 0; col &lt; 8; col++) {
+        const brick = this.physics.add.image(70 + col * 90, 60 + row * 40, &#x27;brick&#x27;);
+        brick.setImmovable(true);
+        this.physics.add.collider(this.ball, brick, this.hitBrick, null, this);
+      }
+    }
+
+    this.input.on(&#x27;pointermove&#x27;, (p) =&gt; {
+      this.paddle.x = Phaser.Math.Clamp(p.x, 50, 750);
+    });
+  }
+
+  hitBrick(ball, brick) {
+    brick.destroy(); // кирпич уничтожен
+  }
+}</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Phaser — веб-стандарт 2D-игр: урок даст основу, на которой вы ускорите прототипирование игр.</p>
+      <h2>Итог</h2>
+        <p>Урок короткий, чистый и интерактивный — лучшее введение в Phaser и базовые игровые концепции (физика, столкновения, состояния). После него ту же структуру можно расширять: больше уровней и очков.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Breakout на Phaser (JavaScript)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Breakout на Phaser (JavaScript)» принадлежит автору оригинала (команда разработчиков MDN Web Docs). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (команда разработчиков MDN Web Docs). Читайте оригинал на
         <a href="https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_breakout_game_Phaser" target="_blank" rel="noopener">https://developer.mozilla.org/en-US/docs/Games/Tutorials/2D_breakout_game_Phaser</a>.
       </div>
     </article>

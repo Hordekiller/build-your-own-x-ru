@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Шелл на Go: свой Unix-шелл»
+          <b>Оригинальный источник:</b> «Writing a simple shell in Go»
         </div>
         <a class="btn solid" href="https://sj14.gitlab.io/post/2018-07-01-go-unix-shell/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/go-unix-shell.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,102 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Шелл на Go: разбор команд, пайпы и конвейеры, фоновые задания — современный интерпретатор в выразительном языке.</p>
+      <h2>Что такое шелл?</h2>
+        <p>«Шелл — это основной интерфейс пользователя с операционной системой: вы даёте ему команды и получаете соответствующий вывод». Gnome и Windows тоже являются графическими шеллами, но когда технические люди говорят о шелле, обычно имеют в виду текстовый (например, Bash и Zsh). Работает всё просто: введите <code>ls</code> и получите список папки.</p>
+        <blockquote>Юникс очень прост; только нужно быть гением, чтобы понять его простоту. — Деннис Ритчи</blockquote>
+        <p>Шелл — лишь небольшая часть операционной системы (и по сравнению с ядром — лёгкая часть!); автор надеется, что в конце вы, как и он, удивитесь, как просто писать шелл, когда понимаешь лежащие в основе концепции.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Цикл ввода</h2>
+        <p>Наша клавиатура — это устройство стандартного ввода (<code>os.Stdin</code>). Каждое нажатие Enter создаёт новую строку (<code>\n</code>), и мы читаем эту строку:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func main() {
+    reader := bufio.NewReader(os.Stdin)
+    for {
+        fmt.Print(&quot;&gt; &quot;)
+        input, err := reader.ReadString(&#x27;\n&#x27;)
+        if err != nil {
+            fmt.Println(err)
+        }
+        err = execInput(input)
+        if err != nil {
+            fmt.Println(err)
+        }
+    }
+}</code></pre>
+        <p>Побочное замечание: ошибки лучше писать в <code>os.Stderr</code> (например, через <code>log.Println</code>), но это добавляет временные метки и выглядит многословно; можете исправить позже.</p>
+      </section>
+      <section>
+      <h2>Выполнение команд</h2>
+        <p>Сначала убираем символ новой строки с конца ввода, затем готовим команду через <code>exec.Command</code> и выполняем её через <code>cmd.CombinedOutput()</code> (успешный вывод идёт в stdout, ошибки — в stderr, но и то и другое собирается в переменную <code>stdoutStderr</code>):</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func execInput(input string) error {
+    // удаление символа новой строки
+    input = strings.TrimSuffix(input, &quot;\n&quot;)
+
+    // подготовка команды к выполнению
+    cmd := exec.Command(input)
+
+    // выполнение и получение вывода
+    stdoutStderr, err := cmd.CombinedOutput()
+    if err != nil {
+        return err
+    }
+    fmt.Printf(&quot;%s&quot;, stdoutStderr)
+    return nil
+}</code></pre>
+        <p>Первый тест: <code>go run main.go</code>, приглашение <code>&gt;</code> и <code>ls</code> работает! Вывод берётся из программы, а <code>CTRL-C</code>, как и в любой другой программе, закрывает шелл.</p>
+      </section>
+      <section>
+      <h2>Аргументы — история ls -l</h2>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">&gt; ls -l
+exec: &quot;ls -l&quot;: executable file not found in $PATH</code></pre>
+        <p>Провал! Потому что наш шелл пытается запустить программу с именем <code>ls -l</code>; на самом деле программа называется просто <code>ls</code>, а <code>-l</code> — это аргумент, который разбирает сама программа. Поэтому разбиваем ввод по каждому пробелу:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// отделение команды от аргументов
+args := strings.Split(input, &quot; &quot;)
+
+// передача программы и аргументов по отдельности
+cmd := exec.Command(args[0], args[1:]...)</code></pre>
+        <p>Теперь имя программы находится в <code>args[0]</code>, аргументы — в последующих индексах, и <code>ls -l</code> работает как ожидалось.</p>
+      </section>
+      <section>
+      <h2>Встроенные команды — почему не работает cd?</h2>
+        <p>Посмотрите на <code>cd /</code>, а затем на <code>ls</code>, который выдаёт список текущей папки! Ответ прост: «настоящей» программы <code>cd</code> не существует — это возможность, встроенная в шелл (чтобы он мог менять состояние самого себя). Поэтому добавляем <code>switch</code> по первому аргументу:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// проверка встроенных команд
+switch args[0] {
+case &quot;cd&quot;:
+    // с пустым путём переход в домашнюю папку пока не поддерживается
+    if len(args) &lt; 2 {
+        return errors.New(&quot;path required&quot;)
+    }
+    if err := os.Chdir(args[1]); err != nil {
+        return err
+    }
+    return nil
+case &quot;exit&quot;:
+    os.Exit(0)
+}</code></pre>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">&gt; cd /
+&gt; ls
+Applications
+Library
+Network
+System
+...</code></pre>
+        <p>«Да, этот вывод больше похож на содержимое моего корневого каталога» — и всё! Простой шелл написан.</p>
+      </section>
+      <section>
+      <h2>Предложенные улучшения и итоги</h2>
         <ul>
-          <li>Команды и аргументы</li>
-          <li>Пайпы и конвейеры</li>
-          <li>Перенаправление</li>
-          <li>Цикл ожидания</li>
+          <li>Улучшение приглашения: добавление рабочего каталога, имени хоста или текущего пользователя.</li>
+          <li>Запись ошибок в <code>stderr</code>.</li>
+          <li>Просмотр истории ввода клавишами вверх/вниз.</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Go даёт чистоту: os/exec, bufio и горутины — шелл строится из стандартных блоков и читается как интерфейс.</p>
-        <p>Запуск команды в Go:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>cmd := exec.Command(name, args...)
-cmd.Stdout = os.Stdout
-cmd.Run()</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Современный шелл на Go — комфорт и контроль одновременно: вы получите работающий интерпретатор с чистым кодом.</p>
+        <p>Главный вывод: вопреки видимости, Go тоже помог своей простотой — без какой-либо низкоуровневой работы вроде управления памятью. «Роб Пайк и Кен Томпсон, которые вместе с Робертом Гризмером создали Go, участвовали и в создании Unix; так что писать шелл на Go — удачное сочетание.»</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Шелл на Go: свой Unix-шелл» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Шелл на Go: свой Unix-шелл» принадлежит автору оригинала (Саймон Яковски (Simon Jakowski)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Саймон Яковски (Simon Jakowski)). Читайте оригинал на
         <a href="https://sj14.gitlab.io/post/2018-07-01-go-unix-shell/" target="_blank" rel="noopener">https://sj14.gitlab.io/post/2018-07-01-go-unix-shell/</a>.
       </div>
     </article>

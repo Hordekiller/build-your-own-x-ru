@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «LWJGL: 3D-игры на Java»
+          <b>Оригинальный источник:</b> «3D Game Development with LWJGL 3»
         </div>
         <a class="btn solid" href="https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-lwjgl.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,60 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>LWJGL: OpenGL из Java, шейдеры и сцены — 3D-разработка, не покидая виртуальную машину.</p>
+      <h2>О книге</h2>
+        <p><b>LWJGL 3</b> — библиотека, дающая в Java низкоуровневый доступ к OpenGL, OpenAL (звук) и OpenCL — безо всякого игрового движка. Книга идёт пошагово с главы «First steps»: создание окна через GLFW, затем шейдеры OpenGL, рендер объектов, камера, освещение и, наконец, управляемая 3D-сцена.</p>
+        <div class="callout note">
+          <strong>Замечание:</strong> если вы не знакомы с OpenGL, первые главы книги (шейдеры, VBO/VAO, матрицы трансформаций) сами по себе — полноценный урок графики.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта глав</h2>
         <ul>
-          <li>OpenGL-контекст</li>
-          <li>Шейдеры</li>
-          <li>Меши и сцены</li>
-          <li>Камера</li>
+          <li>Первые шаги: настройка GLFW и окна</li>
+          <li>Шейдеры и современный конвейер OpenGL (GLSL)</li>
+          <li>Рендер треугольника и куба, камера, текстуры</li>
+          <li>Матрицы и трансформации (перемещение/поворот/масштаб)</li>
+          <li>Освещение и материалы</li>
+          <li>3D-модели, вода, небо, частицы</li>
+          <li>Звук через OpenAL (в старой версии книги)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>LWJGL даёт Java прямой доступ к OpenGL: вершинные буферы, шейдеры и камера — настоящий 3D-стек.</p>
-        <p>Загрузка шейдера:</p>
-        <pre class="code"><span class="lang-tag">Java</span><code>int vs = glCreateShader(GL_VERTEX_SHADER);
-glShaderSource(vs, vertexShaderSource);
-glCompileShader(vs);</code></pre>
+      <h2>Пример кода</h2>
+        <pre class="code"><span class="lang-tag">java</span><code style="direction:ltr;text-align:left">// Настройка окна через GLFW
+public class GameEngine implements Runnable {
+    private final Window window;
+
+    public static void main(String[] args) {
+        new GameEngine().run();
+    }
+
+    @Override
+    public void run() {
+        init();              // окно, состояние OpenGL
+        while (!window.shouldClose()) {
+            gameLoop();      // ввод ← обновление ← рендер
+        }
+        cleanup();           // освобождение GLFW
+    }
+
+    private void init() {
+        window = new Window(&quot;3D Game with LWJGL&quot;, 800, 600);
+        window.init();
+        // ... создание шейдеров, буферов и сцены
+    }
+}</code></pre>
+        <p>Вся книга построена на одном шаблоне «Window + Scene + Renderer»; каждая глава добавляет сцене одну графическую возможность.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>LWJGL — мост к GPU из Java: урок откроет вам OpenGL-конвейер и 3D, не меняя языка.</p>
+      <h2>Итог</h2>
+        <p>Книга — лучший бесплатный источник для старта в 3D-графике и разработке игр на Java; примеры кода каждой главы есть на GitHub автора, и книга обновляется.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «LWJGL: 3D-игры на Java» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «LWJGL: 3D-игры на Java» принадлежит автору оригинала (Antonio Hernández Bejarano). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Antonio Hernández Bejarano). Читайте оригинал на
         <a href="https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/" target="_blank" rel="noopener">https://lwjglgamedev.gitbooks.io/3d-game-development-with-lwjgl/content/</a>.
       </div>
     </article>

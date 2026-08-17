@@ -53,40 +53,44 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок создаёт Reddit-бота на PRAW: поток комментариев, фильтрация по ключевым словам, ответы и обработка rate-limit — бот, который живёт на сабреддитах.</p>
+      <h2>Об этом учебнике</h2>
+        <p>Полный видеоплейлист по созданию Reddit-ботов на Python с библиотекой PRAW: от базовых концепций до практических проектов — мониторинг сабреддитов, ответы на сообщения и автоматическая публикация постов.</p>
+        <p>Видео выстроены по порядку; лучше смотреть с самого начала.</p>
+        <pre class="code"><span class="lang-tag">Python</span><code style="direction:ltr;text-align:left"># Подключение к Reddit через PRAW и мониторинг сабреддита
+import praw
+
+reddit = praw.Reddit(
+    client_id=&quot;ИДЕНТИФИКАТОР_ПРИЛОЖЕНИЯ&quot;,
+    client_secret=&quot;СЕКРЕТ_ПРИЛОЖЕНИЯ&quot;,
+    user_agent=&quot;my-bot/0.1&quot;,
+)
+
+for comment in reddit.subreddit(&quot;learnpython&quot;).stream.comments(skip_existing=True):
+    if &quot;привет&quot; in comment.body:
+        comment.reply(&quot;Привет! Добро пожаловать.&quot;)   # автоответ</code></pre>
+        <p>Этот простой цикл — основа всех практических проектов серии: мониторинг, фильтрация и автоответ.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/videoseries?list=PLIFBTFgFpoJ9vmYYlfxRFV6U_XhG-4fpP" title="Видеоплейлист: Reddit-бот с PRAW" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/playlist?list=PLIFBTFgFpoJ9vmYYlfxRFV6U_XhG-4fpP" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
         <ul>
-          <li>Установка PRAW и авторизация</li>
-          <li>Стрим комментариев</li>
-          <li>Фильтры и черные списки</li>
-          <li>Rate limit и вежливые паузы</li>
+          <li>Введение в Reddit API и PRAW</li>
+          <li>Аутентификация и создание приложения</li>
+          <li>Мониторинг комментариев и автоответы</li>
+          <li>Практические проекты и упражнения</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>PRAW прячет сеть: стрим отдаёт новые комментарии, а бот решает, отвечать ли. Урок учит вежливости перед API — паузы и лимиты.</p>
-        <p>Стрим и фильтр — минимум бота:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>r = praw.Reddit(...)
-for c in r.subreddit("all").stream.comments(skip_existing=True):
-    if "buy coffee" in c.body.lower():
-        c.reply("Кажется, это спам.")</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Стримы социальных сетей — источник реальных проектов: вы получите бота и дисциплину работы с чужим API.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «Reddit-бот на Python с PRAW» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLIFBTFgFpoJ9vmYYlfxRFV6U_XhG-4fpP" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLIFBTFgFpoJ9vmYYlfxRFV6U_XhG-4fpP</a>.
       </div>
     </article>

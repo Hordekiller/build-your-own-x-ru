@@ -36,7 +36,7 @@
       </div>
       <h1>ОС для «чайников»: ядро на C</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://medium.com/@lduck11007/operating-systems-development-for-dummies-3d4d786e8ac" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «ОС для «чайников»: ядро на C»
+          <b>Оригинальный источник:</b> «Operating Systems Development for Dummies»
         </div>
         <a class="btn solid" href="https://medium.com/@lduck11007/operating-systems-development-for-dummies-3d4d786e8ac" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-dummies.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Дружелюбный учебник: ядро на C для новичков — от пустого проекта до работающей системы.</p>
+      <h2>Подход статьи</h2>
+        <p>Автор — как видно из названия «для чайников» — исходит из того, что у читателя нет никакого опыта разработки ОС. Статья максимально простым языком объясняет, что такое операционная система: «программа, которая выполняется при загрузке и управляет аппаратными ресурсами», — а затем в несколько практических шагов на C и ассемблере собирает загружаемый образец.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Этапы разработки</h2>
         <ul>
-          <li>Ядро с нуля</li>
-          <li>Терминал</li>
-          <li>Прерывания</li>
-          <li>Первые программы</li>
+          <li><b>Этап 1 — предпосылки</b>: установка кросс-компилятора (gcc), эмулятора (QEMU или Bochs) и знакомство с нужными инструментами; объяснение, почему кросс-компилятор, а не обычный.</li>
+          <li><b>Этап 2 — загрузчик</b>: сборка простого загрузчика на ассемблере и печать первого сообщения на экран.</li>
+          <li><b>Этап 3 — вход в защищённый режим</b>: GDT и переход в 32-битный режим; простое объяснение «почему 16-битного режима недостаточно».</li>
+          <li><b>Этап 4 — C-ядро</b>: написание первого ядра на C, управление экраном и главный цикл.</li>
+          <li><b>Этап 5 — развитие</b>: добавление таких возможностей, как управление прерываниями и клавиатурой, с рекомендованными путями продолжения.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Курс снижает порог: каждая идея — простыми словами и кодом. От «нуля» к работающей ОС без стресса.</p>
-        <p>Терминальный драйвер ядра:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void terminal_writestring(const char* str) {
-    while (*str) terminal_putchar(*str++);
+      <h2>Пример кода: структура загрузки и ядро</h2>
+        <p>Та же классическая схема, но с объяснениями, действительно понятными новичку, — загрузчик передаёт управление функции kernel_main на C:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Быстрая сборка и запуск образца ОС
+nasm -f elf32 boot.asm -o boot.o
+gcc -m32 -c kernel.c -o kernel.o
+ld -m elf_i386 -T linker.ld boot.o kernel.o -o kernel.bin
+
+# Запуск в эмуляторе
+qemu-system-i386 -kernel kernel.bin</code></pre>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// kernel.c — главный цикл ядра
+void kernel_main(void) {
+    char *video = (char *) 0xB8000;   // видеопамять VGA
+
+    video[0] = &#x27;H&#x27;;
+    video[1] = 0x07;                  // белый на чёрном
+    video[2] = &#x27;i&#x27;;
+    video[3] = 0x07;
+
+    while (1) {
+        __asm__(&quot;hlt&quot;);               // ждать до следующего прерывания
+    }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Дружелюбный вход — тоже путь: после «ОС для чайников» вы готовы к серьёзным учебникам.</p>
+      <h2>Почему это хорошо для начала</h2>
+        <ul>
+          <li><b>Простой и тёплый язык</b>: сложные концепции ОС объясняются без сухих академических терминов.</li>
+          <li><b>Короткие шаги</b>: каждый этап даёт видимый результат и быстро мотивирует.</li>
+          <li><b>Путь продолжения</b>: в конце автор даёт рекомендованные источники для дальнейшего пути.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> если после этой статьи какие-то концепции (GDT, прерывания) всё ещё кажутся туманными, os-tutorial из этого каталога с его более мелкими уроками проходит ровно тот же путь шаг за шагом.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «ОС для «чайников»: ядро на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «ОС для «чайников»: ядро на C» принадлежит автору оригинала (Leo Whitehead). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Leo Whitehead). Читайте оригинал на
         <a href="https://medium.com/@lduck11007/operating-systems-development-for-dummies-3d4d786e8ac" target="_blank" rel="noopener">https://medium.com/@lduck11007/operating-systems-development-for-dummies-3d4d786e8ac</a>.
       </div>
     </article>

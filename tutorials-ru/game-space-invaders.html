@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Space Invaders на C++»
+          <b>Оригинальный источник:</b> «Space Invaders from Scratch»
         </div>
         <a class="btn solid" href="http://nicktasios.nl/posts/space-invaders-from-scratch-part-1.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-space-invaders.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,61 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Space Invaders на C++: ракеты, враги и коллизии — первая аркада в 2D на C++.</p>
+      <h2>Об обучении</h2>
+        <p>Space Invaders (1978) — одна из самых простых и одновременно самых полных игр для реконструкции. Этот урок строит её на <b>OpenGL 3.3</b> (современный конвейер с GLSL-шейдерами), а не на старом OpenGL. Инструменты: <b>GLFW</b> для окон и ввода и <b>GLEW</b> для загрузки функций OpenGL. Итог — работающая игра на современных графических техниках.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> серия отлично подходит тем, кто хочет и игры делать, и всерьёз учить современный OpenGL: вы пишете шейдеры и настраиваете VBO/VAO.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура серии</h2>
         <ul>
-          <li>Игрок и ракеты</li>
-          <li>Формирование врагов</li>
-          <li>Коллизии</li>
-          <li>Очки и уровни</li>
+          <li><b>Часть 1:</b> создание окна с GLFW, буферы и первый шейдер</li>
+          <li><b>Часть 2:</b> отрисовка игрока (глайдер) и физика движения</li>
+          <li><b>Часть 3:</b> пули и стрельба</li>
+          <li><b>Часть 4:</b> враги — движение, отражение и удаление</li>
+          <li><b>После этого:</b> коллизии, очки, уровни и классический стиль игры</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Аркадная классика: движение, выстрелы, столкновения. На C++ построена на маленькой, чистой модели.</p>
-        <p>Движение пришельцев с разворотом:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>aliens.dir = -aliens.dir;
-aliens.y += 8; // на шаг вниз при достижении края</code></pre>
+      <h2>Пример кода: рендер с шейдером</h2>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Простой четырёхугольник с VBO и шейдером
+float vertices[] = {
+  // позиция    // цвет
+  -0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+   0.5f, -0.5f, 1.0f, 1.0f, 1.0f,
+   0.5f,  0.5f, 1.0f, 1.0f, 1.0f,
+  -0.5f,  0.5f, 1.0f, 1.0f, 1.0f,
+};
+unsigned int indices[] = { 0, 1, 2, 2, 3, 0 };
+
+GLuint VBO, VAO, EBO;
+glGenVertexArrays(1, &amp;VAO);
+glGenBuffers(1, &amp;VBO);
+glGenBuffers(1, &amp;EBO);
+
+glBindVertexArray(VAO);
+glBindBuffer(GL_ARRAY_BUFFER, VBO);
+glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
+glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
+glBufferData(GL_ELEMENT_ARRAY_BUFFER, sizeof(indices), indices, GL_STATIC_DRAW);
+
+// Атрибуты: позиция (3 числа) и цвет (3 числа)
+glVertexAttribPointer(0, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)0);
+glEnableVertexAttribArray(0);
+glVertexAttribPointer(1, 3, GL_FLOAT, GL_FALSE, 6 * sizeof(float), (void*)(3 * sizeof(float)));
+glEnableVertexAttribArray(1);</code></pre>
+        <p>После этого все игровые объекты (игрок, враги, пули) рисуются по одному паттерну VAO/VBO с одним шейдером; меняется только их позиция через uniform.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Аркады — стартовое поле и опыт: каждая концепция (столкновения, звук, сцена) — здесь в минимуме.</p>
+      <h2>Итоги</h2>
+        <p>Этот урок — одновременно полное введение в современный OpenGL и работающая классическая игра. Полный код серии есть в GitHub-репозитории автора, а в конце вы сможете расширить игру звуками и новыми уровнями.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Space Invaders на C++» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Space Invaders на C++» принадлежит автору оригинала (Ник Тасиос (Nick Tasios)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Ник Тасиос (Nick Tasios)). Читайте оригинал на
         <a href="http://nicktasios.nl/posts/space-invaders-from-scratch-part-1.html" target="_blank" rel="noopener">http://nicktasios.nl/posts/space-invaders-from-scratch-part-1.html</a>.
       </div>
     </article>

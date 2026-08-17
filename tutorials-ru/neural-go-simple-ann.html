@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Простая нейросеть на Go»
+          <b>Оригинальный источник:</b> «How to build a simple artificial neural network with Go»
         </div>
         <a class="btn solid" href="https://sausheong.github.io/posts/how-to-build-a-simple-artificial-neural-network-with-go/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-go-simple-ann.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,43 +53,102 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Простая нейросеть на Go: слои, веса и обучение — ANN без библиотек.</p>
+      <h2>Введение: что такое нейронная сеть</h2>
+        <p>Искусственная нейронная сеть состоит из искусственных нейронов: каждый нейрон берёт взвешенную сумму входов, добавляет смещение и пропускает результат через функцию активации. Автор реализует всё это на базовых понятиях <b>матриц</b> в Go — никаких библиотек машинного обучения. Результат — маленькая, но полностью рабочая сеть, способная выучить простую задачу классификации.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Искусственный нейрон: Σ(вход × вес) + смещение ← затем функция активации
+output := activation(bias + sum(wi * xi, for i = 1..n))</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Сигмоидная функция активации</h2>
+        <p>Сигмоид сжимает действительное значение в диапазон (0, 1) и даёт сети «вероятностный выход». Для обучения нужна и её производная — производная сигмоида через сам сигмоид проста: <code>σ(x)(1−σ(x))</code>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Сигмоид и его производная
+func sigmoid(x float64) float64 {
+    return 1.0 / (1.0 + math.Exp(-x))
+}
+
+func sigmoidPrime(x float64) float64 {
+    return sigmoid(x) * (1.0 - sigmoid(x))
+}</code></pre>
+      </section>
+      <section>
+      <h2>Структура сети: две матрицы весов</h2>
+        <p>Образцовая сеть имеет два слоя: входной и выходной (без скрытого). Значит, нужны две матрицы: <code>w1</code> ведёт вход к выходу, и <code>w2</code> — в однослойной версии та же связь. Для общности модель определяется массивом матриц весов, чтобы позже добавить больше слоёв:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">type Network struct {
+    inputs        int
+    hidden        int
+    outputs       int
+    hiddenWeights *mat.Dense
+    outputWeights *mat.Dense
+    learningRate  float64
+}
+
+// Создание сети: вход 2, скрытый 2, выход 1
+net := Network{
+    inputs: 2, hidden: 2, outputs: 1,
+    hiddenWeights: mat.NewDense(2, 2, nil), // веса инициализируются случайно
+    outputWeights: mat.NewDense(2, 1, nil),
+    learningRate: 0.1,
+}</code></pre>
+      </section>
+      <section>
+      <h2>Прямое распространение на gonum</h2>
+        <p>Выход вычисляется матричным умножением <code>gonum/mat</code>: вход умножается на <code>hiddenWeights</code>, применяется сигмоид, снова умножение на <code>outputWeights</code> и финальный сигмоид. Конечный выход — предсказание сети:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Вычисление выхода сети для входного вектора
+func (n *Network) feedforward(x *mat.VecDense) *mat.VecDense {
+    // скрытый слой = сигмоид(вход × скрытые веса)
+    hidden := mat.NewVecDense(n.hidden, nil)
+    hidden.MulVec(n.hiddenWeights, x)
+    applySigmoid(hidden)
+
+    // выход = сигмоид(скрытый слой × выходные веса)
+    output := mat.NewVecDense(n.outputs, nil)
+    output.MulVec(n.outputWeights, hidden)
+    applySigmoid(output)
+    return output
+}</code></pre>
+      </section>
+      <section>
+      <h2>Обучение: ошибка, градиентный спуск и обновление</h2>
+        <p>Цель — минимизация функции стоимости. Автор вводит простой критерий ошибки <code>Ek = (выход − ответ)² / 2</code> и по правилу цепочки берёт градиент по каждому весу. Веса движутся в направлении отрицательного градиента (градиентный спуск) шагом, равным скорости обучения:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Один обучающий шаг: вычисление ошибки и правка весов
+func (n *Network) train(x *mat.VecDense, target float64) {
+    // прямое распространение и сохранение выхода слоёв
+    hiddenOut, finalOut := ... // выходы каждого слоя
+
+    // ошибка выхода и умножение на производную сигмоида → дельта выхода
+    outputError := target - finalOut.AtVec(0)
+    outputDelta := outputError * sigmoidPrime(finalOut.AtVec(0))
+
+    // распространение ошибки в скрытый слой
+    hiddenError := ... // взвешено транспонированной outputWeights
+    hiddenDelta := hiddenError * sigmoidPrime(hiddenOut.AtVec(0))
+
+    // обновление весов со скоростью обучения
+    ...
+}</code></pre>
+        <p>Повторение шага на всех обучающих образцах в течение нескольких <b>эпох</b> (epoch) постепенно снижает ошибку, и сеть выучивает поведение вход→выход.</p>
+      </section>
+      <section>
+      <h2>Эксперимент: изучение функции XOR</h2>
+        <p>Классический пример — изучение <b>XOR</b>: функции, которую однонейронная сеть никогда не выучит (она нелинейна), но которая прекрасно изучается вот такой маленькой сетью за несколько эпох. Эксперимент ценен тем, что показывает: глубина (скрытый слой) действительно повышает выразительную силу модели.</p>
+        <div class="callout note">
+          <strong>Дополнительное замечание:</strong> меняя форму входного датасета (например, целые числа) и разные активации, ту же структуру можно применять к большому классу простых задач классификации.
+        </div>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>Слои и нейроны</li>
-          <li>Прямой проход</li>
-          <li>Обучение</li>
-          <li>Тесты</li>
+          <li>Нейросеть = матрицы весов + нелинейная активация + градиентный спуск.</li>
+          <li>gonum/mat делает все матричные умножения чистыми и читаемыми.</li>
+          <li>Производная сигмоида проста и превращает backprop в несколько строк кода.</li>
+          <li>Изучение XOR доказывает: скрытый слой необходим и достаточен.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Простая ANN на Go — это структуры и циклы: веса, смещения и активации. Всё видно.</p>
-        <p>Прямой проход одного нейрона:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>func (n *Neuron) forward(x []float64) float64 {
-    sum := n.bias
-    for i, w := range n.weights {
-        sum += w * x[i]
-    }
-    return sigmoid(sum)
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Своя ANN — уверенность в фундаменте: после неё библиотеки типа Keras читаются как знакомый интерфейс.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Простая нейросеть на Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Простая нейросеть на Go» принадлежит автору оригинала (Sau Sheong Chang). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Sau Sheong Chang). Читайте оригинал на
         <a href="https://sausheong.github.io/posts/how-to-build-a-simple-artificial-neural-network-with-go/" target="_blank" rel="noopener">https://sausheong.github.io/posts/how-to-build-a-simple-artificial-neural-network-with-go/</a>.
       </div>
     </article>

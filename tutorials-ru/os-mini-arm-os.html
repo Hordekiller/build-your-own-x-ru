@@ -36,7 +36,7 @@
       </div>
       <h1>Mini ARM OS на C</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://github.com/jserv/mini-arm-os" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Mini ARM OS на C»
+          <b>Оригинальный источник:</b> «mini-arm-os»
         </div>
         <a class="btn solid" href="https://github.com/jserv/mini-arm-os" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-mini-arm-os.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,67 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Мини-ОС для ARM на C: компиляция, загрузка и ядро — ОС для эмулятора и плат.</p>
+      <h2>О проекте</h2>
+        <p>mini-arm-os — известный учебный репозиторий, который реализует базовые концепции ОС на архитектуре ARM (эмулируемая плата STM32 в QEMU) и без каких-либо сторонних библиотек, урок за уроком. Каждый урок — отдельная ветка (branch) на GitHub; в каждой ветке собирайте через make и запускайте командой QEMU, чтобы увидеть поведение урока. Выбор ARM даёт преимущество: читать и писать код проще, чем на x86.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Восемь уроков</h2>
         <ul>
-          <li>Инструменты ARM</li>
-          <li>Стартовый код</li>
-          <li>Ядро</li>
-          <li>Эмуляция</li>
+          <li><b>01-HelloWorld</b>: базовая структура, кросс-компиляция (cross compile) для ARM и печать сообщения.</li>
+          <li><b>02-ContextSwitch</b>: переключение контекста — сердце многозадачности; вход в режим ядра через svc (Supervisor Call).</li>
+          <li><b>03-Interrupt</b>: аппаратные прерывания и работа с NVIC (контроллер прерываний ARM).</li>
+          <li><b>04-Process</b>: определение процессов, PCB (блок управления процессом) и простое планирование.</li>
+          <li><b>05-Timer</b>: системный таймер — основа честного планирования.</li>
+          <li><b>06-Preemptive</b>: вытесняющее планирование; процессы принудительно переключаются по прерыванию таймера.</li>
+          <li><b>07-Threads</b>: нити (threads) внутри одного процесса и конкурентность (concurrency).</li>
+          <li><b>08-CMSIS</b>: использование библиотеки CMSIS; более чистая и реалистичная версия прошлых уроков.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Мини-ОС на ARM показывает, как системный код пишется для реальной архитектуры: загрузка, память и ввод-вывод.</p>
-        <p>Стартовый вектор ARM:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>void reset_handler(void) {
-    // настройка стека и вызов kernel_main
-    __asm__("ldr sp, =stack_top");
-    kernel_main();
-}</code></pre>
+      <h2>Пример кода: переход в режим супервизора для переключения контекста</h2>
+        <p>В уроке 02 пользовательский процесс командой svc (сервис ядра) переходит в привилегированный режим супервизора, чтобы ядро могло переключать контексты. Красивая деталь: в ARM адрес возврата из прерывания хранится в lr (Link Register) со смещением 4 байта, которое нужно компенсировать при продолжении выполнения:</p>
+        <pre class="code"><span class="lang-tag">arm</span><code style="direction:ltr;text-align:left">@ context_switch.S — сохранение регистров и переключение на следующий процесс
+.global context_switch
+context_switch:
+    @ сохранение состояния текущего процесса
+    stmfd sp!, {r0-r12, lr}     @ сохранение регистров и адреса возврата
+    mrs r0, spsr                @ состояние процессора до прерывания
+    stmfd sp!, {r0}
+
+    @ загрузка состояния следующего процесса
+    ldmfd r0!, {r1-r12, sp, lr} @ восстановление регистров и стека
+    msr spsr_cxsf, r0           @ восстановление состояния
+
+    @ продолжение выполнения следующего процесса
+    ldmfd sp!, {r0, pc}^</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>ARM — архитектура планшетов и телефонов: этот мини-проект даст практику системного ARM-кода.</p>
+      <h2>Запуск</h2>
+        <p>Сборка и запуск очень просты — достаточно ARM-кросс-компилятора и QEMU с mcu-type stm32-p103:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Например, урок 03 (прерывания)
+git checkout 03-Interrupt
+make
+qemu-system-arm -M stm32-p103 -kernel build/interrupt.elf \
+    -serial stdio -monitor none -nographic</code></pre>
+        <p>Последовательный вывод показывает поведение процессов/прерываний.</p>
+      </section>
+      <section>
+      <h2>Почему mini-arm-os</h2>
+        <ul>
+          <li><b>Минимальный путь ARM</b>: каждый урок — одна концепция, без лишних сложностей.</li>
+          <li><b>Запуск в QEMU</b>: никакого железа не нужно, вы получаете мгновенную обратную связь.</li>
+          <li><b>Чистый и читаемый код</b>: код компактный и сфокусирован на сути.</li>
+          <li><b>С сопроводительными статьями</b>: объяснения каждого урока лежат в той же ветке.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> для того, кто уже освоил ARM-ассемблер (например, по курсу Baking Pi) и теперь хочет увидеть концепции ОС с минимумом отвлечений, этот набор — отличный выбор.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Mini ARM OS на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Mini ARM OS на C» принадлежит автору оригинала (Jim Huang (jserv)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Jim Huang (jserv)). Читайте оригинал на
         <a href="https://github.com/jserv/mini-arm-os" target="_blank" rel="noopener">https://github.com/jserv/mini-arm-os</a>.
       </div>
     </article>

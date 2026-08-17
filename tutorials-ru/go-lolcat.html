@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем lolcat на Go»
+          <b>Оригинальный источник:</b> «Build a Command line app with Go: lolcat»
         </div>
         <a class="btn solid" href="https://flaviocopes.com/go-tutorial-lolcat/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/go-lolcat.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,210 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок воссоздаёт цветной cat: вывод текста с переливающимся градиентом, как в знаменитой утилите lolcat. Простое, но стильное CLI на чистом Go.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Введение</h2>
+        <p>Научитесь создавать CLI-инструмент вроде <code class="inline">lolcat</code> на Go, который раскрашивает текст в радужные цвета с помощью ANSI-escape-кодов и функции <code class="inline">rgb()</code> и работает как пайп (pipe), читая из <code class="inline">stdin</code>.</p>
+        <div class="callout tip">
+          <strong>Подсказка:</strong> интересуетесь CLI-приложениями? Не пропустите учебник по <b>cowsay</b>!
+        </div>
+        <p>Я искал терминальные приложения для вдохновения и наткнулся на <code class="inline">lolcat</code>.</p>
+        <p>Оригинал — на <a href="https://github.com/busyloop/lolcat" target="_blank" rel="noopener">https://github.com/busyloop/lolcat</a>, и для него уже существует множество Go-реализаций:</p>
         <ul>
-          <li>Управление цветами в терминале</li>
-          <li>Градиент и его интерполяция</li>
-          <li>Потоковый ввод-вывод ANSI</li>
-          <li>Весёлые аргументы</li>
+          <li><a href="https://github.com/cezarsa/glolcat" target="_blank" rel="noopener">https://github.com/cezarsa/glolcat</a></li>
+          <li><a href="https://github.com/latotty/lolcat" target="_blank" rel="noopener">https://github.com/latotty/lolcat</a></li>
+          <li><a href="https://github.com/lalyos/lolcat" target="_blank" rel="noopener">https://github.com/lalyos/lolcat</a></li>
+          <li><a href="https://github.com/vbatts/gogololcat" target="_blank" rel="noopener">https://github.com/vbatts/gogololcat</a></li>
         </ul>
+        <p>Похоже, строить его совершенно бесполезно; так давайте построим его!</p>
+        <p>Начнём с вывода нескольких значений на экран; затем займёмся их раскрашиванием и, наконец, разберёмся, как принимать пользовательский ввод, чтобы работать как пайп.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Цветной текст — магия ANSI-кодов: каждая строка можно собрать с градиентом, и лолкат становится маленьким трюком, приятным глазу.</p>
-        <p>Цветной вывод одной строки:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>fmt.Printf("\x1b[38;2;%d;%d;%dm%s\x1b[0m",
-    r, g, b, line) // RGB-цвет прямо в терминале</code></pre>
+      <h2>Генерация фиктивного вывода с faker</h2>
+        <p>Для генерации фиктивного вывода использую <a href="https://github.com/enodata/faker" target="_blank" rel="noopener">https://github.com/enodata/faker</a>.</p>
+        <pre class="code"><span class="lang-tag">shell</span><code style="direction:ltr;text-align:left">go get -u github.com/enodata/faker</code></pre>
+        <p>Эта программа генерирует несколько фраз:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+    &quot;fmt&quot;
+    &quot;strings&quot;
+
+    &quot;github.com/enodata/faker&quot;
+)
+
+func main() {
+    var phrases []string
+
+    for i := 1; i &lt; 3; i++ {
+        phrases = append(phrases, faker.Hacker().Phrases()...)
+    }
+
+    fmt.Println(strings.Join(phrases[:], &quot;; &quot;))
+}</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>ANSI-коды в руках — суперсила скриптов: этот маленький урок научит вас стильным консольным инструментам и базу для любых «раскрашивателей».</p>
+      <h2>Добавляем цвет</h2>
+        <p>К сожалению, всё это чёрно-белое — скучно. Давайте добавим немного цвета. Сделаем это, поставив escape-последовательность (escape character sequence) в начало строки в <code class="inline">fmt.Printf</code>. Так все строки печатаются золотым цветом <code class="inline">#FFD700</code>, чей <a href="https://flaviocopes.com/rgb-color-codes/" target="_blank" rel="noopener">RGB-код</a> равен (255,215,0):</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+    &quot;fmt&quot;
+    &quot;strings&quot;
+
+    &quot;github.com/enodata/faker&quot;
+)
+
+func main() {
+    var phrases []string
+
+    for i := 1; i &lt; 3; i++ {
+        phrases = append(phrases, faker.Hacker().Phrases()...)
+    }
+
+    output := strings.Join(phrases[:], &quot;; &quot;)
+    r, g, b := 255, 215, 0 // золотой цвет
+
+    for j := 0; j &lt; len(output); j++ {
+        fmt.Printf(&quot;\033[38;2;%d;%d;%dm%c\033[0m&quot;, r, g, b, output[j])
+    }
+}</code></pre>
+      </section>
+      <section>
+      <h2>Радуга</h2>
+        <p>Теперь, когда у нас есть строка и инфраструктура для раскрашивания каждого символа по-разному, пришло время радуги.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+    &quot;fmt&quot;
+    &quot;math&quot;
+    &quot;strings&quot;
+
+    &quot;github.com/enodata/faker&quot;
+)
+
+func rgb(i int) (int, int, int) {
+    var f = 0.1
+    return int(math.Sin(f*float64(i)+0)*127 + 128),
+        int(math.Sin(f*float64(i)+2*math.Pi/3)*127 + 128),
+        int(math.Sin(f*float64(i)+4*math.Pi/3)*127 + 128)
+}
+
+func main() {
+    var phrases []string
+
+    for i := 1; i &lt; 3; i++ {
+        phrases = append(phrases, faker.Hacker().Phrases()...)
+    }
+
+    output := strings.Join(phrases[:], &quot;; &quot;)
+
+    for j := 0; j &lt; len(output); j++ {
+        r, g, b := rgb(j)
+        fmt.Printf(&quot;\033[38;2;%d;%d;%dm%c\033[0m&quot;, r, g, b, output[j])
+    }
+    fmt.Println()
+}</code></pre>
+        <p>Это уже стильно!</p>
+        <p>Радужный цвет генерируется функцией <code class="inline">rgb()</code> — так, как реализовано в оригинальном Ruby-исходнике на <a href="https://github.com/busyloop/lolcat/blob/master/lib/lolcat/lol.rb" target="_blank" rel="noopener">https://github.com/busyloop/lolcat/blob/master/lib/lolcat/lol.rb</a>.</p>
+      </section>
+      <section>
+      <h2>Работа в режиме пайпа (Pipe)</h2>
+        <p>Теперь отредактируем программу: вместо генерации собственного вывода она будет работать как пайп для других программ. Она читает содержимое из <code class="inline">os.Stdin</code> и раскрашивает его в радужные цвета.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+    &quot;bufio&quot;
+    &quot;fmt&quot;
+    &quot;io&quot;
+    &quot;math&quot;
+    &quot;os&quot;
+)
+
+func rgb(i int) (int, int, int) {
+    var f = 0.1
+    return int(math.Sin(f*float64(i)+0)*127 + 128),
+        int(math.Sin(f*float64(i)+2*math.Pi/3)*127 + 128),
+        int(math.Sin(f*float64(i)+4*math.Pi/3)*127 + 128)
+}
+
+func print(output []rune) {
+    for j := 0; j &lt; len(output); j++ {
+        r, g, b := rgb(j)
+        fmt.Printf(&quot;\033[38;2;%d;%d;%dm%c\033[0m&quot;, r, g, b, output[j])
+    }
+    fmt.Println()
+}
+
+func main() {
+    info, _ := os.Stdin.Stat()
+    var output []rune
+
+    if info.Mode()&amp;os.ModeCharDevice != 0 {
+        fmt.Println(&quot;The command is intended to work with pipes.&quot;)
+        fmt.Println(&quot;Usage: fortune | gorainbow&quot;)
+    }
+
+    reader := bufio.NewReader(os.Stdin)
+    for {
+        input, _, err := reader.ReadRune()
+        if err != nil &amp;&amp; err == io.EOF {
+            break
+        }
+        output = append(output, input)
+    }
+
+    print(output)
+}</code></pre>
+        <p>Каждый раз читается одна руна (rune) из <code class="inline">os.Stdin</code> и добавляется в срез (slice) рун <code class="inline">output</code>.</p>
+        <p>Вывод вынесен в функцию <code class="inline">print()</code>; но можно пайпить каждую руну «на лету» (just in time), как только она прочитана:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+    &quot;bufio&quot;
+    &quot;fmt&quot;
+    &quot;io&quot;
+    &quot;math&quot;
+    &quot;os&quot;
+)
+
+func rgb(i int) (int, int, int) {
+    var f = 0.1
+    return int(math.Sin(f*float64(i)+0)*127 + 128),
+        int(math.Sin(f*float64(i)+2*math.Pi/3)*127 + 128),
+        int(math.Sin(f*float64(i)+4*math.Pi/3)*127 + 128)
+}
+
+func main() {
+    info, _ := os.Stdin.Stat()
+
+    if info.Mode()&amp;os.ModeCharDevice != 0 {
+        fmt.Println(&quot;The command is intended to work with pipes.&quot;)
+        fmt.Println(&quot;Usage: fortune | gorainbow&quot;)
+    }
+
+    reader := bufio.NewReader(os.Stdin)
+    j := 0
+    for {
+        input, _, err := reader.ReadRune()
+        if err != nil &amp;&amp; err == io.EOF {
+            break
+        }
+        r, g, b := rgb(j)
+        fmt.Printf(&quot;\033[38;2;%d;%d;%dm%c\033[0m&quot;, r, g, b, input)
+        j++
+    }
+}</code></pre>
+        <p>Работает точно так же, как раньше.</p>
+        <p>Теперь можно развлекаться с <code class="inline">fortune</code> и <a href="https://en.wikipedia.org/wiki/Cowsay" target="_blank" rel="noopener">cowsay</a>.</p>
+      </section>
+      <section>
+      <h2>Превращаем в системную команду</h2>
+        <p>Сделаем программу системной командой (system-wide command) с помощью <code class="inline">go build</code> и <code class="inline">go install</code>. Команда будет называться <code class="inline">gololcat</code>, потому что так названа наша папка.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем lolcat на Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем lolcat на Go» принадлежит автору оригинала (Флавио Копес (Flavio Copes)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Флавио Копес (Flavio Copes)). Читайте оригинал на
         <a href="https://flaviocopes.com/go-tutorial-lolcat/" target="_blank" rel="noopener">https://flaviocopes.com/go-tutorial-lolcat/</a>.
       </div>
     </article>

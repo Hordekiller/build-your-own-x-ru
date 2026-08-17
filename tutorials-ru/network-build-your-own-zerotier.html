@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Свой ZeroTier: виртуальные сети с нуля»
+          <b>Оригинальный источник:</b> «build-your-own-zerotier»
         </div>
         <a class="btn solid" href="https://github.com/peiyuanix/build-your-own-zerotier" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/network-build-your-own-zerotier.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,135 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок собирает виртуальную частную сеть в духе ZeroTier: шифрование, пиры, реле и туннели — сеть поверх интернета.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Что такое ZeroTier и зачем собирать свой</h2>
+        <p><a href="https://www.zerotier.com/" target="_blank" rel="noopener">ZeroTier</a> — open-source проект, который создаёт виртуальный сетевой интерфейс (Virtual Network Interface) с P2P-соединениями, как локальная сеть; в результате ваши машины могут ping, SSH и REACH друг друга по IP — из любой точки мира, будто соединены ethernet-кабелем.</p>
+        <p>Создание этой возможности кажется сложным; но для работающей упрощённой версии нужны всего два компонента, которые вместе дают результат, «доказуемый одним пингом»:</p>
         <ul>
-          <li>VPN и виртуальные ЛВС</li>
-          <li>Установление пиринга</li>
-          <li>Шифрование трафика</li>
-          <li>Туннели и ретрансляция</li>
+          <li><b>VSwitch</b> — центральная зона принятия решений (учёт MAC, сопоставление с «портом», вещание). На Python.</li>
+          <li><b>VPort</b> — порт соседнего устройства (интерфейс TAP + UDP-отправитель). На C.</li>
         </ul>
+        <p>Архитектура: ядро VSwitch работает на центральном хосте; каждый «конечный пользователь» запускает VPort, который через TAP соединён с ядром Linux и доставляет ethernet-кадры в VSwitch по UDP. Итог — <b>менее 300 строк кода</b>!</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>ZeroTier строит из интернета «локалку»: пиры договаривают протоколом, трафик шифруется и туннелируется. Урок повторяет архитектуру.</p>
-        <p>Шифрованное сообщение между узлами:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>// каждый пакет подписывается ключом узла
-sign(payload, node_private_key);
-// и доставляется адресату в туннеле</code></pre>
+      <h2>VPort — виртуальная сетевая карта на C (файл vport.c)</h2>
+        <p>У VPort две главные задачи: (1) принимать L2-кадры из Linux через устройство <b>TAP</b> и (2) доставлять кадры в VSwitch по <b>UDP</b> (и наоборот). Со следующей структурой:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#define TAP_DEV &quot;/dev/net/tun&quot;
+#define UDP_PORT 9999
+
+struct vport {
+    int tap_fd;      /* fd устройства TAP (создаётся tun_alloc) */
+    int udp_fd;      /* fd UDP-сокета, соединённого с VSwitch */
+    struct sockaddr_in vswitch_addr;
+    char mac[6];     /* фиктивный MAC этого порта */</code></pre>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">/* --- tun_alloc: создание интерфейса TAP -- */
+int tun_alloc(char *dev) {
+    struct ifreq ifr;
+    int fd, err;
+
+    if ((fd = open(&quot;/dev/net/tun&quot;, O_RDWR)) &lt; 0)
+        return -1;
+
+    memset(&amp;ifr, 0, sizeof(ifr));
+    ifr.ifr_flags = IFF_TAP | IFF_NO_PI;   /* TAP и без packet-info */
+    if (*dev) strncpy(ifr.ifr_name, dev, IFNAMSIZ);
+
+    err = ioctl(fd, TUNSETIFF, (void *)&amp;ifr);
+    if (err &lt; 0) { close(fd); return err; }
+    strcpy(dev, ifr.ifr_name);
+    return fd;
+}</code></pre>
+        <p>Главный цикл VPort: или read из TAP, или recvfrom из UDP; так как оба вызова блокирующие, используем <code>select()</code>, чтобы слушать оба одновременно:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">for (;;) {
+    fd_set rfds; FD_ZERO(&amp;rfds);
+    FD_SET(vp-&gt;tap_fd, &amp;rfds); FD_SET(vp-&gt;udp_fd, &amp;rfds);
+    select(max_fd + 1, &amp;rfds, NULL, NULL, NULL);
+
+    if (FD_ISSET(vp-&gt;tap_fd, &amp;rfds)) {
+        /* Кадр пришёл из Linux: отправляем к VSwitch */
+        n = read(vp-&gt;tap_fd, frame, sizeof frame);
+        sendto(vp-&gt;udp_fd, frame, n, 0,
+               (struct sockaddr *)&amp;vp-&gt;vswitch_addr, sizeof vp-&gt;vswitch_addr);
+    }
+
+    if (FD_ISSET(vp-&gt;udp_fd, &amp;rfds)) {
+        /* Кадр пришёл от VSwitch: инжектируем в TAP */
+        n = recvfrom(vp-&gt;udp_fd, frame, sizeof frame, 0, NULL, NULL);
+        write(vp-&gt;tap_fd, frame, n);
+    }
+}</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Виртуальные сети — базовый инструмент DevOps: собрав свой ZeroTier, вы поймёте, как работают VPN и mesh-сети глобально.</p>
+      <h2>VSwitch — логика принятия решений на Python (файл vswitch.py)</h2>
+        <p>Сам коммутатор тоже должен быть «портом»: для каждого VPort, который к нему подключается. Для простоты карта порт-MAC хранится в памяти:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">&quot;&quot;&quot;vswitch.py — беспечный L2-коммутатор.&quot;&quot;&quot;
+import socket
+
+UDP_PORT = 9999
+MAC_TABLE = {}          # mac → адрес (ip, port) порта
+PORT_MAP  = {}          # (ip, port) → mac, виденные на этом порте
+
+def main():
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind((&quot;&quot;, UDP_PORT))
+    print(f&quot;VSwitch listening on UDP {UDP_PORT}&quot;)
+
+    while True:
+        frame, addr = s.recvfrom(65535)
+        print(f&quot;\nGot {len(frame)} bytes from {addr}&quot;)
+
+        src_mac = frame[6:12].hex(&quot;:&quot;)
+        dst_mac = frame[0:6].hex(&quot;:&quot;)
+
+        # 1. Обучение: источник сопоставляется со своим портом
+        MAC_TABLE[src_mac] = addr
+        print(f&quot;  Learn: {src_mac} → {addr}&quot;)
+
+        if dst_mac == &quot;ff:ff:ff:ff:ff:ff&quot;:
+            # 2. Вещание: всем портам, кроме отправителя
+            for a in set(MAC_TABLE.values()):
+                if a != addr:
+                    s.sendto(frame, a)
+        elif dst_mac in MAC_TABLE:
+            # 3. Одноадресная отправка: только порту назначения
+            s.sendto(frame, MAC_TABLE[dst_mac])
+        else:
+            # 4. Неизвестно: как вещание, обучимся позже
+            for a in set(MAC_TABLE.values()):
+                if a != addr:
+                    s.sendto(frame, a)
+
+if __name__ == &quot;__main__&quot;:
+    main()</code></pre>
+      </section>
+      <section>
+      <h2>Развёртывание и тест: докажи пингом</h2>
+        <p>Примечание: <code>vport.c</code> требует root для создания TAP; но когда TAP создан и ему выдан IP-адрес, функции <code>read/write</code> работают с обычными правами.</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># 1. Запусти VSwitch на центральной машине
+python3 vswitch.py
+
+# 2. Собери и запусти VPort на каждой машине
+make
+sudo ./vport  # укажи адрес VSwitch в коде
+
+# 3. Дай IP-адрес созданному интерфейсу TAP (например, l2vpn0)
+sudo ip addr add 192.168.0.1/24 dev l2vpn0
+sudo ip link set l2vpn0 up
+
+# 4. Повтори то же на другой стороне и пингуй
+ping 192.168.0.2</code></pre>
+        <p>Если во время пинга вывод VSwitch показывает «Learn» (ответы ARP и ICMP), значит вся конструкция работает: две реальные машины общаются по UDP, как будто соединены ethernet-кабелем, — без какой-либо инфраструктуры посередине.</p>
+      </section>
+      <section>
+      <h2>Что дальше</h2>
+        <p>Оригинальный ZeroTier упаковывает ethernet-кадр в <b>собственный туннельный протокол</b>, а не в сырой UDP; и (главное) выполняет <b>сквозное шифрование</b> публичными ключами (curve25519) и шифром AES. В нашей версии любой может прочитать или изменить кадры! Идеи для эволюции: счётчик последовательности и auth-token против replay, таблица MAC с таймаутом и удалением старых записей, конкурентность через threads/async для масштабируемости и совместная поддержка IPv4/IPv6/Ethernet.</p>
+        <p>Полный репозиторий: <a href="https://github.com/peiyuanix/build-your-own-zerotier" target="_blank" rel="noopener">peiyuanix/build-your-own-zerotier</a></p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Свой ZeroTier: виртуальные сети с нуля» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Свой ZeroTier: виртуальные сети с нуля» принадлежит автору оригинала (peiyuanix (Пейюань)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (peiyuanix (Пейюань)). Читайте оригинал на
         <a href="https://github.com/peiyuanix/build-your-own-zerotier" target="_blank" rel="noopener">https://github.com/peiyuanix/build-your-own-zerotier</a>.
       </div>
     </article>

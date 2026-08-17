@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игры на Go: начало»
+          <b>Оригинальный источник:</b> «Games with Go (плейлист)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/playlist?list=PLDZujg-VgQlZUy1iCqBbe5faZLMkA3g2x" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-go-games.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,71 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Начало игрового программирования на Go: простые 2D-игры и библиотеки вроде Ebitengine — игры на приятном языке.</p>
+      <h2>О плейлисте</h2>
+        <p>Go (иногда Голанг) с горутинами, сборкой мусора и быстрой компиляцией — очень подходящий язык для разработки игр; а библиотеки вроде <b>Ebiten</b> (создание 2D-игр с кроссплатформенной поддержкой) делают его ещё проще. В этом плейлисте игры от простых до средних (платформеры, dauer, головоломки и т.д.) создаются на Go, и главные концепции — игровой цикл, ввод, рендер спрайтов — реализуются шаг за шагом.</p>
+        <div class="callout note">
+          <strong>Замечание:</strong> Ebiten собирается и в веб (WASM) — созданные игры можно запускать и в браузере.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Библиотека Ebitengine</li>
-          <li>Графика и ввод</li>
-          <li>Структура игры</li>
-          <li>Первая игра</li>
-        </ul>
+      <h2>Смотреть видео</h2>
+        <p>Это видеоурок, и его содержание на этой странице не размещается; весь плейлист смотрите по ссылке ниже на YouTube:</p>
+        <p><a class="btn solid" href="https://www.youtube.com/playlist?list=PLDZujg-VgQlZUy1iCqBbe5faZLMkA3g2x" target="_blank" rel="noopener">▶ Плейлист «Games with Go»</a></p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Go + Ebitengine дают лёгкий вход: окно, спрайты и ввод на чистом API. Язык подкупает простотой.</p>
-        <p>Ключевой метод игры:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>func (g *Game) Update() error {
-    // ввод и логика — вызывается каждый кадр
+      <h2>Пример кода: простая игра на Ebiten</h2>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">package main
+
+import (
+    &quot;log&quot;
+
+    &quot;github.com/hajimehoshi/ebiten/v2&quot;
+)
+
+// Каждая игра — struct, реализующая интерфейс Game
+type Game struct {
+    // состояние игры: позиция игрока, ввод и т.д.
+    playerX, playerY float64
+}
+
+// Обновление логики: ввод и физика
+func (g *Game) Update() error {
+    if ebiten.IsKeyPressed(ebiten.KeyArrowLeft) {
+        g.playerX -= 2
+    }
+    if ebiten.IsKeyPressed(ebiten.KeyArrowRight) {
+        g.playerX += 2
+    }
     return nil
+}
+
+// Рендер: рисование сцены на экране
+func (g *Game) Draw(screen *ebiten.Image) {
+    // рисование прямоугольника игрока на screen (детали через DrawImage)
+}
+
+// Размеры окна и заголовок
+func (g *Game) Layout(outsideWidth, outsideHeight int) (int, int) {
+    return 640, 480
+}
+
+func main() {
+    ebiten.SetWindowSize(640, 480)
+    ebiten.SetWindowTitle(&quot;Моя игра на Go&quot;)
+    if err := ebiten.RunGame(&amp;Game{}); err != nil {
+        log.Fatal(err)
+    }
 }</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Игры на Go — тренд: простые языки делают игровую разработку доступной и быстрой для идей.</p>
+      <h2>Итог</h2>
+        <p>Если вы знаете Go и хотите начать делать игры, этот плейлист — хорошая точка старта; а если Go не знаете, создание небольшой игры на Ebiten — один из самых увлекательных способов его выучить.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игры на Go: начало» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игры на Go: начало» принадлежит автору оригинала (автор YouTube-канала «Games with Go»). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор YouTube-канала «Games with Go»). Читайте оригинал на
         <a href="https://www.youtube.com/playlist?list=PLDZujg-VgQlZUy1iCqBbe5faZLMkA3g2x" target="_blank" rel="noopener">https://www.youtube.com/playlist?list=PLDZujg-VgQlZUy1iCqBbe5faZLMkA3g2x</a>.
       </div>
     </article>

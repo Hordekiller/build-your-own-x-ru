@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Redux: понимание и реализация»
+          <b>Оригинальный источник:</b> «How to Build Redux»
         </div>
         <a class="btn solid" href="https://zapier.com/engineering/how-to-build-redux/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/frontend-redux.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,130 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Redux изнутри: store, action, reducer и подписки — государственный контейнер, который можно написать за 50 строк.</p>
+      <h2>1. Зачем строить Redux с нуля?</h2>
+        <p>В своей основе Redux содержит всего <b>три концепции</b>: единый объект state, чистую функцию (reducer), изменяющую state, и функцию <code>dispatch</code>, доставляющую actions в reducer. Весь его API (getState, subscribe, combineReducers, createStore и т. д.) лишь обслуживает эти три идеи. Построив его сами, мы поймём, что в нём нет ни магии, ни особой сложности.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>2. Первая реализация: ручной магазин</h2>
+        <p>Статья начинается с «магазина» (store) ручной работы: объекта state и функции, которая его меняет. Затем мы хотим, чтобы все изменения state проходили только одним путём — это и есть <b>dispatch</b>:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">// сначала без Redux: разрозненный и беспорядочный state
+let state = { count: 0 };
+function increment() { state = { ...state, count: state.count + 1 }; }
+
+// теперь с actions: каждое изменение state имеет описательный объект
+function dispatch(action) {
+  state = reducer(state, action);
+}
+
+// а reducer — чистая функция: (предыдущий state + action) → новый state
+function reducer(state = { count: 0 }, action) {
+  switch (action.type) {
+    case &#x27;INCREMENT&#x27;:
+      return { ...state, count: state.count + 1 };
+    case &#x27;DECREMENT&#x27;:
+      return { ...state, count: state.count - 1 };
+    default:
+      return state;
+  }
+}
+
+dispatch({ type: &#x27;INCREMENT&#x27; }); // state.count: 1
+dispatch({ type: &#x27;DECREMENT&#x27; }); // state.count: 0</code></pre>
+        <p>Обратите внимание: reducer никогда не мутирует state (возвращает новый объект) и для одинакового входа всегда даёт одинаковый выход — именно эта «чистота» делает возможными тестируемость и воспроизводимость (time-travel).</p>
+      </section>
+      <section>
+      <h2>3. Создаём createStore</h2>
+        <p>Теперь упакуем эту идею: функция <code>createStore</code>, хранящая state в замыкании (closure) и возвращающая стандартный API Redux:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function createStore(reducer, initialState) {
+  let state = initialState;
+  const listeners = [];
+
+  return {
+    // чтение текущего state
+    getState() {
+      return state;
+    },
+
+    // отправка action: reducer выполняется, state меняется, слушатели уведомляются
+    dispatch(action) {
+      state = reducer(state, action);
+      listeners.forEach((listener) =&gt; listener());
+      return action;
+    },
+
+    // регистрация слушателя изменений; возвращается функция отписки
+    subscribe(listener) {
+      listeners.push(listener);
+      return () =&gt; {
+        const index = listeners.indexOf(listener);
+        if (index &gt; -1) listeners.splice(index, 1);
+      };
+    },
+  };
+}
+
+// использование
+const store = createStore(reducer);
+store.subscribe(() =&gt; console.log(&#x27;count:&#x27;, store.getState().count));
+store.dispatch({ type: &#x27;INCREMENT&#x27; });</code></pre>
+        <p>Это ровно то, чем является Redux, — вся библиотека сводится к этому; остальные инструменты (bindActionCreators, applyMiddleware и т. д.) — лишь удобство для разработчика.</p>
+      </section>
+      <section>
+      <h2>4. Комбинирование reducer'ов</h2>
+        <p>В реальном приложении state велик; вместо одного гигантского reducer'а у нас несколько маленьких, каждый из которых управляет только своей частью, а <code>combineReducers</code> собирает их вместе:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">function combineReducers(reducers) {
+  return (state = {}, action) =&gt; {
+    const nextState = {};
+    for (const key in reducers) {
+      // каждый reducer обновляет только свой ключ
+      nextState[key] = reducers[key](state[key], action);
+    }
+    return nextState;
+  };
+}
+
+const appReducer = combineReducers({
+  count: counterReducer,
+  user: userReducer,
+});</code></pre>
+      </section>
+      <section>
+      <h2>5. Связь с React</h2>
+        <p>Заключительная часть статьи показывает, как подключить этот store к React-компоненту: через <code>store.subscribe</code> обновляется рендер, а через <code>store.dispatch</code> отправляются actions:</p>
+        <pre class="code"><span class="lang-tag">js</span><code style="direction:ltr;text-align:left">class Counter extends React.Component {
+  componentDidMount() {
+    // любое изменение state → повторный рендер
+    this.unsubscribe = store.subscribe(() =&gt; this.forceUpdate());
+  }
+
+  componentWillUnmount() {
+    this.unsubscribe();
+  }
+
+  render() {
+    return (
+      &lt;div&gt;
+        &lt;span&gt;{store.getState().count}&lt;/span&gt;
+        &lt;button onClick={() =&gt; store.dispatch({ type: &#x27;INCREMENT&#x27; })}&gt;+&lt;/button&gt;
+      &lt;/div&gt;
+    );
+  }
+}</code></pre>
+        <p>Пакет react-redux выполняет ровно это подключение (с оптимизацией выборок через селекторы) за вас.</p>
+      </section>
+      <section>
+      <h2>6. Итоги</h2>
         <ul>
-          <li>Store и состояние</li>
-          <li>Actions и reducers</li>
-          <li>Подписки и dispatch</li>
-          <li>Промежуточки (middleware)</li>
+          <li>Redux = единый state + чистый reducer + dispatch; весь каркас укладывается в несколько десятков строк простого JavaScript.</li>
+          <li>Чистота reducer'а — самое важное свойство: она даёт предсказуемость, тестируемость и воспроизводимость (с инструментами вроде Redux DevTools).</li>
+          <li>После этого учебника прочитайте исходный код Redux (всего несколько небольших файлов) — и вы увидите, как сильно он похож на эту простую версию.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Redux — это функция: (state, action) → new state. Store держит состояние, dispatch передаёт изменения, subscribe уведомляет слушателей.</p>
-        <p>Классический reducer:</p>
-        <pre class="code"><span class="lang-tag">JavaScript</span><code>function reducer(state = { count: 0 }, action) {
-  switch (action.type) {
-    case "INC": return { count: state.count + 1 };
-    default: return state;
-  }
-}</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Redux-школа улучшает мышление о состоянии: написав свой store, вы сможете проектировать глобальное состояние без внешних зависимостей.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Redux: понимание и реализация» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Redux: понимание и реализация» принадлежит автору оригинала (Инженерная команда Zapier). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Инженерная команда Zapier). Читайте оригинал на
         <a href="https://zapier.com/engineering/how-to-build-redux/" target="_blank" rel="noopener">https://zapier.com/engineering/how-to-build-redux/</a>.
       </div>
     </article>

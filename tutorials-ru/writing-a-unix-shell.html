@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем Unix-шелл (мин.издание)»
+          <b>Оригинальный источник:</b> «Writing a Unix Shell»
         </div>
         <a class="btn solid" href="https://indradhanush.github.io/blog/writing-a-unix-shell-part-1/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/writing-a-unix-shell.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,155 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Компактный урок шелла на C: базовый цикл, разбор, fork/exec и встроенные команды — суть без украшений.</p>
+      <h2>Что такое шелл и как он работает?</h2>
+        <p>Простыми словами: «шелл — это интерфейс, который позволяет вам взаимодействовать с ядром операционной системы». Рабочий цикл шелла таков: запуск ← ожидание ввода пользователя ← разбор ввода ← выполнение команды и возврат результата ← возврат к шагу 2.</p>
+        <p>Но есть один важный момент: <strong>процессы</strong>. Шелл — родительский процесс (главный поток, ожидающий ввода), но команду нельзя выполнять в самом main; потому что (1) сломанная команда обрушит весь шелл — этого хотим избежать; и (2) независимые команды должны иметь собственный процессный блок — эта «изоляция» часть отказоустойчивости.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Цикл чтения и исполнения</li>
-          <li>Разбивка строки</li>
-          <li>Встроенные команды</li>
-          <li>Обработка сигналов</li>
-        </ul>
-      </section>
+      <h2>Понимаем fork на четырёх строках кода</h2>
+        <p>Автор говорит: «я думал, что понимаю fork, пока не написал с ним четыре строки кода». <code>fork</code> создаёт копию текущего процесса (называемую child), и у каждого процесса есть уникальный идентификатор (pid):</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Минимальный шелл — вся суть: цикл, разбор, fork. Урок стройно идёт от пустого файла до работающего интерпретатора.</p>
-        <p>Разбиение строки на аргументы:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>char **split_line(char *line) {
-    // токенизируем по пробелам
+int main() {
+    pid_t child_pid = fork();
+
+    if (child_pid == 0) {   /* дочерний процесс */
+        printf(&quot;### Child ###\nCurrent PID: %d and Child PID: %d\n&quot;,
+               getpid(), child_pid);
+    } else {                /* родительский процесс */
+        printf(&quot;### Parent ###\nCurrent PID: %d and Child PID: %d\n&quot;,
+               getpid(), child_pid);
+    }
+    return 0;
 }</code></pre>
+        <p>Системный вызов <code>fork</code> <strong>возвращается дважды</strong> — по разу для каждого процесса! Это кажется противоречивым, но за кулисами всё просто: <code>fork</code> создаёт копию текущего процесса, и в родителе значение <code>child_pid</code> — это pid только что созданного дочернего; в самом же дочернем оно равно <code>0</code>, потому что у дочернего нет детей. Сразу после fork оба процесса выполняются одновременно, и порядок выполнения зависит от планировщика ОС. Пример вывода:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">### Parent ###
+Current PID: 85247 and Child PID: 85248
+### Child ###
+Current PID: 85248 and Child PID: 0</code></pre>
+        <p>(Примечание: pid дочернего обычно больше, но это не гарантировано — ОС может переиспользовать старые идентификаторы.)</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Маленький шелл — большой шаг в системном понимании: после него команды терминала больше не кажутся волшебными.</p>
+      <h2>Определённость с wait, а не со sleep</h2>
+        <p>С <code>sleep(1)</code> в родительском блоке дочерний почти всегда выполняется первым, и вывод становится определённым; но sleep — плохое решение: (1) какая гарантия, что ожидаемое завершится за n секунд? (2) если оно завершится раньше, мы зря простаиваем. Правильный путь — системный вызов <code>wait</code>, а лучше <code>waitpid</code> с тремя параметрами: pid ожидаемого процесса, переменная, заполняемая статусом завершения, и настраиваемые флаги:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#include &lt;stdio.h&gt;
+#include &lt;stdlib.h&gt;
+#include &lt;unistd.h&gt;
+#include &lt;sys/wait.h&gt;
+
+int main() {
+    pid_t child_pid, wait_result;
+    int stat_loc;
+
+    child_pid = fork();
+    if (child_pid == 0) {
+        printf(&quot;### Child ###\nCurrent PID: %d and Child PID: %d\n&quot;,
+               getpid(), child_pid);
+        sleep(1);
+    } else {
+        wait_result = waitpid(child_pid, &amp;stat_loc, WUNTRACED);
+        printf(&quot;### Parent ###\nCurrent PID: %d and Child PID: %d\n&quot;,
+               getpid(), child_pid);
+    }
+    return 0;
+}</code></pre>
+        <p>Родитель ждёт завершения дочернего процесса, а затем выполняет свои команды.</p>
+      </section>
+      <section>
+      <h2>Выполнение команд с execvp</h2>
+        <p>Семейство <code>exec</code> включает <code>execl</code>, <code>execv</code>, <code>execle</code>, <code>execve</code>, <code>execlp</code> и <code>execvp</code>. Мы берём <code>execvp</code>: «vp» означает, что он принимает имя файла и ищет его в переменной <code>$PATH</code> системы, вместе с массивом аргументов. Выполнение <code>ls -l -h -a</code>:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#include &lt;unistd.h&gt;
+
+int main() {
+    char *argv[] = {&quot;ls&quot;, &quot;-l&quot;, &quot;-h&quot;, &quot;-a&quot;, NULL};
+    execvp(argv[0], argv);
+    return 0;
+}</code></pre>
+        <p>Три замечания: первый аргумент — имя команды; второй — имя команды вместе с её аргументами и должен заканчиваться <code>NULL</code>; и <code>execvp</code> заменяет образ текущего процесса нужной программой — при успехе <em>никогда не возвращается</em>.</p>
+      </section>
+      <section>
+      <h2>Разбор ввода и основной цикл</h2>
+        <p>Ввод разбивается через <code>strtok</code> по разделителю-пробелу и строится массив, заканчивающийся <code>NULL</code>; затем в бесконечном цикле: ввод получаем через <code>readline</code>, делаем fork, дочерний вызывает <code>execvp</code>, а родитель — <code>waitpid</code>:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">char **get_input(char *input) {
+    char **command = malloc(8 * sizeof(char *));
+    char *separator = &quot; &quot;;
+    char *parsed;
+    int index = 0;
+
+    parsed = strtok(input, separator);
+    while (parsed != NULL) {
+        command[index] = parsed;
+        index++;
+        parsed = strtok(NULL, separator);
+    }
+    command[index] = NULL;
+    return command;
+}
+
+int main() {
+    char **command, *input;
+    pid_t child_pid;
+    int stat_loc;
+
+    while (1) {
+        input = readline(&quot;unixsh&gt; &quot;);
+        command = get_input(input);
+
+        child_pid = fork();
+        if (child_pid == 0) {
+            execvp(command[0], command);   /* при успехе не возвращается */
+            printf(&quot;This won&#x27;t be printed if execvp is successful\n&quot;);
+        } else {
+            waitpid(child_pid, &amp;stat_loc, WUNTRACED);
+        }
+        free(input);
+        free(command);
+    }
+    return 0;
+}</code></pre>
+        <p>Замечание: <code>fork</code> вызывается только после ввода команды; значит, родительский процесс — тот, что показывает приглашение. С этим кодом (компиляция через <code>gcc -g -lreadline shell.c</code>) у вас есть рабочий минимальный шелл, выполняющий <code>pwd</code> и <code>ls -lha</code>.</p>
+      </section>
+      <section>
+      <h2>Обработка ошибок</h2>
+        <ul>
+          <li><strong>fork</strong> — если система исчерпала память или достигла предела числа процессов, возвращается <code>-1</code>: <code>perror("Fork failed"); exit(1);</code></li>
+          <li><strong>execvp</strong> — возвращается только при неудаче: <code>if (execvp(...) &lt; 0) { perror(command[0]); exit(1); }</code> — этот <code>exit</code> убивает только дочерний процесс.</li>
+          <li><strong>malloc</strong> — может вернуть <code>NULL</code>: ошибка и выход.</li>
+          <li><strong>Буфер аргументов</strong> — всего 8 блоков; команды длиннее восьми слов работают неправильно (упражнение для читателя).</li>
+        </ul>
+        <p>Дополнительные упражнения: если дать дочернему <code>sleep</code>, вывод родителя печатается немедленно, а потом вывод дочернего вываливается в середину терминала — потому что родителю после printf больше нечего делать, и он умирает.</p>
+      </section>
+      <section>
+      <h2>Встроенные команды — история cd</h2>
+        <p>Выполнение <code>cd</code> в новом шелле даёт ошибку «No such file or directory»; потому что <code>cd</code> — не системная программа вроде <code>ls</code>. Допустим, она была бы: происходит fork, команда выполняется в дочернем и завершается, а рабочий каталог родителя остаётся нетронутым — то есть <code>cd</code>, хоть и успешный, не даёт желаемого результата! Поэтому реализуем его сами и выполняем напрямую, без fork:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">int cd(char *path) {
+    return chdir(path);
+}
+
+/* в цикле main */
+if (strcmp(command[0], &quot;cd&quot;) == 0) {
+    if (cd(command[1]) &lt; 0) {
+        perror(command[1]);
+    }
+    continue;   /* не делаем fork */
+}</code></pre>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">unixsh&gt; pwd
+/Users/dhanush/github.com/indradhanush.github.io/code/shell-part-2
+unixsh&gt; cd /
+unixsh&gt; pwd
+/</code></pre>
+      </section>
+      <section>
+      <h2>Итоги и дальнейший путь</h2>
+        <p>Теперь вы: поняли fork (с примером и обсуждением определённости/планировщика), применили execvp, разобрали ввод, обрабатываете ошибки и имеете встроенную команду. Третья часть этого цикла статей посвящена сигналам и управлению <code>Ctrl-C</code>. Весь код доступен в <a href="https://github.com/indradhanush/indradhanush.github.io/tree/master/code/" target="_blank" rel="noopener">репозитории блога</a> (папки shell-part-1 и shell-part-2).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем Unix-шелл (мин.издание)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем Unix-шелл (мин.издание)» принадлежит автору оригинала (Индрадхануш Гупта (Indradhanush Gupta)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Индрадхануш Гупта (Indradhanush Gupta)). Читайте оригинал на
         <a href="https://indradhanush.github.io/blog/writing-a-unix-shell-part-1/" target="_blank" rel="noopener">https://indradhanush.github.io/blog/writing-a-unix-shell-part-1/</a>.
       </div>
     </article>

@@ -53,40 +53,36 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок (по мотивам «Очень странных дел») создаёт ARKit-портал: реальная комната дополняется проёмом, внутри которого мерцает альтернативный мир, и пользователь может в него заглядывать и заходить.</p>
+      <h2>Об этом учебнике</h2>
+        <p>С помощью этого видеоурока вы создадите портал ARKit, переносящий в знаменитый мир Upside Down (из сериала Stranger Things); сочетание продвинутых техник рендеринга и видеоэффектов.</p>
+        <pre class="code"><span class="lang-tag">C#</span><code style="direction:ltr;text-align:left">// Добавление простого портала в сцену ARKit с помощью SceneKit
+var portal = new SCNNode {
+    Geometry = SCNBox.Create(1f, 2f, 0.05f, 0)
+};
+portal.Position = new SCNVector3(0, 1, -2);
+sceneView.Scene.RootNode.AddChildNode(portal);   // камера-в-камере добавится позже</code></pre>
+        <p>В видео этот базовый узел дополняется вторичной камерой и световыми эффектами, создавая вид «другого мира» изнутри портала.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Видео (прямая трансляция с YouTube)</h2>
+        <div style="position:relative;padding-top:56.25%;border-radius:var(--radius-sm);overflow:hidden;border:1px solid var(--line-strong)">
+          <iframe src="https://www.youtube.com/embed/Z5AmqMuNi08" title="Видеоурок: AR-портал в мир Upside Down" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen style="position:absolute;inset:0;width:100%;height:100%"></iframe>
+        </div>
+        <p>Если видео не открывается на этой странице, воспользуйтесь <a href="https://www.youtube.com/watch?v=Z5AmqMuNi08" target="_blank" rel="noopener">оригинальной ссылкой на YouTube</a>.</p>
+      </section>
+      <section>
+      <h2>Чему вы научитесь</h2>
         <ul>
-          <li>ARKit: поиск плоскости и якоря</li>
-          <li>Второй мир и render texture</li>
-          <li>Настройка портальной геометрии</li>
-          <li>«Путешествие» между мирами</li>
+          <li>Создание портала с ARKit и SceneKit</li>
+          <li>Техника «камера внутри камеры»</li>
+          <li>Окружающие эффекты и освещение</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Портал строится из пары приёмов: внешний проём с гранями, сквозь которые виден рендер внутренней сцены, и точная привязка к плоскости. ARKit даёт трекинг, а вся магия — в камерах и слоях.</p>
-        <p>Портал — камера внутреннего мира:</p>
-        <pre class="code"><span class="lang-tag">Swift</span><code>// Внутренняя сцена рендерится в текстуру портала
-let portalCamera = SCNCamera()
-portalNode.camera = portalCamera
-// и эта текстура показывается внутри проёма</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Сцена с порталом — короткий, но эффектный способ изучить ARKit: вы освоите камеры, якоря и рендер в текстуру на примере, который хочется показывать друзьям.</p>
       </section>
 
       <div class="callout note">
         <strong>Авторские права:</strong> «AR-портал в мир Upside Down на ARKit» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=Z5AmqMuNi08" target="_blank" rel="noopener">https://www.youtube.com/watch?v=Z5AmqMuNi08</a>.
       </div>
     </article>

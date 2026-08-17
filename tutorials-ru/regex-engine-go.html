@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Регексп-движок на Go»
+          <b>Оригинальный источник:</b> «How to build a regex engine from scratch»
         </div>
         <a class="btn solid" href="https://rhaeguard.github.io/posts/regex" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/regex-engine-go.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,642 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Собственный regexp на Go: лексер, парсер и сопоставление — регулярные выражения изнутри.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Введение</h2>
+        <p>В этой статье мы строим простой движок регулярных выражений, который может использовать шаблон</p>
+        <p><code>[a-zA-Z][a-zA-Z0-9_.]+@[a-zA-Z0-9]+.[a-zA-Z]{2,}</code></p>
+        <p>(где <code>.</code> — литеральная точка вместо «любой символ»), чтобы проверять корректность адресов электронной почты. Используем язык Go. Статья разделена на 3 части:</p>
         <ul>
-          <li>Парсер regex</li>
-          <li>AST</li>
-          <li>Сопоставление</li>
-          <li>Тесты</li>
+          <li>Разбор (Parsing)</li>
+          <li>Построение машины состояний (Building the state machine)</li>
+          <li>Сопоставление (Matching)</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Движок на Go — полный стек: разбор выражения, автомат и поиск в тексте с тестами.</p>
-        <p>Тип узла regex на Go:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>type Regexp struct {
-    Op Op        // оператор: Literal, Star, Concat...
-    Sub []*Regexp // вложенные выражения
-    Rune rune    // литерал
+      <h2>Разбор (Parsing)</h2>
+        <p>Сама по себе строка regex — просто строка. Нужно превратить её в нечто со структурой; например:</p>
+        <pre class="code"><span class="lang-tag">Токены</span><code style="direction:ltr;text-align:left">// Исходная строка regex
+&quot;[a-zA-Z0-9_]+@[a-zA-Z0-9]+.[a-zA-Z]{2,}&quot;
+// Токены regex
+Repeat(1, бесконечность):
+   Range(a, b,...z, A, B,...,Z, 0,...,9, _)
+Literal(@)
+Repeat(1, бесконечность):
+   Range(a, b,...z, A, B,...,Z, 0,...,9)
+Literal(.)
+Repeat(2, бесконечность):
+   Range(a, b,...z, A, B,...,Z)</code></pre>
+        <p>Основная идея при разборе строки regex проста: ищем символы с особыми смыслами, такие как <code>* + ? () [] {}</code>, и пытаемся с их помощью строить токены. Сначала определим несколько типов и констант:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">type tokenType uint8 // &lt;1&gt;
+const ( // &lt;2&gt;
+   group         tokenType = iota
+   bracket       tokenType = iota
+   or            tokenType = iota
+   repeat        tokenType = iota
+   literal       tokenType = iota
+   groupUncaptured tokenType = iota
+)
+type token struct { // &lt;3&gt;
+   tokenType tokenType
+   // содержимое для каждого токена будет разным
+   // поэтому нужен гибкий тип
+   value     interface{}
+}
+type parseContext struct { // &lt;4&gt;
+   // индекс символа, который мы сейчас
+   // обрабатываем в строке regex
+   pos    int
+   tokens []token
 }</code></pre>
+        <ul>
+          <li>Просто псевдоним типа для символа.</li>
+          <li>Константы, определяющие тип токена, с которым мы работаем; вроде enum.</li>
+          <li>Основная структура токена; имеет <em>тип</em> и <em>значение</em>, которое в зависимости от типа может быть чем угодно.</li>
+          <li><code>parseContext</code> помогает отслеживать позиции и хранить разобранные токены.</li>
+        </ul>
+        <p>Теперь алгоритм разбора:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func parse(regex string) *parseContext {
+   ctx := &amp;parseContext{
+      pos:    0,
+      tokens: []token{},
+   }
+   for ctx.pos &lt; len(regex) {
+      process(regex, ctx)
+      ctx.pos++
+   }
+   return ctx
+}</code></pre>
+        <ul>
+          <li>Проходим по каждому символу и обрабатываем его, пока не дойдём до конца строки regex.</li>
+        </ul>
+        <p>Теперь посмотрим на метод <code>process</code>. Он посложнее; разберём его шаг за шагом.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func process(regex string, ctx *parseContext) {
+    ch := regex[ctx.pos]
+    if ch == &#x27;(&#x27; { // &lt;1&gt;
+        groupCtx := &amp;parseContext{
+            pos:    ctx.pos,
+            tokens: []token{},
+        }
+        parseGroup(regex, groupCtx)
+        ctx.tokens = append(ctx.tokens, token{
+            tokenType: group,
+            value:     groupCtx.tokens,
+        })
+    } else if ch == &#x27;[&#x27; { // &lt;2&gt;
+        parseBracket(regex, ctx)
+    } else if ch == &#x27;|&#x27; { // &lt;3&gt;
+        parseOr(regex, ctx)
+    } else if ch == &#x27;*&#x27; || ch == &#x27;?&#x27; || ch == &#x27;+&#x27; { // &lt;4&gt;
+        parseRepeat(regex, ctx)
+    } else if ch == &#x27;{&#x27; { // &lt;5&gt;
+        parseRepeatSpecified(regex, ctx)
+    } else { // &lt;6&gt;
+        // литерал
+        t := token{
+            tokenType: literal,
+            value:     ch,
+        }
+        ctx.tokens = append(ctx.tokens, t)
+    }
+}</code></pre>
+        <p>Как уже говорилось, пытаемся сопоставить известные символы и использовать их для разбора токенов.</p>
+        <ul>
+          <li>Если текущий символ — <code>(</code>, имеем дело с группой и пытаемся разобрать несколько следующих символов как группу.</li>
+          <li>Если <code>[</code> — скобочное выражение.</li>
+          <li>Если <code>|</code> — альтернатива (Or).</li>
+          <li>Символы <code>*</code> (звёздочка Клини), <code>+</code> и <code>?</code> обозначают повторение. <code>?</code> означает необязательность; в терминах повторения — максимум один раз.</li>
+          <li>Фигурные скобки тоже задают повторение: <code>a* == a{0,}</code>, <code>a+ == a{1,}</code>, <code>a? == a{0,1}</code>.</li>
+          <li>Если ничего из этого — считаем литералом. Заметьте: это упрощённая реализация; есть много случаев, которые нужно учитывать. Упрощённый алгоритм также не учитывает escape-символы (то есть <code>\a</code> считается конкатенацией литералов <code>\</code> и <code>a</code>).</li>
+        </ul>
+        <p>Теперь разберём каждую определённую функцию. Начнём с разбора групповых выражений <strong>(1)</strong>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func parseGroup(regex string, ctx *parseContext) {
+   ctx.pos += 1 // пропустить открывающую скобку
+   for regex[ctx.pos] != &#x27;)&#x27; {
+      process(regex, ctx)
+      ctx.pos += 1
+   }
+}</code></pre>
+        <ul>
+          <li>Обрабатываем каждый символ, как в методе <code>parse</code>, пока не дойдём до закрывающей скобки. Обработку ошибок не покрываем; если индекс выйдет за границы, всё равно случится panic.</li>
+        </ul>
+        <p>Что делает дополнительный код вокруг <code>parseGroup</code> в функции <code>process</code>? Мы создаём контекст специально для каждой группы, чтобы упаковать все токены внутри конкретной группы, не смешивая с контекстом верхнего уровня. После окончания разбора группы все токены заворачиваются в новый токен типа <code>group</code> и добавляются в общий список токенов.</p>
+        <p>Теперь посмотрим, как разбирать скобочные выражения <strong>(2)</strong>. Вот вся функция:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func parseBracket(regex string, ctx *parseContext) {
+    ctx.pos++ // пропустить открывающую скобку [
+    var literals []string
+    for regex[ctx.pos] != &#x27;]&#x27; { // &lt;1&gt;
+        ch := regex[ctx.pos]
+        if ch == &#x27;-&#x27; { // &lt;2&gt;
+            next := regex[ctx.pos+1] // &lt;3-1&gt;
+            prev := literals[len(literals)-1][0] // &lt;3-1&gt;
+            literals[len(literals)-1] = fmt.Sprintf(&quot;%c%c&quot;, prev, next) // &lt;3-2&gt;
+            ctx.pos++  // чтобы потребить символ next
+        } else { // &lt;4&gt;
+            literals = append(literals, fmt.Sprintf(&quot;%c&quot;, ch))
+        }
+        ctx.pos++ // &lt;5&gt;
+    }
+    literalsSet := map[uint8]bool{}
+    for _, l := range literals { // &lt;6&gt;
+        for i := l[0]; i &lt;= l[len(l)-1]; i++ { // &lt;7&gt;
+            literalsSet[i] = true
+        }
+    }
+    ctx.tokens = append(ctx.tokens, token{ // &lt;8&gt;
+        tokenType: bracket,
+        value:     literalsSet,
+    })
+}</code></pre>
+        <ul>
+          <li>Как с группой, идём до закрывающей скобки <code>]</code>.</li>
+          <li>Проверяем, не <code>-</code> ли это, потому что он обозначает диапазон (например, <code>a-zK-Z2-8</code>).</li>
+          <li>Когда видим знак диапазона: берём следующий символ и предыдущий (последний элемент списка литералов) и храним их как два символа вместе.</li>
+          <li>Если нет — одиночный литерал, добавляем в список.</li>
+          <li>Переходим к следующему символу.</li>
+          <li>Список <code>literals</code> содержит и литералы, и диапазоны, и они могут повторяться (например, <code>[a-me-s]</code>). Проходим по сохранённым значениям и добавляем каждый литерал в <code>literalsSet</code>; множества по своей природе не содержат дубликатов. В Go используем map, потому что встроенного множества нет.</li>
+          <li>Добавляем все символы между первым и последним из сохранённого значения. Для одиночных литералов — только сам литерал; для диапазонов — все от первого до последнего (включительно).</li>
+          <li>Наконец, добавляем токен скобки в список токенов.</li>
+        </ul>
+        <p>Дальше — <code>parseOr</code>, разбирающий альтернативы <strong>(3)</strong>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func parseOr(regex string, ctx *parseContext) {
+    // &lt;1:start&gt;
+    rhsContext := &amp;parseContext{
+        pos:    ctx.pos,
+        tokens: []token{},
+    }
+    rhsContext.pos += 1 // пропустить |
+    for rhsContext.pos &lt; len(regex) &amp;&amp; regex[rhsContext.pos] != &#x27;)&#x27; {
+        process(regex, rhsContext)
+        rhsContext.pos += 1
+    }
+    // &lt;1:end&gt;
+    // обе стороны выражения OR
+    left := token{
+        tokenType: groupUncaptured,
+        value:     ctx.tokens, // &lt;2&gt;
+    }
+    right := token{ // &lt;3&gt;
+        tokenType: groupUncaptured,
+        value:     rhsContext.tokens,
+    }
+    ctx.pos = rhsContext.pos // &lt;4&gt;
+    ctx.tokens = []token{{ // &lt;5&gt;
+        tokenType: or,
+        value:     []token{left, right},
+    }}
+}</code></pre>
+        <ul>
+          <li>Операция альтернативы имеет синтаксис <code>&lt;левая&gt;|&lt;правая&gt;</code>. К моменту встречи <code>|</code> мы уже разобрали всё слева от него. Теперь время разбирать правую сторону; код почти такой же, как для групп. Создаём пустой контекст для правой стороны и собираем в нём все токены до конца строки regex или до закрывающей скобки.</li>
+          <li>Левая сторона содержит все токены, находящиеся в основном контексте.</li>
+          <li>Для правой берём все токены, собранные в <code>rhsContext</code>. Для обеих используем тип <code>groupUncaptured</code> — тип, созданный для обозначения группы токенов.</li>
+          <li>Обновляем позицию основного контекста.</li>
+          <li>Создаём токен альтернативы и добавляем в основной контекст. Важно: старые токены в основном контексте не сохраняем, потому что они уже внутри токена альтернативы.</li>
+        </ul>
+        <p>Теперь повторения <strong>(4)</strong>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">const repeatInfinity = -1
+func parseRepeat(regex string, ctx *parseContext) {
+    ch := regex[ctx.pos]
+    var min, max int
+    if ch == &#x27;*&#x27; {
+        min = 0
+        max = repeatInfinity
+    } else if ch == &#x27;?&#x27; {
+        min = 0
+        max = 1
+    } else {
+        // ch == &#x27;+&#x27;
+        min = 1
+        max = repeatInfinity
+    }
+    // нужно обернуть последний токен данными счётчика,
+    // чтобы знать, к чему применяются min и max
+    lastToken := ctx.tokens[len(ctx.tokens)-1]
+    ctx.tokens[len(ctx.tokens)-1] = token{
+        tokenType: repeat,
+        value: repeatPayload{
+            min:   min,
+            max:   max,
+            token: lastToken,
+        },
+    }
+}</code></pre>
+        <ul>
+          <li>Базовая идея: каждый символ здесь имеет определённое минимальное и максимальное число повторений. <code>repeatInfinity</code> равен <code>-1</code>, но мы считаем его бесконечностью.</li>
+          <li>После определения границ берём последний разобранный токен (потому что символы повторения всегда стоят справа от токена), оборачиваем его в токен <code>repeat</code> с нужными границами и сохраняем на той же позиции списка токенов.</li>
+        </ul>
+        <p>Другой оператор повторения имеет код чуть длиннее, но идея та же <strong>(5)</strong>:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func parseRepeatSpecified(regex string, ctx *parseContext) {
+    // +1 потому что пропускаем открывающую скобку {
+    start := ctx.pos + 1
+    // идём до конца фигурных скобок
+    for regex[ctx.pos] != &#x27;}&#x27; {
+        ctx.pos++
+    }
+    boundariesStr := regex[start:ctx.pos] // &lt;1&gt;
+    pieces := strings.Split(boundariesStr, &quot;,&quot;) // &lt;2&gt;
+    var min, max int
+    if len(pieces) == 1 { // &lt;3&gt;
+        if value, err := strconv.Atoi(pieces[0]); err != nil {
+            panic(err.Error())
+        } else {
+            min = value
+            max = value
+        }
+    } else if len(pieces) == 2 { // &lt;4&gt;
+        if value, err := strconv.Atoi(pieces[0]); err != nil {
+            panic(err.Error())
+        } else {
+            min = value
+        }
+        if pieces[1] == &quot;&quot; {
+            max = repeatInfinity
+        } else if value, err := strconv.Atoi(pieces[1]); err != nil {
+            panic(err.Error())
+        } else {
+            max = value
+        }
+    } else {
+        panic(fmt.Sprintf(&quot;для счётчика нужно указать 1 или 2 значения: &#x27;%s&#x27;&quot;, boundariesStr))
+    }
+    // &lt;5&gt;
+    lastToken := ctx.tokens[len(ctx.tokens)-1]
+    ctx.tokens[len(ctx.tokens)-1] = token{
+        tokenType: repeat,
+        value: repeatPayload{
+            min:   min,
+            max:   max,
+            token: lastToken,
+        },
+    }
+}</code></pre>
+        <ul>
+          <li>Берём строку границ; всё между <code>{}</code>.</li>
+          <li>Разбиваем её по запятой.</li>
+          <li>Если один элемент (например, <code>{1}</code>) — точное число повторений, min и max равны.</li>
+          <li>Если два элемента, первый — min, второй — max (например, <code>{3,7}</code>). Если второго нет (<code>{3,}</code>), нужно минимум три повторения и потолка нет; то есть <code>repeatInfinity</code>.</li>
+          <li>Теперь, имея границы, берём последний разобранный токен, оборачиваем в токен <code>repeat</code> с нужными границами и сохраняем.</li>
+        </ul>
+        <p>На этом разбор строки regex завершается. В следующей части научимся строить из токенов машину состояний.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Свой движок — понимание навсегда: после Go-версии регекспы станут инструментом, а не магией.</p>
+      <h2>Построение машины состояний</h2>
+        <p>В этой части узнаём, как из разобранных токенов построить машину состояний; но сначала посмотрим, что такое машина состояний.</p>
+        <h3>Что такое конечная машина состояний?</h3>
+        <p>Конечная машина состояний (FSM) или конечный автомат (FA) — абстрактная машина из конечного множества состояний, начального состояния, конечных состояний и переходов между ними. FA бывают двух видов: детерминированный (DFA) и недетерминированный (NFA).</p>
+        <p>Проверка принадлежности делается так:</p>
+        <ul>
+          <li>Всегда начинаем в стартовом состоянии.</li>
+          <li>Берём первый символ входной строки и смотрим, есть ли соответствующий переход: если есть — переходим в то состояние и продолжаем со следующим символом; если нет — строка не принимается.</li>
+          <li>Повторяем до конца строки и проверяем, находимся ли в конечном состоянии.</li>
+          <li>Нахождение в конечном состоянии означает, что строка принята.</li>
+        </ul>
+        <p>В DFA при одном и том же состоянии и входе всегда попадаешь в одно и то же целевое состояние. Он детерминирован.</p>
+        <p>В NFA при одном и том же состоянии и входе можно попасть в разные состояния; он недетерминирован. <code>epsilon</code> означает пустой вход. Этот NFA принимает только строки <code>abd</code> и <code>ace</code>; но со значением epsilon можно войти в несколько состояний.</p>
+        <p>В следующих разделах берём список разобранных токенов и строим из них epsilon-NFA. Когда NFA готов, нужно пройти по каждому состоянию и попытаться потреблять символы входной строки один за другим, проверяя, дойдём ли до конечного состояния.</p>
+        <h3>От regex к epsilon-NFA</h3>
+        <p>Предыдущий шаг даёт список токенов. Превращаем их в epsilon-NFA. Для этого используем алгоритм под названием «конструкция Томпсона» — алгоритм построения и объединения нескольких NFA в один NFA.</p>
+        <p>Для представления состояния NFA используем эту простую структуру:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">type state struct {
+    start       bool
+    terminal    bool
+    transitions map[uint8][]*state
+}</code></pre>
+        <ul>
+          <li><code>start</code> показывает, является ли это состояние точкой входа.</li>
+          <li><code>terminal</code> показывает, конечное ли это состояние. Попадание в него означает, что вход соответствует regex.</li>
+          <li><code>transitions</code> — карта, в которой символ сопоставляется со списком разных состояний.</li>
+        </ul>
+        <p>Есть начальное состояние (розовое) и конечное (синее). Для каждого токена строим отдельный NFA, и эти NFA объединяются epsilon-переходами. Последнее состояние предыдущего NFA соединяется с первым состоянием следующего.</p>
+        <p>Есть epsilon-переход от стартового состояния к первому состоянию (s1) объединённых NFA и один — от последнего состояния объединённых NFA к конечному.</p>
+        <p>То же самое в коде:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">const epsilonChar uint8 = 0 // пустой символ
+func toNfa(ctx *parseContext) *state {
+    startState, endState := tokenToNfa(&amp;ctx.tokens[0]) // &lt;1&gt;
+    for i := 1; i &lt; len(ctx.tokens); i++ { // &lt;2&gt;
+        startNext, endNext := tokenToNfa(&amp;ctx.tokens[i]) // &lt;3&gt;
+        endState.transitions[epsilonChar] = append(
+            endState.transitions[epsilonChar],
+            startNext,
+        ) // &lt;4&gt;
+        endState = endNext // &lt;5&gt;
+    }
+    start := &amp;state{ // &lt;6&gt;
+        transitions: map[uint8][]*state{
+            epsilonChar: {startState},
+        },
+        start: true,
+    }
+    end := &amp;state{ // &lt;7&gt;
+        transitions: map[uint8][]*state{},
+        terminal:    true,
+    }
+    endState.transitions[epsilonChar] = append(
+        endState.transitions[epsilonChar],
+        end,
+    ) // &lt;8&gt;
+    return start // &lt;9&gt;
+}</code></pre>
+        <ul>
+          <li>Берём первый токен и превращаем в NFA. <code>tokenToNfa</code> создаёт NFA из токена и возвращает его начальное и конечное состояния.</li>
+          <li>Проходим по остальным токенам.</li>
+          <li>Для каждого токена вызываем <code>tokenToNfa</code> и сохраняем начальное и конечное состояния.</li>
+          <li>Соединяем конечное состояние предыдущего вызова с начальным состоянием нового NFA.</li>
+          <li>Сохраняем конечное состояние, оно понадобится в следующей итерации.</li>
+          <li>Создаём стартовое состояние; с epsilon-переходом к началу первого NFA.</li>
+          <li>Создаём конечное состояние.</li>
+          <li>Теперь конечное состояние последнего NFA имеет epsilon-переход к конечному состоянию.</li>
+          <li>В итоге возвращаем стартовое состояние, потому что это точка входа.</li>
+        </ul>
+        <p>Теперь, имея общий план построения NFA, посмотрим, как каждый токен превращается в NFA:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// возвращает (start, end)
+func tokenToNfa(t *token) (*state, *state) {
+    start := &amp;state{
+        transitions: map[uint8][]*state{},
+    }
+    end := &amp;state{
+        transitions: map[uint8][]*state{},
+    }
+    switch t.tokenType {
+    case literal:
+    case or:
+    case bracket:
+    case group, groupUncaptured:
+    case repeat:
+    default:
+        panic(&quot;неизвестный тип токена&quot;)
+    }
+    return start, end
+}</code></pre>
+        <ul>
+          <li>Код выше — скелет <code>tokenToNfa</code>; каждый тип токена и его обработку увидим дальше.</li>
+          <li>В целом создаём пустые состояния <code>start</code> и <code>end</code>, логика выполняется в switch, и возвращаем их.</li>
+        </ul>
+        <h4>Литералы</h4>
+        <p>Начнём с литералов, потому что они проще всего. Чтобы пройти от <code>start</code> к <code>end</code>, нужен переход <code>ch</code>; <code>ch</code> — одиночный символ.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">case literal:
+    ch := t.value.(uint8)
+    start.transitions[ch] = []*state{end}</code></pre>
+        <p><code>t.value</code> указывает на значение, сохранённое при разборе в структуре <code>token</code>.</p>
+        <h4>Альтернатива (or)</h4>
+        <p>Or означает выбор между двумя разными путями. Вспомните: в фазе разбора значение токена or имеет две стороны — <em>левую</em> и <em>правую</em>; каждая представляет отдельный NFA. Для построения NFA альтернативы нужно:</p>
+        <ul>
+          <li>Epsilon-переход от стартового состояния к началу обоих NFA — левого и правого</li>
+          <li>Epsilon-переход от конца обоих NFA к конечному состоянию</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">case or:
+    values := t.value.([]token)
+    left := values[0]
+    right := values[1]
+    s1, e1 := tokenToNfa(&amp;left) // &lt;1&gt;
+    s2, e2 := tokenToNfa(&amp;right) // &lt;1&gt;
+    start.transitions[epsilonChar] = []*state{s1, s2} // &lt;2&gt;
+    e1.transitions[epsilonChar] = []*state{end} // &lt;3&gt;
+    e2.transitions[epsilonChar] = []*state{end} // &lt;3&gt;</code></pre>
+        <ul>
+          <li>Строятся оба NFA — левый и правый.</li>
+          <li>Стартовое состояние epsilon-переходом соединяется с началом обоих NFA.</li>
+          <li>Конечное состояние каждого NFA epsilon-переходом соединяется с конечным состоянием NFA альтернативы.</li>
+        </ul>
+        <h4>Скобочные выражения</h4>
+        <p>Скобочные выражения можно считать большой альтернативой; например, <code>[a-c0-2x]</code> означает <code>a|b|c|0|1|2|x</code>. Маленькая разница: мы имеем дело с литералами, а не произвольными NFA, поэтому просто для каждого литерала создаём переход от стартового состояния к конечному.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">case bracket:
+    literals := t.value.(map[uint8]bool)
+    for l := range literals { // &lt;1&gt;
+        start.transitions[l] = []*state{end} // &lt;2&gt;
+    }</code></pre>
+        <ul>
+          <li>Проходим по каждому литералу скобки.</li>
+          <li>Добавляем переход от <code>start</code> к <code>end</code>.</li>
+        </ul>
+        <h4>Группы</h4>
+        <p>Чтобы превратить группу в NFA, конкатенируем все отдельные NFA, построенные из токенов внутри группы. Это мы уже видели в функции <code>toNFA</code>; код тот же:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// в нашем движке нет разницы между
+// group и groupUncaptured
+case group, groupUncaptured:
+    tokens := t.value.([]token)
+    start, end = tokenToNfa(&amp;tokens[0])
+    for i := 1; i &lt; len(tokens); i++ {
+        ts, te := tokenToNfa(&amp;tokens[i])
+        end.transitions[epsilonChar] = append(
+            end.transitions[epsilonChar],
+            ts,
+        )
+        end = te
+    }</code></pre>
+        <h4>Повторение</h4>
+        <p>Из всех рассмотренных случаев повторение, пожалуй, труднее всего понять; идём шаг за шагом и пытаемся найти общее решение, покрывающее все случаи повторения. Во всех дальнейших примерах <code>A</code> — произвольный NFA.</p>
+        <p>Начнём со звёздочки (замыкание Клини), плюса и вопросительного знака (необязательность). Во всех трёх примерах указаны соответствующие минимальное и максимальное числа вхождений.</p>
+        <ul>
+          <li>Каждый пример имеет epsilon-переход от стартового состояния к началу <code>A</code> и от конца <code>A</code> к конечному состоянию; то есть повторение ровно один раз NFA <code>A</code>.</li>
+          <li><code>*</code> означает, что <code>A</code> можно проигнорировать или повторить сколько угодно раз: для игнорирования добавлен прямой epsilon-переход от стартового состояния к конечному (полный обход <code>A</code>); для бесконечного повторения — epsilon-переход от конечного состояния к началу <code>A</code>.</li>
+          <li><code>+</code> означает минимум одно повторение без потолка: чтобы обеспечить минимум один, убираем epsilon-переход из примера <code>*</code>; теперь обойти <code>A</code> нельзя.</li>
+          <li><code>?</code> означает либо игнорировать, либо ровно один раз: очень похоже на <code>*</code>, только убран epsilon-переход от конечного состояния к началу <code>A</code>.</li>
+        </ul>
+        <p>Заметки:</p>
+        <ul>
+          <li>Если минимум равен нулю, добавь epsilon-переход от стартового состояния к конечному.</li>
+          <li>Если максимум — бесконечность, добавь epsilon-переход от конечного состояния к началу <code>A</code>.</li>
+        </ul>
+        <p>Теперь случай точного числа повторений:</p>
+        <p>Просто конкатенируем тот же NFA <code>A</code> <em>m</em> раз.</p>
+        <p>Если минимум задан, а потолок — бесконечность:</p>
+        <p>Опять конкатенируем NFA <code>A</code> <em>m</em> раз, потому что это минимальное число повторений; но добавляем и epsilon-переход от конечного состояния к началу последнего экземпляра <code>A</code>.</p>
+        <p>Финальный случай: и минимум, и максимум заданы, и максимум — не бесконечность:</p>
+        <p><code>A</code> должен повторяться <em>m</em> раз, поэтому конкатенируем его <em>m</em> раз. Остальные <em>(n-m)</em> повторений полностью необязательны; значит, после достижения минимума нужно уметь попасть в конечное состояние. Для раннего завершения добавляем epsilon-переход от стартового состояния каждого экземпляра <code>A</code> к конечному состоянию.</p>
+        <p>Теперь посмотрим, как это закодировано:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">case repeat:
+    p := t.value.(repeatPayload)
+    if p.min == 0 { // &lt;1&gt;
+        start.transitions[epsilonChar] = []*state{end}
+    }
+    var copyCount int // &lt;2&gt;
+    if p.max == repeatInfinity {
+        if p.min == 0 {
+            copyCount = 1
+        } else {
+            copyCount = p.min
+        }
+    } else {
+        copyCount = p.max
+    }
+    from, to := tokenToNfa(&amp;p.token) // &lt;3&gt;
+    start.transitions[epsilonChar] = append( // &lt;4&gt;
+        start.transitions[epsilonChar],
+        from,
+    )
+
+    for i := 2; i &lt;= copyCount; i++ { // &lt;5&gt;
+        s, e := tokenToNfa(&amp;p.token)
+        // соединить конец предыдущего с началом этого
+        to.transitions[epsilonChar] = append( // &lt;6&gt;
+            to.transitions[epsilonChar],
+            s,
+        )
+
+        // отслеживать состояния входа и выхода предыдущего NFA
+        from = s // &lt;7&gt;
+        to = e   // &lt;7&gt;
+        // после минимально необходимых повторений
+        // остальные должны быть необязательными; поэтому к началу
+        // каждого NFA добавляем epsilon-переход,
+        // чтобы при необходимости их можно было пропустить
+        if i &gt; p.min { // &lt;8&gt;
+            s.transitions[epsilonChar] = append(
+                s.transitions[epsilonChar],
+                end,
+            )
+        }
+    }
+    to.transitions[epsilonChar] = append( // &lt;9&gt;
+        to.transitions[epsilonChar],
+        end,
+    )
+
+    if p.max == repeatInfinity { // &lt;10&gt;
+        end.transitions[epsilonChar] = append(
+            end.transitions[epsilonChar],
+            from,
+        )
+    }</code></pre>
+        <ul>
+          <li>Если минимум — ноль, нужен epsilon-переход от стартового состояния к конечному.</li>
+          <li><code>copyCount</code> — максимальное число раз, которое нужно построить NFA из <code>p.token</code>: если потолок — бесконечность и минимум — ноль, то 1, потому что нужна минимум одна копия; если потолок — бесконечность и минимум не ноль, то значение min (нужно минимум p.min раз); если потолок не бесконечность — значение max.</li>
+          <li>Как с группой, нужно конкатенировать несколько NFA; поэтому начинаем со сборки первой версии.</li>
+          <li>Стартовое состояние соединяется с началом этого нового NFA.</li>
+          <li>Проходим остальные повторения.</li>
+          <li>Собственно шаг конкатенации; здесь конец предыдущего NFA соединяется с началом текущего.</li>
+          <li>Сохраняем начало и конец текущего NFA.</li>
+          <li>После построения минимального числа нужных NFA остальные должны быть необязательными; поэтому от начала каждого необязательного NFA добавляем epsilon-переход к конечному состоянию.</li>
+          <li>Соединяем конец последнего NFA с конечным состоянием.</li>
+          <li>Если потолок — бесконечность, добавляем epsilon-переход от конечного состояния к началу последнего NFA.</li>
+        </ul>
+        <h4>Пример</h4>
+        <p>С учётом всех рассмотренных техник вот что генерируется для regex <code>19[5-9][0-9]</code>:</p>
+      </section>
+      <section>
+      <h2>Сопоставление</h2>
+        <p>Финальный кусок нашего движка — логика сопоставления. Базовая идея: по очереди подаём каждый символ тестовой строки текущему состоянию NFA, пока не дойдём до конца строки. Если строка закончилась и мы в конечном состоянии — строка соответствует regex.</p>
+        <p>Во время обхода строки используем указатель/курсор на конкретную позицию в строке. Помимо каждого индекса строки, наш указатель может указывать на начало строки (до сопоставления) и конец строки (после потребления всех символов).</p>
+        <p>В коде у нас такие константы и вспомогательный метод:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">const (
+    startOfText uint8 = 1
+    endOfText   uint8 = 2
+)
+func getChar(input string, pos int) uint8 {
+    if pos &gt;= len(input) {
+        return endOfText
+    }
+    if pos &lt; 0 {
+        return startOfText
+    }
+    return input[pos]
+}</code></pre>
+        <p>И код сопоставления:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func (s *state) check(input string, pos int) bool { // &lt;1&gt;
+    ch := getChar(input, pos) // &lt;2&gt;
+    if ch == endOfText &amp;&amp; s.terminal { // &lt;3&gt;
+        return true
+    }
+    if states := s.transitions[ch]; len(states) &gt; 0 { // &lt;4&gt;
+        nextState := states[0]
+        if nextState.check(input, pos+1) { // &lt;5&gt;
+            return true
+        }
+    }
+    for _, state := range s.transitions[epsilonChar] { // &lt;6&gt;
+        if state.check(input, pos) { // &lt;7&gt;
+            return true
+        }
+        if ch == startOfText &amp;&amp; state.check(input, pos+1) { // &lt;8&gt;
+            return true
+        }
+    }
+    return false // &lt;9&gt;
+}</code></pre>
+        <ul>
+          <li><code>(s *state)</code> — просто способ добавить функцию к структуре <code>state</code> в Go; к алгоритму отношения не имеет.</li>
+          <li>Берём текущий проверяемый символ; либо валидный символ строки, либо <code>startOfText</code>, либо <code>endOfText</code>.</li>
+          <li>Если мы в конце строки и в конечном состоянии — значит, сопоставление есть; возвращаем true.</li>
+          <li>Проверяем, задан ли переход для текущего символа.</li>
+          <li>Если переход есть, берём следующее состояние, продвигаем указатель на шаг и проверяем. Если успешно — возвращаем true.</li>
+          <li>Если символьного перехода нет, проверяем пустые/epsilon-переходы.</li>
+          <li>Для всех этих переходов пробуем следующее состояние с тем же входом и позицией; поскольку переход пустой, позицию увеличивать не нужно.</li>
+          <li>Есть риск застрять в начале текста и никогда не продвинуться; это условие предотвращает его.</li>
+          <li>Если ничего не сопоставилось — неудача, возвращаем false.</li>
+        </ul>
+        <h3>Тестирование</h3>
+        <p>Наконец, пробуем наш код на нескольких входах:</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">func TestNfa(t *testing.T) {
+    var data = []struct {
+        email    string
+        validity bool
+    }{
+        {email: &quot;valid_email@example.com&quot;, validity: true},
+        {email: &quot;john.doe@email.com&quot;, validity: true},
+        {email: &quot;user_name@email.org&quot;, validity: true},
+        {email: &quot;support@email.io&quot;, validity: true},
+        {email: &quot;contact@123.com&quot;, validity: true},
+        {email: &quot;sales@email.biz&quot;, validity: true},
+        {email: &quot;test_email@email.test&quot;, validity: true},
+        {email: &quot;random.email@email.xyz&quot;, validity: true},
+        {email: &quot;user@domain12345.com&quot;, validity: true},
+        {email: &quot;user@12345domain.com&quot;, validity: true},
+        // невалидные по нашему regex
+        {email: &quot;alice.smith123@email.co.uk&quot;, validity: false},
+        {email: &quot;invalid.email@&quot;, validity: false},
+        {email: &quot;.invalid@email.com&quot;, validity: false},
+        {email: &quot;email@invalid..com&quot;, validity: false},
+        {email: &quot;user@-invalid.com&quot;, validity: false},
+        {email: &quot;user@invalid-.com&quot;, validity: false},
+        {email: &quot;user@in valid.com&quot;, validity: false},
+        {email: &quot;user@.com&quot;, validity: false},
+        {email: &quot;user@.co&quot;, validity: false},
+        {email: &quot;user@domain.c&quot;, validity: false},
+        {email: &quot;user@domain.1a&quot;, validity: false},
+        {email: &quot;user@domain.c0m&quot;, validity: false},
+        {email: &quot;user@domain..com&quot;, validity: false},
+        {email: &quot;user@.email.com&quot;, validity: false},
+        {email: &quot;user@emai.l.com&quot;, validity: false},
+        {email: &quot;user@e_mail.com&quot;, validity: false},
+        {email: &quot;user@e+mail.com&quot;, validity: false},
+        {email: &quot;user@e^mail.com&quot;, validity: false},
+        {email: &quot;user@e*mail.com&quot;, validity: false},
+        {email: &quot;user@e.mail.com&quot;, validity: false},
+        {email: &quot;user@e_mail.net&quot;, validity: false},
+        {email: &quot;user@sub.domain.com&quot;, validity: false},
+        {email: &quot;user@sub-domain.com&quot;, validity: false},
+        {email: &quot;user@sub.domain12345.com&quot;, validity: false},
+        {email: &quot;user@sub.domain-12345.com&quot;, validity: false},
+        {email: &quot;user@-sub.domain.com&quot;, validity: false},
+        {email: &quot;user@sub-.domain.com&quot;, validity: false},
+        {email: &quot;user@domain-.com&quot;, validity: false},
+        {email: &quot;user@sub.domain.c0m&quot;, validity: false},
+        {email: &quot;user@sub.domain.c&quot;, validity: false},
+        {email: &quot;user@sub.domain.1a&quot;, validity: false},
+        {email: &quot;user@sub.domain.c0m&quot;, validity: false},
+        {email: &quot;user@sub.domain..com&quot;, validity: false},
+        {email: &quot;user@sub.domain.c0m&quot;, validity: false},
+        {email: &quot;user@sub.domain..com&quot;, validity: false},
+        {email: &quot;user@sub.domain.c0m&quot;, validity: false},
+    }
+    ctx := parse(`[a-zA-Z][a-zA-Z0-9_.]+@[a-zA-Z0-9]+.[a-zA-Z]{2,}`)
+    nfa := toNfa(ctx)
+    for _, instance := range data {
+        t.Run(fmt.Sprintf(&quot;Test: &#x27;%s&#x27;&quot;, instance.email), func(t *testing.T) {
+            result := nfa.check(instance.email, -1)
+            if result != instance.validity {
+                t.Logf(&quot;Expected: %t, got: %t\n&quot;, instance.validity, result)
+                t.Fail()
+            }
+        })
+    }
+}</code></pre>
+        <p>Все тесты проходят. Конечно, есть куда улучшать; код в репозитории GitHub содержит те же идеи с большими деталями.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Регексп-движок на Go» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Регексп-движок на Go» принадлежит автору оригинала (rhaeguard). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (rhaeguard). Читайте оригинал на
         <a href="https://rhaeguard.github.io/posts/regex" target="_blank" rel="noopener">https://rhaeguard.github.io/posts/regex</a>.
       </div>
     </article>

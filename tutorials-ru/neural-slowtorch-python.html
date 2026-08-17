@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «SlowTorch: свой мини-PyTorch на Python»
+          <b>Оригинальный источник:</b> «SlowTorch»
         </div>
         <a class="btn solid" href="https://github.com/xames3/slowtorch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-slowtorch-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,77 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>SlowTorch — мини-фреймворк глубокого обучения: автодиф, слои и оптимизаторы — PyTorch в 500 строк.</p>
+      <h2>Цель проекта: «медленно», но прозрачно</h2>
+        <p>Название SlowTorch — дружеская шутка: по сравнению с настоящим PyTorch он медленный, но эта «медленность» компенсируется прозрачностью. Проект написан на <b>чистом Python</b> (без numpy даже в ядре, только stdlib), чтобы тот, кто видит PyTorch как чёрный ящик, мог прочитать и понять каждую его часть построчно: что такое тензор, как работает autograd и что делают слои и оптимизаторы.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура: тензоры и autograd</h2>
+        <p>Сердце проекта — класс <code>Tensor</code>, который, как и в PyTorch, имеет две стороны: числовые данные и «вычислительный граф» для автоматического дифференцирования. Каждая операция (сложение, умножение и т.д.) записывает и значение, и локальную производную; вызов <code>backward()</code> распространяет градиенты от выхода к входам:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Тензор: данные + возможность autograd (упрощённая версия)
+class Tensor:
+    def __init__(self, data, requires_grad=False):
+        self.data = data
+        self.grad = None
+        self.requires_grad = requires_grad
+        self._backward = None   # функция локальной производной
+
+    def backward(self):
+        # топологическая сортировка и распространение градиентов назад
+        ...
+        self.grad = 1.0
+        for node in reversed(order):
+            node._backward()</code></pre>
+      </section>
+      <section>
+      <h2>Слои и функции</h2>
+        <p>Поверх тензоров определены знакомые компоненты, чтобы можно было собрать настоящую сеть: <code>Linear</code> (матричное умножение + смещение), активации (<code>ReLU</code>, <code>Sigmoid</code>, <code>Tanh</code>, <code>Softmax</code>), функции потерь (<code>MSELoss</code>, <code>CrossEntropyLoss</code>) и базовый модуль <code>Module</code> — тот же паттерн, что и <code>nn.Module</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Определение сети по паттерну PyTorch
+class TwoLayerNet(Module):
+    def __init__(self, in_dim, hidden, out_dim):
+        self.fc1 = Linear(in_dim, hidden)
+        self.fc2 = Linear(hidden, out_dim)
+
+    def forward(self, x):
+        x = self.fc1(x)
+        x = relu(x)
+        x = self.fc2(x)
+        return softmax(x)</code></pre>
+      </section>
+      <section>
+      <h2>Оптимизаторы и цикл обучения</h2>
+        <p>Реализованы оптимизаторы вроде <code>SGD</code> и <code>Adam</code>, чтобы цикл обучения был как в PyTorch: forward ← вычисление loss ← backward ← шаг оптимизатора. Наблюдение за этим циклом на чистом Python снимает «магию»:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left"># Стандартный цикл обучения — в точности как PyTorch, но всё открыто
+model = TwoLayerNet(2, 8, 1)
+optimizer = SGD(model.parameters(), lr=0.1)
+
+for epoch in range(100):
+    loss_sum = 0
+    for x, y in dataset:
+        optimizer.zero_grad()
+        pred = model(x)
+        loss = mse_loss(pred, y)
+        loss.backward()          # распространение градиентов
+        optimizer.step()         # обновление весов
+        loss_sum += loss.data
+    print(f&quot;epoch {epoch}: loss = {loss_sum / len(dataset):.6f}&quot;)</code></pre>
+      </section>
+      <section>
+      <h2>Почему это стоит читать?</h2>
         <ul>
-          <li>Автодифференцирование</li>
-          <li>Граф операций</li>
-          <li>Слои</li>
-          <li>Оптимизаторы</li>
+          <li><b>Без зависимостей:</b> только стандартный Python — можно запустить за несколько минут и отладить построчно.</li>
+          <li><b>Ориентировано на читаемость:</b> код написан для обучения, а не для скорости; имена и структуры обучающие.</li>
+          <li><b>Встроенные тесты:</b> в проекте есть тесты, проверяющие поведение на простых ручных примерах.</li>
+          <li><b>Мост к настоящему PyTorch:</b> после чтения этого кода API и понятия PyTorch (модуль, параметр, autograd) больше не загадка.</li>
         </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>SlowTorch реализует суть PyTorch: граф операций, автодиф и обучение. Проект — наглядная версия фреймворка.</p>
-        <p>Операция с автодифом:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>class Mul(Function):
-    @staticmethod
-    def forward(a, b): return a * b
-    @staticmethod
-    def backward(grad, a, b): return grad * b, grad * a</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>SlowTorch — лучшее объяснение фреймворков: вы будете понимать PyTorch, а не просто им пользоваться.</p>
+        <div class="callout note">
+          <strong>Дополнительно:</strong> этот проект — отличное дополнение к курсам «Zero to Hero» Карпати и «Глубокое обучение с нуля» (roiamiel1) — все три преследуют одну цель с разных сторон.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «SlowTorch: свой мини-PyTorch на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «SlowTorch: свой мини-PyTorch на Python» принадлежит автору оригинала (xames3). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (xames3). Читайте оригинал на
         <a href="https://github.com/xames3/slowtorch" target="_blank" rel="noopener">https://github.com/xames3/slowtorch</a>.
       </div>
     </article>

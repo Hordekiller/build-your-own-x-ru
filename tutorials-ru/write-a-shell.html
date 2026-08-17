@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Шелл с нуля на C для начинающих»
+          <b>Оригинальный источник:</b> «Write a shell in C — dash»
         </div>
         <a class="btn solid" href="https://danishpraka.sh/posts/write-a-shell/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/write-a-shell.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,143 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Первая ступенька: простейший шелл на C — READ, PARSE, EXECUTE, LOOP — конфетка для начинающих системщиков.</p>
+      <h2>Введение</h2>
+        <p>Вы когда-нибудь задумывались, как работает этот терминал? (Точнее: как работает шелл?) Автор задался тем же вопросом и после «нескольких поисков и большого количества чтения» понял: сначала он написал базовый шелл на C, а затем навесил на него ещё несколько возможностей. Шелл, простыми словами, — «инструмент, через который вы взаимодействуете с операционной системой» — определение расплывчатое, но верное. Требования: знание C, gcc и текстовый редактор.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Простой цикл</li>
-          <li>Разбор строк</li>
-          <li>fork/exec</li>
-          <li>Рекламные паузы</li>
-        </ul>
+      <h2>Основной цикл шелла</h2>
+        <p>Эта функция — движущий мотор цикла. Прежде всего приглашение (<code>&gt;</code>) сообщает пользователю о готовности шелла:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">void loop() {
+    char *line;
+    char **args;
+    int status = 1;
+
+    do {
+        printf(&quot;&gt; &quot;);
+        line = read_line();
+        args = split_line(line);
+        status = dash_execute(args);
+        free(line);
+        free(args);
+    } while (status);
+}</code></pre>
+        <p><code>status</code> хранит возвращаемое значение функций выполнения команд и определяет конец цикла: когда пользователь вводит <code>exit</code>, функция exit возвращает <code>0</code>, и цикл разрывается. Две последние строки do-while через <code>free()</code> освобождают память двух указателей — явное освобождение памяти в C необходимо и является хорошей привычкой.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Урок фокусируется на основании: цикл, разбор и запуск. Ничего лишнего — только фокус, благодаря которому шелл оживает.</p>
-        <p>Главный цикл шелла:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>char *line = read_line();
-char **args = split_line(line);
-int status = execute(args);</code></pre>
+      <h2>Чтение команд — read_line</h2>
+        <p>Поскольку заранее нельзя знать длину команды пользователя, статическое выделение лишено смысла: память выделяется динамически и при необходимости увеличивается:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">char *read_line() {
+    int buffsize = 1024;
+    int position = 0;
+    char *buffer = malloc(sizeof(char) * buffsize);
+    int c;
+
+    if (!buffer) {                          /* malloc не удался */
+        fprintf(stderr, &quot;dash: Allocation error\n&quot;);
+        exit(EXIT_FAILURE);
+    }
+
+    while (1) {
+        c = getchar();
+        if (c == EOF || c == &#x27;\n&#x27;) {
+            buffer[position] = &#x27;\0&#x27;;
+            return buffer;
+        } else {
+            buffer[position] = c;
+        }
+        position++;
+
+        if (position &gt;= buffsize) {         /* рост буфера */
+            buffsize += 1024;
+            buffer = realloc(buffer, buffsize);
+            if (!buffer) {
+                fprintf(stderr, &quot;dash: Allocation error\n&quot;);
+                exit(EXIT_FAILURE);
+            }
+        }
+    }
+}</code></pre>
+        <p>При достижении <code>EOF</code> или <code>\n</code> возвращается строка с нулевым завершающим байтом; проверки <code>if(!buffer)</code> гарантируют, что в случае сбоя выделения (<code>NULL</code> от malloc/realloc) мы получим ошибку.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Правильная базовая структура — лучший подарок начинающему: после этого урока путь к сложным шеллам открыт.</p>
+      <h2>Токенизация ввода — split_line</h2>
+        <p>Прочитанную команду разбиваем на токены (куски), чтобы её легко было выполнить. Работа строится на стандартной функции <code>strtok</code>: первый вызов возвращает первый токен, а каждый последующий вызов с аргументом <code>NULL</code> продолжает с того же места:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">str1 = strtok(&quot;this is it!&quot;, &quot; &quot;);
+// str1 -&gt; &quot;this&quot;
+str1 = strtok(NULL, &quot; &quot;);
+// str1 -&gt; &quot;is&quot;
+str1 = strtok(NULL, &quot; &quot;);
+// str1 -&gt; &quot;it!&quot; </code></pre>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#define TOK_DELIM &quot; \t\r\n&quot;
+#define TK_BUFF_SIZE 1024
+
+char **split_line(char *line) {
+    int buffsize = TK_BUFF_SIZE, position = 0;
+    char **tokens = malloc(buffsize * sizeof(char *));
+    char *token;
+
+    if (!tokens) {
+        fprintf(stderr, &quot;dash: Allocation error\n&quot;);
+        exit(EXIT_FAILURE);
+    }
+    token = strtok(line, TOK_DELIM);
+    while (token != NULL) {
+        tokens[position] = token;
+        position++;
+        if (position &gt;= buffsize) {
+            buffsize += TK_BUFF_SIZE;
+            tokens = realloc(tokens, buffsize * sizeof(char *));
+            if (!tokens) { /* ... */ }
+        }
+        token = strtok(NULL, TOK_DELIM);
+    }
+    tokens[position] = NULL;
+    return tokens;
+}</code></pre>
+      </section>
+      <section>
+      <h2>Выход — dash_exit и выполнение команд — dash_execute</h2>
+        <p>Тривиальная функция, возвращающая <code>0</code>, чтобы закрыть цикл; а в <code>dash_execute</code> сначала проверяется, является ли команда <code>exit</code> (для читаемости выделена отдельная функция). Если нет — <code>fork()</code> копирует текущий процесс («дочерний», идентичный родительскому, кроме идентификатора), и возвращаемое значение говорит, где мы: <code>0</code> — дочерний, pid дочернего — родительский:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">int dash_execute(char **args) {
+    pid_t cpid;
+    int status;
+
+    if (strcmp(args[0], &quot;exit&quot;) == 0) {
+        return dash_exit(args);
+    }
+
+    cpid = fork();
+
+    if (cpid == 0) {
+        /* Дочерний: execvp заменяет образ процесса нужной программой;
+           при неудаче возвращает -1 */
+        if (execvp(args[0], args) &lt; 0)
+            printf(&quot;dash: command not found: %s\n&quot;, args[0]);
+        exit(EXIT_FAILURE);
+
+    } else if (cpid &lt; 0) {
+        printf(&quot;Error forking\n&quot;);
+    } else {
+        waitpid(cpid, &amp;status, WUNTRACED);
+    }
+    return 1;
+}
+
+int dash_exit(char **args) {
+    return 0;
+}</code></pre>
+        <p><code>waitpid</code> гарантирует, что дочерний процесс завершится до того, как шелл вернётся к приглашению.</p>
+      </section>
+      <section>
+      <h2>Полный код и результат</h2>
+        <p>Весь код выше — вместе с прототипами, определением <code>TOK_DELIM</code>, цветными макросами ошибок и <code>main()</code>, который просто вызывает <code>loop()</code> — образует полноценный базовый шелл. Это упражнение «для обучения», а не продукт: «вероятно, вы никогда не захотите пользоваться таким примитивным шеллом, но теперь вы знаете, как работают под капотом ваши любимые шеллы».</p>
+        <p>Более продвинутая версия (с каналами, историей и другими встроенными командами) доступна на <a href="https://github.com/danishprakash/dash" target="_blank" rel="noopener">github.com/danishprakash/dash</a>.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Шелл с нуля на C для начинающих» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Шелл с нуля на C для начинающих» принадлежит автору оригинала (Даниш Пракаш (Danish Prakash)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Даниш Пракаш (Danish Prakash)). Читайте оригинал на
         <a href="https://danishpraka.sh/posts/write-a-shell/" target="_blank" rel="noopener">https://danishpraka.sh/posts/write-a-shell/</a>.
       </div>
     </article>

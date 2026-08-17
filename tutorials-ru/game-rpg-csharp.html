@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «RPG на C#: роль и мир»
+          <b>Оригинальный источник:</b> «Learn C# by Building a Simple RPG»
         </div>
         <a class="btn solid" href="http://scottlilly.com/learn-c-by-building-a-simple-rpg-index/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-rpg-csharp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,64 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>RPG на C#: персонаж, инвентарь, битвы и диалоги — консольная RPG, программируемая с нуля.</p>
+      <h2>О курсе</h2>
+        <p>Этот бесплатный курс учит C# на реальном проекте: простом <b>текстовом RPG</b> без графики — с 9 локациями, 3 монстрами, 2 видами оружия и 2 квестами. Всё начинается «с нуля»: даже установка Visual Studio разбирается отдельно. Результат: полное понимание классов, свойств (properties), функций, условий и циклов — лучшее для старта.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> курс полностью рассчитан на новичков: если вы не написали ни строчки кода, это подходящий курс; каждая концепция объясняется на примере из игры.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура уроков</h2>
         <ul>
-          <li>Персонаж и инвентарь</li>
-          <li>Боевая система</li>
-          <li>Диалоги и квесты</li>
-          <li>Сохранение</li>
+          <li>Установка инструментов и создание первого проекта</li>
+          <li>Структура программы, namespace и using</li>
+          <li>Переменные, типы данных и преобразования</li>
+          <li>Функции и параметры; вывод и возврат</li>
+          <li>Классы: создание питомца, оружия, монстра и снаряжения</li>
+          <li>Ввод пользователя и условия (if/switch)</li>
+          <li>Циклы и хранение в списках</li>
+          <li>Управление пошаговым боем, квестами и магией</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>RPG — это данные и состояния: герой, предметы, бои, сюжет. C# облегчает управление сущностями.</p>
-        <p>Классическая сущность раунда:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>public class Hero {
+      <h2>Пример кода: класс игрового объекта</h2>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Базовый класс всех игровых объектов
+public class WorldObject
+{
+    public int ID { get; set; }
     public string Name { get; set; }
-    public int Hp { get; set; }
-    public int Attack { get; set; }
-    public List&lt;Item&gt; Inventory { get; set; }
-}</code></pre>
-      </section>
+    public string Description { get; set; }
 
+    public WorldObject(int id, string name, string description)
+    {
+        ID = id;
+        Name = name;
+        Description = description;
+    }
+}
+
+// Класс, наследующий от базового: оружие
+public class Weapon : WorldObject
+{
+    public int MaximumDamage { get; set; }
+
+    public Weapon(int id, string name, string description, int maximumDamage)
+        : base(id, name, description)
+    {
+        MaximumDamage = maximumDamage;
+    }
+}</code></pre>
+        <p>Точно так же создаются классы <code>Monster</code>, <code>Quest</code>, <code>Location</code> и <code>Player</code>, а затем из них строится игровой мир — локации, существа и предметы.</p>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>RPG на консоли — полный спектр дизайна: вы спроектируете систему сущностей, которая пригодится в любых играх.</p>
+      <h2>Итоги</h2>
+        <p>В конце курса у вас есть небольшая, но полная игра: вы перемещаетесь по локациям, сражаетесь с монстрами, подбираете оружие и снаряжение и выполняете квесты. После этого курса лучший следующий шаг — версия <b>WPF с графикой</b> (SOSCSRPG того же автора).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «RPG на C#: роль и мир» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «RPG на C#: роль и мир» принадлежит автору оригинала (Скотт Лилли (Scott Lilly)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Скотт Лилли (Scott Lilly)). Читайте оригинал на
         <a href="http://scottlilly.com/learn-c-by-building-a-simple-rpg-index/" target="_blank" rel="noopener">http://scottlilly.com/learn-c-by-building-a-simple-rpg-index/</a>.
       </div>
     </article>

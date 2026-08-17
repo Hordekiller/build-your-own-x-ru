@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Интерпретатор с нуля (видео)»
+          <b>Оригинальный источник:</b> «Build a simple interpreted language (video)»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=dj9CBS3ikGA&amp;list=PLZQftyCk7_SdoVexSmwy_tBgs7P0b97yD&amp;index=1" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-interpreted-language-video.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,44 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Видео-курс по интерпретаторам на Python: лексер, парсер и eval — программирование языков на экране.</p>
+      <h2>О видео</h2>
+        <p>Это видео строит на Python простой интерпретируемый язык: от определения базовых команд (присваивание, цикл, условие) до их выполнения на примерах. Подходит тому, кто хочет быстро увидеть результат работы.</p>
+        <p><a class="btn solid" href="https://www.youtube.com/watch?v=dj9CBS3ikGA&amp;list=PLZQftyCk7_SdoVexSmwy_tBgs7P0b97yD&amp;index=1" target="_blank" rel="noopener">▶ Смотреть видео</a></p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>Парсер</li>
-          <li>Eval</li>
-          <li>Практика</li>
-        </ul>
+      <h2>Ожидаемая структура</h2>
+        <p>Как и в любом интерпретаторе, строятся три основных компонента: lexer (превращение текста в токены), parser (построение дерева/последовательности) и evaluator (выполнение команд). В видео эти три обычно пишутся в одном простом классе или файле с акцентом на читаемость.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Видео позволяет видеть весь процесс: от пустого файла к интерпретатору с переменными и функциями.</p>
-        <p>Простая обработка присваивания:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>if node.kind == "assign":
-    env[node.name] = evaluate(node.value, env)</code></pre>
+      <h2>Пример кода: выполнение команды</h2>
+        <p>Чтобы заранее познакомиться с сутью работы, вот пример простого цикла eval:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def execute(node, env):
+    if node[&#x27;type&#x27;] == &#x27;assign&#x27;:          # a = 5
+        env[node[&#x27;name&#x27;]] = eval_expr(node[&#x27;value&#x27;], env)
+    elif node[&#x27;type&#x27;] == &#x27;print&#x27;:         # print expr
+        print(eval_expr(node[&#x27;value&#x27;], env))
+    elif node[&#x27;type&#x27;] == &#x27;if&#x27;:            # if cond: ...
+        if eval_expr(node[&#x27;cond&#x27;], env):
+            for stmt in node[&#x27;body&#x27;]:
+                execute(stmt, env)
+    elif node[&#x27;type&#x27;] == &#x27;while&#x27;:         # while cond: ...
+        while eval_expr(node[&#x27;cond&#x27;], env):
+            for stmt in node[&#x27;body&#x27;]:
+                execute(stmt, env)</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Видео-курсы ускоряют старт: этот формат подходит, если вам нужно быстро разобраться в интерпретаторах.</p>
+      <h2>Советы</h2>
+        <p>1) Начинайте с маленького языка и добавляйте возможности; 2) держите окружение (env) простым — dict; 3) уделите внимание ошибкам (синтаксическим), чтобы интерпретатор был полезным; 4) после видео прочитайте серию «lsbasi» Руслана Спивака, чтобы углубить концепции.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Самый быстрый способ увидеть, «что делает интерпретатор»: посмотрите видео, следите за написанием кода вживую и попробуйте собрать свой маленький язык. Учиться написанию интерпретаторов, глядя на формирующийся код, проще, чем по любому сухому тексту.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Интерпретатор с нуля (видео)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Интерпретатор с нуля (видео)» принадлежит автору оригинала (автор видео). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (автор видео). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=dj9CBS3ikGA&amp;list=PLZQftyCk7_SdoVexSmwy_tBgs7P0b97yD&amp;index=1" target="_blank" rel="noopener">https://www.youtube.com/watch?v=dj9CBS3ikGA&amp;list=PLZQftyCk7_SdoVexSmwy_tBgs7P0b97yD&amp;index=1</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Пишем nistow — управление dotfiles на Nim»
+          <b>Оригинальный источник:</b> «Day 6: Manage your dotfiles easily with nistow»
         </div>
         <a class="btn solid" href="https://xmonader.github.io/nimdays/day06_nistow.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/nim-nistow.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,183 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Nistow — менеджер dotfiles в духе GNU Stow: симлинки, каталоги, конфигурации. Урок реализует символьные ссылки и команды установки/удаления.</p>
+      <h2>Введение</h2>
+        <p>Сегодня мы создадим инструмент для лёгкого управления вашими dotfiles-файлами.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура dotfiles</h2>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">        i3
+        `-- .config
+            `-- i3
+                `-- config</code></pre>
+        <p>Итак, в верхнем уровне есть каталог с именем <code class="inline">i3</code> — «имя приложения» (APP_NAME) — а под ним дерево путей конфигурации. Это значит, что файл <code class="inline">config</code> должен быть симлинком на путь <code class="inline">.config/i3/config</code> относительно «целевого каталога» (destination directory).</p>
+        <div class="callout note">
+          <strong>Примечание:</strong> целевой каталог по умолчанию — домашний каталог (Home).
+        </div>
+      </section>
+      <section>
+      <h2>Чего мы ожидаем?</h2>
+        <pre class="code"><span class="lang-tag">shell</span><code style="direction:ltr;text-align:left">➜  ~ nistow --help
+    Stow 0.1.0
+        -h | --help     : show help
+        -v | --version  : show version
+        --verbose       : verbose messages
+        -s | --simulate : simulate stow operation
+        -f | --force    : override old links
+        -a | --app      : application path to stow
+        -d | --dest     : destination to stow to</code></pre>
         <ul>
-          <li>Что такое dotfiles и stow</li>
-          <li>Создание симлинков</li>
-          <li>Отслеживание и удаление</li>
-          <li>Поддержка нескольких домов</li>
+          <li>Флаг <code class="inline">--simulate</code> используется для имитации операции с файловой системой без реальных симлинков.</li>
+          <li>Каталог <code class="inline">--app</code> — каталог приложения, совместимый с описанной выше структурой dotfiles.</li>
+          <li>Каталог <code class="inline">--dest</code> — цель, под которой файлы будут симлинковаться; по умолчанию — домашний каталог.</li>
         </ul>
+        <pre class="code"><span class="lang-tag">shell</span><code style="direction:ltr;text-align:left">nistow --app=/home/striky/wspace/dotfiles/localdir --dest=/tmp/tmpconf --verbose</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Dotfiles — файлы конфигурации, которыми правят инструменты: nistow раскладывает их по домам через симлинки, и настройки переезжают с машины на машину.</p>
-        <p>Создание симлинка в Nim:</p>
-        <pre class="code"><span class="lang-tag">Nim</span><code>createSymlink(source, dest)
-# настраиваем файл так, что он живёт в одном месте</code></pre>
+      <h2>Реализация</h2>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc writeHelp() = 
+    echo &quot;&quot;&quot;
+Stow 0.1.0 (Manage your dotfiles easily)
+
+Allowed arguments:
+    -h | --help     : show help
+    -v | --version  : show version
+    --verbose       : verbose messages
+    -s | --simulate : simulate stow operation
+    -f | --force    : override old links
+    -a | --app      : application path to stow
+    -d | --dest     : destination to stow to
+
+    &quot;&quot;&quot;</code></pre>
+        <p>Процедура <code class="inline">writeHelp</code> — простая процедура (proc), выводящая строку справки в стандартный вывод (stdout).</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc writeVersion() =
+    echo &quot;Stow version 0.1.0&quot;</code></pre>
+        <p>Для вывода версии.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc cli*() =</code></pre>
+        <p>Точка входа (entry point) нашей CLI-программы.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  var 
+    simulate, verbose, force: bool = false
+    app, dest: string = &quot;&quot;</code></pre>
+        <p>Эти переменные представляют различные опции, которые мы разрешаем в программе.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  if paramCount() == 0:
+    writeHelp()
+    quit(0)</code></pre>
+        <p>Если не передано ни одного аргумента, выводим строку справки и выходим из программы — по терминологии Nim, с «exit» или «quit» и «кодом выхода» (exit status) 0.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  for kind, key, val in getopt():
+    case kind
+    of cmdLongOption, cmdShortOption:
+        case key
+        of &quot;help&quot;, &quot;h&quot;: 
+            writeHelp()
+            quit()
+        of &quot;version&quot;, &quot;v&quot;:
+            writeVersion()
+            quit()
+        of &quot;simulate&quot;, &quot;s&quot;: simulate = true
+        of &quot;verbose&quot;: verbose = true
+        of &quot;force&quot;, &quot;f&quot;: force = true
+        of &quot;app&quot;, &quot;a&quot;: app = val
+        of &quot;dest&quot;, &quot;d&quot;: dest = val 
+        else:
+          discard
+    else:
+      discard </code></pre>
+        <p>Здесь мы разбираем (parse) командную строку с помощью <code class="inline">getopt</code>.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  for kind, key, val in getopt():
+    case kind
+    of cmdLongOption, cmdShortOption:</code></pre>
+        <p>Так, для команды <code class="inline">--app=/home/striky/dotfiles/i3 -f</code> тип (kind) для <code class="inline">--app</code> равен <code class="inline">cmdLongOption</code>, а для <code class="inline">-f</code> — <code class="inline">cmdShortOption</code>; ключ (key) для <code class="inline">--app</code> — <code class="inline">app</code>, для <code class="inline">-f</code> — <code class="inline">f</code>; значение (val) для <code class="inline">--app</code> — <code class="inline">/home/striky/dotfiles/i3</code>, а для <code class="inline">-f</code> в нашем разборе ставится <code class="inline">true</code>, потому что оно больше похоже на булев переключатель (boolean): если присутствует — значит, хотим установить его в true.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  if dest.isNilOrEmpty():
+    dest = getHomeDir()</code></pre>
+        <p>Здесь мы устанавливаем целевой каталог по умолчанию (<code class="inline">dest</code>) в домашний каталог.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  if app.isNilOrEmpty():
+    echo &quot;Make sure to provide --app flags&quot;
+    quit(1)</code></pre>
+        <p>Здесь, если <code class="inline">app</code> не задан, выходим с «кодом ошибки» (exit status) 1.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  try:
+    stow(getLinkableFiles(appPath=app, dest=dest), simulate=simulate, verbose=verbose, force=force)
+  except ValueError:
+    echo &quot;Error happened: &quot; &amp; getCurrentExceptionMsg()</code></pre>
+        <p>Здесь мы пытаемся засимлинковать все линкуемые файлы из каталога <code class="inline">app</code> в каталог <code class="inline">dest</code>, передавая все собранные из аргументов опции — <code class="inline">simulate</code>, <code class="inline">verbose</code> и <code class="inline">force</code> — и оборачиваем всё в <code class="inline">try/except</code>, чтобы ошибка была показана пользователю.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">when isMainModule:
+  cli()</code></pre>
+        <p>Если этот модуль — главный модуль (main module), вызываем нашу точку входа <code class="inline">cli</code>.</p>
+        <h3>Возвращаемся к stow и getLinkableFiles</h3>
+        <p>Отлично! Вернёмся к <code class="inline">stow</code> и <code class="inline">getLinkableFiles</code>.</p>
+        <p>Начнём с <code class="inline">getLinkableFiles</code>. Помните структуру dotfiles?</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">    # appPath: каталог dotfiles-файлов приложения
+    #     ожидается, что каталог имеет эту иерархию.
+    #     i3
+    #     `-- .config
+    #         `-- i3
+    #         `-- config</code></pre>
+        <p>Мы хотим получить все находящиеся в нём файлы с полными путями; путь симлинка каждого — тот же путь, только имя <code class="inline">appPath</code> заменяется путём <code class="inline">dest</code>:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">[/home/striky/wspace/dotfiles/i3]/.config/i3/config -&gt; [/home/striky]/.config/i3/config
+__________________appPath________                      _____dest____</code></pre>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">type
+  LinkInfo = tuple[original:string, dest:string] </code></pre>
+        <p>Простой тип для представления исходного пути и места, куда нужно сделать симлинк.</p>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc getLinkableFiles*(appPath: string, dest: string=expandTilde(&quot;~&quot;)): seq[LinkInfo] =
+
+    # Собирает линкуемые файлы в указанном приложении.
+
+    # appPath: каталог dotfiles-файлов приложения
+    #     ожидается, что каталог имеет эту иерархию.
+    #     i3
+    #     `-- .config
+    #         `-- i3
+    #         `-- config
+
+    # dest: цель файлов симлинков; по умолчанию — домашний каталог пользователя.</code></pre>
+        <p>Процедура <code class="inline">getLinkableFiles</code> принимает <code class="inline">appPath</code> и <code class="inline">dest</code> и возвращает <code class="inline">seq</code> из <code class="inline">LinkInfo</code>, которая выполняет это преобразование для каждого файла:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">[/home/striky/wspace/dotfiles/i3]/A_FILE_PATH -&gt; [/home/striky]A_FILE_PATH
+__________________apppath________                _____dest____</code></pre>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">  var appPath = expandTilde(appPath)
+  if not dirExists(appPath):
+    raise newException(ValueError, fmt(&quot;App path {appPath} doesn&#x27;t exist.&quot;))
+  var linkables = newSeq[LinkInfo]()
+  for filepath in walkDirRec(appPath, yieldFilter={pcFile}):
+    let linkpath = filepath.replace(appPath, dest)
+    var linkInfo : LinkInfo = (original:filepath, dest:linkpath)
+    linkables.add(linkInfo)
+  return linkables</code></pre>
+        <p>Здесь мы обходим каталог <code class="inline">appPath</code> с помощью <code class="inline">walkDirRec</code> и в аргументе <code class="inline">yieldFilter</code> указываем, что нас интересует <code class="inline">pcFile</code> — «компонент пути файла»; иными словами, только записи типа обычного файла (regular file).</p>
+        <h3>Процедура stow</h3>
+        <pre class="code"><span class="lang-tag">nim</span><code style="direction:ltr;text-align:left">proc stow(linkables: seq[LinkInfo], simulate: bool=true, verbose: bool=true, force: bool=false) = 
+    # Создаёт симлинки и соответствующие каталоги
+
+    # linkables — список кортежей (filepath, linkpath) : List[Tuple[file_path, link_path]]
+    # simulate выполняет имитацию без какого-либо влияния на файловую систему: bool
+    # verbose выводит сообщения лога: bool
+
+  for linkinfo in linkables:
+    let (filepath, linkpath) = linkinfo
+    if verbose:
+      echo(fmt(&quot;Will link {filepath} -&gt; {linkpath}&quot;))
+
+    if not simulate:
+      createDir(parentDir(linkpath))
+      if not fileExists(linkpath):
+        createSymlink(filepath, linkpath)
+      else:
+        if force:
+          removeFile(linkpath)
+          createSymlink(filepath, linkpath)
+        else:
+          if verbose:
+            echo(fmt(&quot;Skipping linking {filepath} -&gt; {linkpath}&quot;))</code></pre>
+        <p>Процедура <code class="inline">stow</code> очень простая: принимает список <code class="inline">LinksInfo</code> со всей информацией (имя исходного файла и цель симлинка) и выполняет симлинкинг — но только если это не имитация — и печатает сообщения, если включён <code class="inline">verbose</code>.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Управление конфигами — необходимый навык: сделав свой stow, вы поймёте, как устроены dotfiles-репозитории и переезды между машинами.</p>
+      <h2>Итоги</h2>
+        <p>Смело присылайте улучшения для этого учебника или nistow :)</p>
+        <p>Полный исходный код инструмента доступен: <a href="https://github.com/xmonader/nistow" target="_blank" rel="noopener">https://github.com/xmonader/nistow</a></p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Пишем nistow — управление dotfiles на Nim» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Пишем nistow — управление dotfiles на Nim» принадлежит автору оригинала (xmonader). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (xmonader). Читайте оригинал на
         <a href="https://xmonader.github.io/nimdays/day06_nistow.html" target="_blank" rel="noopener">https://xmonader.github.io/nimdays/day06_nistow.html</a>.
       </div>
     </article>

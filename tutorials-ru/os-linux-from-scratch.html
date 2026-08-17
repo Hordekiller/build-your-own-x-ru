@@ -36,7 +36,7 @@
       </div>
       <h1>Linux From Scratch: собираем свой Linux</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: (هر زبانی)</span>
+        <span class="meta-badge">⚙ Язык: Любой язык</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://linuxfromscratch.org/lfs" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Linux From Scratch: собираем свой Linux»
+          <b>Оригинальный источник:</b> «Linux From Scratch»
         </div>
         <a class="btn solid" href="https://linuxfromscratch.org/lfs" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-linux-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,59 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Linux From Scratch: система Linux, собранная вручную — компиляция ядра, инструментов и конфигурация из исходников.</p>
+      <h2>Что такое LFS?</h2>
+        <p>Linux From Scratch — это подробный, точный проект-документация, который говорит: «как собрать полноценную систему Linux только из <b>исходного кода</b>». Никаких готовых бинарных пакетов: каждый пакет (glibc, gcc, coreutils и т.д.) компилируется и устанавливается из исходников по точным командам из книги. Результат — <b>личный, минимальный и полностью понятный</b> дистрибутив Linux: вы знаете, где лежит каждый файл системы и почему он установлен.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура книги</h2>
         <ul>
-          <li>Инструментальная цепочка</li>
-          <li>Сборка ядра</li>
-          <li>Конфигурация системы</li>
-          <li>Свой дистрибутив</li>
+          <li><b>Главы 1–3 — подготовка:</b> знакомство с инструментами, проверка диска, разметка и создание файловой системы, установка пакетов хост-системы (host).</li>
+          <li><b>Глава 4 — предварительные шаги:</b> структура каталогов, ограничение окружения и <b>права пользователя</b> (ничего нельзя строить от root!).</li>
+          <li><b>Глава 5 — временный toolchain:</b> компиляция Binutils pass 1, GCC pass 1 и Glibc — первая «цепочка инструментов», всё ещё зависящая от хост-системы.</li>
+          <li><b>Глава 6 — временные инструменты:</b> завершение набора инструментов сборкой пакетов вроде Coreutils, Bash и Make (пока временных).</li>
+          <li><b>Глава 7 — вход в окружение LFS:</b> создание виртуальной файловой системы и <b>chroot</b> в новое окружение; сборка initramfs.</li>
+          <li><b>Глава 8 — установка финальных пакетов:</b> <b>повторная сборка Binutils и GCC (pass 2)</b> и всех основных пакетов — на этот раз «по-настоящему», без зависимости от хост-системы.</li>
+          <li><b>Глава 9 — настройка системы:</b> загрузочные файлы, /etc, ядро <b>Linux kernel</b> и его полная сборка.</li>
+          <li><b>Глава 10 — сделать загружаемой:</b> grub, fstab и первый запуск вашего личного Linux.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>LFS учит собирать Linux из исходников: кросс-компиляция, конфигурация и запуск — полный контроль над системой.</p>
-        <p>Настройка ядра — команда:</p>
-        <pre class="code"><span class="lang-tag">Bash</span><code>make menuconfig   # выбор компонентов ядра
-make -j$(nproc)    # сборка ядра
-make modules_install &amp;&amp; make install</code></pre>
+      <h2>Идея toolchain (два прохода)</h2>
+        <p>Ключевая концепция LFS — и самая трудная для понимания — «двухпроходная» сборка компилятора: поскольку Glibc ещё нет, первый GCC (pass 1) используется только для сборки временных инструментов, а <b>короткими командами</b> (spec-файлом) ему запрещают смотреть на файлы хост-системы:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># Краткая схема сборки GCC pass 1 (глава 5 LFS)
+mkdir -v build &amp;&amp; cd build
+../configure --prefix=$LFS/tools \
+    --with-local-prefix=$LFS/tools \
+    --disable-nls --disable-shared --disable-libssp \
+    --enable-languages=c --disable-bootstrap
+
+make -j$(nproc) &amp;&amp; make install
+
+# Самый важный момент: специальный «spec», заставляющий
+# компилятор никогда не смотреть на файлы хост-системы
+ln -sv $LFS/tools/bin/gcc /usr/bin/gcc   # во временном chroot
+cat &gt; dummy-gcc.sh &lt;&lt; &quot;EOF&quot;
+# ...
+EOF</code></pre>
+        <p>Именно здесь многие терпят неудачу: временный компилятор не должен видеть <b>заголовки</b> и <b>библиотеки</b> хост-системы, иначе «чистые» бинарники не получатся. Книга подробно объясняет эти ошибки.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>LFS — глубокое погружение: после него вы знаете свою систему до последнего пакета.</p>
+      <h2>Обучающая ценность LFS</h2>
+        <ul>
+          <li><b>Понимание цепочки компиляции:</b> binutils → gcc → glibc и «проблема курицы и яйца» при начальной сборке.</li>
+          <li><b>Понимание системы Linux:</b> в конце вы будете знать смысл каждой директории и каждого файла конфигурации.</li>
+          <li><b>Точность и дисциплина:</b> многократная сборка инструментов тренирует терпение и внимательность.</li>
+          <li><b>Следующий шаг — BLFS:</b> после LFS книга Beyond LFS (BLFS) учит установке остального софта (сети, GUI и т.д.).</li>
+        </ul>
+        <div class="callout note">
+          <strong>Дополнительно:</strong> LFS отличается от других уроков этой коллекции — вы не пишете ядро Linux, а собираете руками всю операционную систему вокруг него; лучшее дополнение для тех, кто прошёл уроки по написанию ядер.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Linux From Scratch: собираем свой Linux» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Linux From Scratch: собираем свой Linux» принадлежит автору оригинала (Gerard Beekmans и Bruce Dubbs). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Gerard Beekmans и Bruce Dubbs). Читайте оригинал на
         <a href="https://linuxfromscratch.org/lfs" target="_blank" rel="noopener">https://linuxfromscratch.org/lfs</a>.
       </div>
     </article>

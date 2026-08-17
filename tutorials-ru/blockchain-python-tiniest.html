@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Соберём самый маленький блокчейн»
+          <b>Оригинальный источник:</b> «Let's Build the Tiniest Blockchain»
         </div>
         <a class="btn solid" href="https://medium.com/crypto-currently/lets-build-the-tiniest-blockchain-e70965a248b" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/blockchain-python-tiniest.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,103 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Экстремальный эксперимент: минимальный блокчейн на Python, умещающий PoW, транзакции и валидацию в несколько десятков строк — рекордно короткий код.</p>
+        <div class="callout note">
+          Вторую часть этой статьи можно найти <a href="https://medium.com/crypto-currently/lets-make-the-tiniest-blockchain-bigger-ac360a328f4d" target="_blank" rel="noopener">здесь</a>.
+        </div>
+        <p>Хотя некоторые считают, что блокчейн — это решение, всё ещё ждущее свою проблему, несомненно одно: эта новая технология — одно из чудес вычислительной техники. Но что же такое блокчейн на самом деле?</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Минимально-возможные структуры</li>
-          <li>PoW в несколько строк</li>
-          <li>Транзакции в самом простом виде</li>
-          <li>Проверка целой цепочки на компактности</li>
-        </ul>
+      <h2>Блокчейн (Blockchain)</h2>
+        <blockquote><a href="https://www.google.com/search?q=blockchain+definition" target="_blank" rel="noopener">Цифровой реестр (digital ledger), в котором транзакции, совершённые в биткоине или любой другой криптовалюте, регистрируются хронологически и публично.</a></blockquote>
+        <p>В более общем смысле блокчейн — это публичная база данных, в которой новые данные сохраняются в контейнерах, называемых блоками (block), и добавляются в неизменяемую цепочку (immutable chain) — отсюда и «блокчейн» — содержащую и данные, добавленные в прошлом. В случае биткоина и других криптовалют это данные — группы транзакций (transactions). Но, конечно, данными может быть что угодно.</p>
+        <p>Технология блокчейна породила совершенно новые криптовалюты, такие как биткоин и лайткоин, которые не выпускаются и не управляются никаким центральным органом. Это дало новую свободу людям, считающим, что сегодняшние банковские системы мошеннические или несостоятельны. Блокчейн также произвёл революцию в распределённых вычислениях (distributed computing) в таких технологиях, как Ethereum, которые ввели интересные концепции вроде <a href="https://blockgeeks.com/guides/smart-contracts/" target="_blank" rel="noopener">смарт-контрактов (smart contracts)</a>.</p>
+        <p>В этой статье я создам простой блокчейн менее чем в 50 строках Python 2. Назову его SnakeCoin.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Урок соревнуется с объёмом: максимум смысла на минимум строк. После него вы понимаете, что дальше — только внимание к деталям, а не магия.</p>
-        <p>Вся валидация — четыре строки:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import hashlib
-def is_valid(chain):
-    return all(hashlib.sha256(f"{chain[i-1]['nonce']}".
-        encode()).hexdigest() == chain[i]['prev_hash']
-        for i in range(1, len(chain)))</code></pre>
+      <h2>Структура блоков</h2>
+        <p>Сначала определим, как будут выглядеть наши блоки. В блокчейне каждый блок хранится с меткой времени (timestamp) и, опционально, с индексом (index). В SnakeCoin мы храним оба. А чтобы гарантировать целостность (integrity) всей цепочки, каждый блок будет иметь самодостаточный хеш (hash). Как и в биткоине, хеш каждого блока — это криптографический хеш (cryptographic hash) индекса, метки времени, данных и хеша предыдущего блока. И да — данными может быть всё, что угодно.</p>
+        <pre class="code"><span class="lang-tag">py</span><code style="direction:ltr;text-align:left">import hashlib as hasher
+import datetime as date
+
+# Определение того, что такое блок SnakeCoin
+class Block:
+  def __init__(self, index, timestamp, data, previous_hash):
+    self.index = index
+    self.timestamp = timestamp
+    self.data = data
+    self.previous_hash = previous_hash
+    self.hash = self.hash_block()
+
+  def hash_block(self):
+    sha = hasher.sha256()
+    sha.update(str(self.index) + str(self.timestamp) + str(self.data) + str(self.previous_hash))
+    return sha.hexdigest()</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Экстрим-минимализм — отличная закалка: этот урок, как хабрадайджест, учит видеть суть и не боятся кода любой длины.</p>
+      <h2>Блок-генезис (Genesis Block)</h2>
+        <p>Отлично! У нас есть структура блока, но мы строим блокчейн и должны начать добавлять блоки в настоящую цепочку. Как я упоминал ранее, каждый блок нуждается в информации от предыдущего блока. Но возникает вопрос: <strong>как первый блок попадает в блокчейн?</strong> Что ж, первый блок, или блок-генезис (genesis block), — особенный. Во многих случаях он добавляется вручную или имеет уникальную логику, позволяющую его добавить.</p>
+        <p>Чтобы всё было просто, создадим функцию, которая просто возвращает блок-генезис. У этого блока индекс 0, произвольное значение данных и произвольное значение параметра «предыдущий хеш».</p>
+        <pre class="code"><span class="lang-tag">py</span><code style="direction:ltr;text-align:left"># Генерация блока-генезиса
+def create_genesis_block():
+  # Создаём вручную блок с
+  # нулевым индексом и произвольным предыдущим хешем
+  return Block(0, date.datetime.now(), &quot;Genesis Block&quot;, &quot;0&quot;)</code></pre>
+      </section>
+      <section>
+      <h2>Генерация следующих блоков</h2>
+        <p>Теперь, когда мы умеем создавать блок-генезис, нужна функция, которая генерирует последующие блоки цепочки. Эта функция принимает предыдущий блок цепочки как параметр, создаёт данные блока, который нужно сгенерировать, и возвращает новый блок с его собственными данными. Когда новые блоки хешируют информацию предыдущих блоков, целостность блокчейна возрастает с каждым новым блоком. Если бы мы этого не делали, внешней стороне было бы легче «изменить прошлое» и подменить нашу цепочку совершенно новой цепочкой собственного производства. Эта цепочка хешей служит криптографическим доказательством и гарантирует, что, как только блок добавлен в блокчейн, его нельзя заменить или удалить.</p>
+        <pre class="code"><span class="lang-tag">py</span><code style="direction:ltr;text-align:left"># Генерация всех последующих блоков блокчейна
+def next_block(last_block):
+  this_index = last_block.index + 1
+  this_timestamp = date.datetime.now()
+  this_data = &quot;Hey! I&#x27;m block &quot; + str(this_index)
+  this_hash = last_block.hash
+  return Block(this_index, this_timestamp, this_data, this_hash)</code></pre>
+      </section>
+      <section>
+      <h2>Создание блокчейна</h2>
+        <p>Это была основная часть тяжёлой работы. Теперь можно построить наш блокчейн! В нашем случае сам блокчейн — это простой список Python. Первый элемент списка — блок-генезис. И, конечно, нужно добавлять последующие блоки. Поскольку SnakeCoin — самый маленький блокчейн, мы добавим только 20 новых блоков. Сделаем это с помощью цикла for.</p>
+        <pre class="code"><span class="lang-tag">py</span><code style="direction:ltr;text-align:left"># Создание блокчейна и добавление блока-генезиса
+blockchain = [create_genesis_block()]
+previous_block = blockchain[0]
+
+# Количество блоков для добавления в цепочку
+# (после блока-генезиса)
+num_of_blocks_to_add = 20
+
+# Добавление блоков в цепочку
+for i in range(0, num_of_blocks_to_add):
+  block_to_add = next_block(previous_block)
+  blockchain.append(block_to_add)
+  previous_block = block_to_add
+
+  # Сообщаем всем!
+  print &quot;Block #{} has been added to the blockchain!&quot;.format(block_to_add.index)
+  print &quot;Hash: {}\n&quot;.format(block_to_add.hash)</code></pre>
+      </section>
+      <section>
+      <h2>Тестирование блокчейна</h2>
+        <p>Давайте протестируем то, что построили.</p>
+        <p>Не волнуйтесь; так будет до 20.</p>
+        <p>Вот и всё! Наш блокчейн работает. Если хотите видеть в консоли больше информации, можете <a href="https://gist.github.com/aunyks/8f2c2fd51cc17f342737917e1c2582e2" target="_blank" rel="noopener">отредактировать полный исходный файл</a> и печатать метку времени или данные каждого блока.</p>
+      </section>
+      <section>
+      <h2>Ограничения и следующие шаги</h2>
+        <p>Чтобы SnakeCoin масштабировался до уровня сегодняшних production-блокчейнов, нужно добавить больше функций, таких как серверный слой (server layer) для отслеживания изменений цепочки на нескольких машинах и <a href="https://en.bitcoin.it/wiki/Proof_of_work" target="_blank" rel="noopener">алгоритм доказательства работы (proof-of-work)</a> для ограничения количества блоков, добавляемых за заданный период времени.</p>
+        <p>Если хотите пойти глубже в техническую сторону, можете посмотреть <a href="https://bitcoin.org/bitcoin.pdf" target="_blank" rel="noopener">официальный документ биткоина (Bitcoin whitepaper)</a>. Желаю удачи и приятного кодинга!</p>
+      </section>
+      <section>
+        <div class="callout note">
+          Вторую часть этой статьи можно найти <a href="https://medium.com/crypto-currently/lets-make-the-tiniest-blockchain-bigger-ac360a328f4d" target="_blank" rel="noopener">здесь</a>.
+        </div>
+        <p>Большое спасибо за чтение этой статьи!</p>
+        <p><a href="https://twitter.com/aunyks" target="_blank" rel="noopener">Twitter</a>, <a href="https://github.com/aunyks" target="_blank" rel="noopener">GitHub</a>, <a href="https://snapchat.com/add/aunyks" target="_blank" rel="noopener">Snapchat</a>, <a href="https://instagram.com/aunyks" target="_blank" rel="noopener">Instagram</a></p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Соберём самый маленький блокчейн» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Соберём самый маленький блокчейн» принадлежит автору оригинала (Джеральд Нэш (Gerald Nash)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Джеральд Нэш (Gerald Nash)). Читайте оригинал на
         <a href="https://medium.com/crypto-currently/lets-build-the-tiniest-blockchain-e70965a248b" target="_blank" rel="noopener">https://medium.com/crypto-currently/lets-build-the-tiniest-blockchain-e70965a248b</a>.
       </div>
     </article>

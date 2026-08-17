@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «RPG на C# и WPF»
+          <b>Оригинальный источник:</b> «Build a C#/WPF RPG (SOSCSRPG)»
         </div>
         <a class="btn solid" href="https://scottlilly.com/build-a-cwpf-rpg/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-rpg-wpf.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,37 +53,81 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>RPG с интерфейсом WPF: окна, меню и диалоги — игра, объединяющая логику и UI.</p>
+      <h2>О курсе</h2>
+        <p>Эта серия уроков строит полноценную RPG с графическим интерфейсом: перемещение по двумерному миру, пошаговые бои, предметы, квесты и торговые комнаты. Отличие курса от «простой RPG»: настоящий пользовательский интерфейс на WPF/XAML и более правильная архитектура (слои и принципы проектирования). Для входа нужен базовый C# (из предыдущего курса автора).</p>
+        <div class="callout note">
+          <strong>Замечание:</strong> начиная с урока «03.1 Создание Solution» и «04.2 Создание класса World с объектами Location», структура проекта объясняется полностью.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Структура архитектуры</h2>
+        <p>Курс знакомит со слоистой архитектурой, в которой игровой мир полностью независим от пользовательского интерфейса:</p>
+        <pre class="code"><span class="lang-tag">text</span><code style="direction:ltr;text-align:left">SimpleRPG/                  # Solution
+├── SimpleRPG/               # главный проект WPF
+│   ├── MainWindow.xaml      # пользовательский интерфейс
+│   └── ViewModels/          # слой привязки данных к UI
+├── SimpleRPG.Engine/        # игровой движок (без зависимостей от UI)
+│   ├── World.cs             # локации и связи
+│   ├── GameItems.cs         # предметы
+│   ├── Quest.cs             # квесты
+│   └── Monster.cs           # монстры
+└── SimpleRPG.Core/          # общая библиотека (опции, логи)</code></pre>
+      </section>
+      <section>
+      <h2>Пример кода: классы World и Location</h2>
+        <pre class="code"><span class="lang-tag">csharp</span><code style="direction:ltr;text-align:left">// Класс Location — место на игровой карте
+public class Location
+{
+    public int X { get; set; }
+    public int Y { get; set; }
+    public string Name { get; set; }
+    public string Description { get; set; }
+
+    public Location North { get; set; }
+    public Location East  { get; set; }
+    public Location South { get; set; }
+    public Location West  { get; set; }
+
+    // объекты в этой локации
+    public Item ItemAvailableHere { get; set; }
+    public Quest QuestAvailableHere { get; set; }
+    public Monster MonsterLivingHere { get; set; }
+}
+
+// World: список локаций и построение карты
+public static class World
+{
+    public static readonly List&lt;Location&gt; Locations = new List&lt;Location&gt;();
+
+    // статический конструктор: определение локаций и их связей
+    static World()
+    {
+        Location home = new Location { X = 0, Y = -1, Name = &quot;Дом&quot;, ... };
+        Location farm = new Location { X = 0, Y = 0, Name = &quot;Старая ферма&quot;, ... };
+        farm.North = home;
+        home.South = farm;
+        Locations.Add(home);
+        Locations.Add(farm);
+        // ...
+    }
+
+    public static Location LocationAt(int x, int y)
+        =&gt; Locations.FirstOrDefault(l =&gt; l.X == x &amp;&amp; l.Y == y);
+}</code></pre>
+      </section>
+      <section>
+      <h2>Итог</h2>
         <ul>
-          <li>UI через WPF</li>
-          <li>Команды и состояний</li>
-          <li>История через элементы</li>
-          <li>Сборка игры</li>
+          <li>Разделение Engine (логика) и UI (WPF) — та самая профессиональная архитектура.</li>
+          <li>Изучение XAML и Data Binding рядом с проектированием игры.</li>
+          <li>Итог: полноценная игра с сохранением/загрузкой, боями и экономикой.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>WPF-версия показывает разделение: игровая логика — классы, интерфейс — XAML. Связывание держит их вместе.</p>
-        <p>Кнопка действия через команду:</p>
-        <pre class="code"><span class="lang-tag">C#</span><code>&lt;Button Content="Атаковать" Command="{Binding AttackCommand}" /&gt;</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Сочетание игровой логики и GUI — важный навык: вы увидите, как растягиваются проекты от консоли к приложению.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «RPG на C# и WPF» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «RPG на C# и WPF» принадлежит автору оригинала (Scott Lilly). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Scott Lilly). Читайте оригинал на
         <a href="https://scottlilly.com/build-a-cwpf-rpg/" target="_blank" rel="noopener">https://scottlilly.com/build-a-cwpf-rpg/</a>.
       </div>
     </article>

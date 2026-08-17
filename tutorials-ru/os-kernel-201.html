@@ -36,7 +36,7 @@
       </div>
       <h1>Ядро 201: продолжение</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://arjunsreedharan.org/post/99370248137/kernel-201-lets-write-a-kernel-with-keyboard" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Ядро 201: продолжение»
+          <b>Оригинальный источник:</b> «Kernel 201 — Let's write a Kernel with keyboard and screen support»
         </div>
         <a class="btn solid" href="https://arjunsreedharan.org/post/99370248137/kernel-201-lets-write-a-kernel-with-keyboard" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-kernel-201.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Продолжение Kernel 101: защищённый режим, память и планирование — вторая ступень ядра.</p>
+      <h2>Цель статьи</h2>
+        <p>Ядро Kernel 101 только печатало сообщение. Эта статья берёт то же ядро и даёт ему две настоящие возможности: вывод на экран с полным контролем (прокрутка, цвета, курсор) и чтение клавиатуры через прерывания. Это значит, что наше ядро впервые по-настоящему взаимодействует с железом: через порты I/O и прерывания.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Защищённый режим</li>
-          <li>Страницы</li>
-          <li>Планировщик</li>
-          <li>Системные вызовы</li>
-        </ul>
+      <h2>Порты ввода-вывода: чтение и запись через in/out</h2>
+        <p>Железо x86 общается с CPU через «порты» — специальные адреса, доступные командами in и out. Два важных порта: 0x3F8 (последовательный порт) для вывода и 0x60 для клавиатуры. Пример — печать символа в последовательный порт:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Запись в последовательный порт COM1
+#define PORT_SERIAL 0x3F8
+
+void serial_write(char c) {
+    __asm__ volatile (
+        &quot;outb %0, %1&quot;        // вывод байта c в порт PORT_SERIAL
+        : : &quot;a&quot;(c), &quot;Nd&quot;(PORT_SERIAL)
+    );
+}</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Уроки 201 углубляются: память, защита и процессы — ядро становится системой.</p>
-        <p>Переключение в защищённый режим:</p>
-        <pre class="code"><span class="lang-tag">Assembly</span><code>mov eax, cr0
-or eax, 1
-mov cr0, eax   ; флаг PE -&gt; защищённый режим</code></pre>
+      <h2>Экран: переход на новую строку и прокрутка</h2>
+        <p>Монитор VGA в текстовом режиме сам не прокручивает: ядро должно управлять прокруткой, вычисляя адрес «следующей строки» в памяти 0xB8000 и очищая последнюю строку. Перемещение курсора выполняют два специальных порта (0x3D4 / 0x3D5):</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Перемещение курсора отправкой 16-битного адреса контроллеру VGA
+void move_cursor(int row, int col) {
+    unsigned short pos = row * 80 + col;
+
+    outb(0x3D4, 14);            // выбор регистра «старший байт»
+    outb(0x3D5, (pos &gt;&gt; 8) &amp; 0xFF);  // старший байт
+    outb(0x3D4, 15);            // регистр «младший байт»
+    outb(0x3D5, pos &amp; 0xFF);    // младший байт
+}</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Вторая ступень превращает «ядро» в настоящую ОС: вы получите процессы и защиту.</p>
+      <h2>Клавиатура через прерывания</h2>
+        <p>Нажатия клавиш приходят прерыванием IRQ1. Ядро должно построить IDT (таблицу дескрипторов прерываний) и определить обработчик, который читает скан-код из порта 0x60 и переводит его в символ. У каждой клавиши два кода: нажатие (например, 0x1E для A) и отпускание (со старшим битом 0x80). Фрагмент таблицы перевода раскладки QWERTY:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Перевод скан-кода в символ (часть таблицы)
+unsigned char keyboard_map[128] = {
+    0,  27, &#x27;1&#x27;, &#x27;2&#x27;, &#x27;3&#x27;, &#x27;4&#x27;, &#x27;5&#x27;, &#x27;6&#x27;, &#x27;7&#x27;, &#x27;8&#x27;,
+    &#x27;9&#x27;, &#x27;0&#x27;, &#x27;-&#x27;, &#x27;=&#x27;, &#x27;\b&#x27;,
+    &#x27;\t&#x27;, &#x27;q&#x27;, &#x27;w&#x27;, &#x27;e&#x27;, &#x27;r&#x27;, &#x27;t&#x27;, &#x27;y&#x27;, &#x27;u&#x27;, &#x27;i&#x27;, &#x27;o&#x27;,
+    &#x27;p&#x27;, &#x27;[&#x27;, &#x27;]&#x27;, &#x27;\n&#x27;,
+    0,                      // Ctrl
+    &#x27;a&#x27;, &#x27;s&#x27;, &#x27;d&#x27;, &#x27;f&#x27;, &#x27;g&#x27;, &#x27;h&#x27;, &#x27;j&#x27;, &#x27;k&#x27;, &#x27;l&#x27;, &#x27;;&#x27;,
+    &#x27;\&#x27;&#x27;, &#x27;`&#x27;,
+    0, &#x27;\\&#x27;, &#x27;z&#x27;, &#x27;x&#x27;, &#x27;c&#x27;, &#x27;v&#x27;, &#x27;b&#x27;, &#x27;n&#x27;, &#x27;m&#x27;, &#x27;,&#x27;,
+    &#x27;.&#x27;, &#x27;/&#x27;, 0, &#x27;*&#x27;,
+    0, &#x27; &#x27;,                 // Space
+    // ...
+};</code></pre>
+      </section>
+      <section>
+      <h2>Запуск</h2>
+        <p>Как и в Kernel 101, собираем ISO через grub-mkrescue и запускаем в QEMU. Теперь при нажатии клавиши её символ появляется на экране, а когда текст доходит до конца — корректно прокручивается:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">make          # сборка ядра
+grub-mkrescue -o os.iso kernel_dir
+qemu-system-i386 -cdrom os.iso</code></pre>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> эта статья — лучший мост от «демонстрационного ядра» к «интерактивному»; следующий естественный шаг — планирование и многозадачность (как в курсе Джеймса Моллоя из этого каталога).
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Ядро 201: продолжение» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Ядро 201: продолжение» принадлежит автору оригинала (Arjun Sreedharan). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Arjun Sreedharan). Читайте оригинал на
         <a href="https://arjunsreedharan.org/post/99370248137/kernel-201-lets-write-a-kernel-with-keyboard" target="_blank" rel="noopener">https://arjunsreedharan.org/post/99370248137/kernel-201-lets-write-a-kernel-with-keyboard</a>.
       </div>
     </article>

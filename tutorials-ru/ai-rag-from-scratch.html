@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «RAG с нуля: генерация с дополнением поиском»
+          <b>Оригинальный источник:</b> «RAG From Scratch»
         </div>
         <a class="btn solid" href="https://github.com/langchain-ai/rag-from-scratch" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/ai-rag-from-scratch.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,64 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Практический курс по Retrieval-Augmented Generation: база знаний, эмбеддинги, векторный поиск и подача найденных фрагментов в LLM — как сделать ассистента с актуальными фактами.</p>
+      <h2>О проекте</h2>
+        <p>Большие языковые модели (LLM) обучены на большом, но статичном массиве данных, что ограничивает их способность рассуждать о частной или недавней информации. Тонкая настройка (fine-tuning) — один из способов смягчить это ограничение, но она часто не подходит для извлечения фактов и может быть дорогостоящей.</p>
+        <p><strong>Генерация с дополнением поиском (Retrieval Augmented Generation — RAG)</strong> стала популярным и мощным механизмом расширения базы знаний LLM: используя документы, извлечённые из внешнего источника данных, генерация LLM обосновывается (grounding) через обучение в контексте (in-context learning).</p>
+        <p>Эти блокноты сопровождают <a href="https://youtube.com/playlist?list=PLfaIDFEXuae2LXbO1_PKyVJiQ23ZztA0x&amp;feature=shared" target="_blank" rel="noopener">видеоплейлист</a>, который строит понимание RAG с нуля — начиная с основ индексации (indexing), поиска (retrieval) и генерации (generation).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Доступные блокноты</h2>
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">Файл</th><th style="text-align:left;padding:8px;border-bottom:1px solid var(--line)">Что охватывает</th></tr>
+          </thead>
+          <tbody>
+            <tr><td dir="ltr" style="padding:8px;border-bottom:1px solid var(--line)">rag_from_scratch_1_to_4.ipynb</td><td style="padding:8px;border-bottom:1px solid var(--line)">Основы: индексация, поиск и генерация (видео 1–4)</td></tr>
+            <tr><td dir="ltr" style="padding:8px;border-bottom:1px solid var(--line)">rag_from_scratch_5_to_9.ipynb</td><td style="padding:8px;border-bottom:1px solid var(--line)">Продвинутый поиск (видео 5–9)</td></tr>
+            <tr><td dir="ltr" style="padding:8px;border-bottom:1px solid var(--line)">rag_from_scratch_10_and_11.ipynb</td><td style="padding:8px;border-bottom:1px solid var(--line)">Перевод запроса и маршрутизация (видео 10–11)</td></tr>
+            <tr><td dir="ltr" style="padding:8px;border-bottom:1px solid var(--line)">rag_from_scratch_12_to_14.ipynb</td><td style="padding:8px;border-bottom:1px solid var(--line)">Конструирование запросов и оценивание (видео 12–14)</td></tr>
+            <tr><td dir="ltr" style="padding:8px;border-bottom:1px solid var(--line)">rag_from_scratch_15_to_18.ipynb</td><td style="padding:8px;border-bottom:1px solid var(--line)">Оптимизация и продвинутые темы (видео 15–18)</td></tr>
+          </tbody>
+        </table>
+      </section>
+      <section>
+      <h2>Ключевые концепции</h2>
         <ul>
-          <li>Идея RAG: почему одной модели мало</li>
-          <li>Эмбеддинги текстов и векторный поиск</li>
-          <li>Пайплайн: вопрос → найти → дополнить → ответить</li>
-          <li>Оценка качества ответов</li>
+          <li><strong>Индексация (Indexing):</strong> подготовка и организация документов для базы знаний</li>
+          <li><strong>Поиск (Retrieval):</strong> нахождение документов, релевантных вопросу пользователя (поиск по векторному сходству)</li>
+          <li><strong>Генерация (Generation):</strong> ответ модели с использованием извлечённых документов в качестве контекста (grounding)</li>
+          <li><strong>Перевод запроса (Query Translation):</strong> такие техники, как multi-query, RAG-fusion и decomposition для улучшения поиска</li>
+          <li><strong>Маршрутизация (Routing):</strong> выбор подходящего пути (поиск по нескольким разным источникам) на основе вопроса</li>
+          <li><strong>Конструирование запроса (Query Construction):</strong> преобразование естественного запроса в поисковые структуры (например, SQL или структурированные данные)</li>
+          <li><strong>Оценивание (Scoring):</strong> поиск с типизированным оцениванием (type-aware) и сравнение различных метрик поиска</li>
+        </ul>
+        <p>Видео шаг за шагом реализуют эти концепции в коде, а блокноты репозитория хранят этот же код в запускаемом виде.</p>
+        <pre class="code"><span class="lang-tag">Python</span><code style="direction:ltr;text-align:left"># Базовый цикл RAG: индексация → поиск → генерация
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+
+# 1) Индексация: разбиваем документы на фрагменты и векторизуем их
+chunks = RecursiveCharacterTextSplitter(chunk_size=500).split_documents(docs)
+index = FAISS.from_documents(chunks, embeddings)
+
+# 2) Поиск: ближайшие к запросу документы
+hits = index.similarity_search(&quot;вопрос пользователя&quot;, k=4)
+
+# 3) Генерация: передаём извлечённые документы модели как контекст
+answer = llm.invoke(f&quot;Ответь на основе этих документов:\n{hits}&quot;)</code></pre>
+        <p>Эти три шага — ядро всех блокнотов репозитория; последующие видео углубляют каждый шаг (продвинутый поиск, маршрутизация, оценивание и т. д.).</p>
+      </section>
+      <section>
+      <h2>Как использовать</h2>
+        <p>Блокноты можно открыть прямо в Google Colab (кнопка Open in Colab вверху каждого блокнота) или запустить локально, установив необходимые зависимости. Связанный видеоплейлист на YouTube:</p>
+        <ul>
+          <li>Плейлист: <span dir="ltr">youtube.com/playlist?list=PLfaIDFEXuae2LXbO1_PKyVJiQ23ZztA0x</span></li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>RAG соединяет два мира: векторный поиск находит уместные фрагменты вашей базы, а языковая модель формулирует ответ с опорой на них. Так ассистент отвечает фактами, а не выдумкой.</p>
-        <p>Поиск ближайших фрагментов — суть RAG:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code># вопрос -&gt; вектор -&gt; ближайшие чанки в базе
-q_vec = embed(question)
-top = db.search(q_vec, k=5)  # векторный поиск
-answer = llm.ask(question, context=top)</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>RAG — стандартный способ строить корпоративных ИИ-ассистентов: поняв его пайплайн, вы сможете проектировать собственные системы с актуальными знаниями.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «RAG с нуля: генерация с дополнением поиском» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «RAG с нуля: генерация с дополнением поиском» принадлежит автору оригинала (LangChain). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (LangChain). Читайте оригинал на
         <a href="https://github.com/langchain-ai/rag-from-scratch" target="_blank" rel="noopener">https://github.com/langchain-ai/rag-from-scratch</a>.
       </div>
     </article>

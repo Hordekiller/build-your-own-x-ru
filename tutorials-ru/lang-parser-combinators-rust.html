@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Парсер-комбинаторы на Rust»
+          <b>Оригинальный источник:</b> «Learning Parser Combinators with Rust»
         </div>
         <a class="btn solid" href="https://bodil.lol/parser-combinators/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-parser-combinators-rust.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,68 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Парсеры с комбинаторами на Rust: примитивы, комбинация и отчёты об ошибках — функциональный парсинг системным языком.</p>
+      <h2>Что такое парсер-комбинаторы?</h2>
+        <p>Вместо одного большого сложного парсера метод комбинаторов определяет маленькие парсеры, каждый из которых знает один простой шаблон, а затем с помощью комбинирующих операторов собирает из них полный парсер. Итог — модульный, читаемый код, который работает для любой синтаксической или бинарной структуры.</p>
+        <p>Главная философия: парсер — это «функция»: принимает вход; в случае успеха возвращает значение и остаток входа, в случае неудачи — ошибку. Эта простая схема — основа согласованности всех комбинаторов.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Примитивы парсеров</li>
-          <li>Комбинаторы</li>
-          <li>Ошибки</li>
-          <li>Применение к языку</li>
-        </ul>
-      </section>
+      <h2>Базовая структура в Rust</h2>
+        <p>В Rust этот паттерн выражается трейтом (trait) и обобщённой функцией. В определении учебника парсер задаётся через <code>Parser</code> и функцию <code>parse</code>:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">pub trait Parser&lt;I, O&gt; {
+    fn parse(&amp;self, input: I) -&gt; Result&lt;(O, I), ParserErr&gt;;
+}
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Комбинаторы в Rust — про типы: парсеры как функции, композиция как типы. Проект — современная альтернатива hand-written парсерам.</p>
-        <p>Тип парсера на Rust:</p>
-        <pre class="code"><span class="lang-tag">Rust</span><code>type Parser&lt;'a, T&gt; = impl Fn(&amp;'a str) -&gt; Option&lt;(T, &amp;'a str)&gt;;
-
-fn literal&lt;'a&gt;(s: &amp;'a str) -&gt; Parser&lt;'a, &amp;'a str&gt; {
-    move |input| input.strip_prefix(s).map(|rest| (s, rest))
+// Комбинатор pair: выполняет два парсера подряд
+pub fn pair&lt;P1, P2, I, O1, O2&gt;(
+    p1: P1,
+    p2: P2,
+) -&gt; impl Parser&lt;I, (O1, O2)&gt;
+where
+    P1: Parser&lt;I, O1&gt;,
+    P2: Parser&lt;I, O2&gt;,
+{
+    move |input: I| {
+        let (o1, rest) = p1.parse(input)?;
+        let (o2, rest) = p2.parse(rest)?;
+        Ok(((o1, o2), rest))
+    }
 }</code></pre>
+        <p>Видно, что <code>pair</code> ничего не знает о конкретном содержимом: он лишь принимает два парсера и выполняет их друг за другом. Эта композируемость — главное свойство метода.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Парсер-комбинаторы на Rust — современная практика: вы получите функциональный стиль в системном языке.</p>
+      <h2>Комбинатор many: ноль или больше</h2>
+        <p>Для таких вещей, как список или последовательность, нужен парсер, который выполняется «ноль или несколько раз». Это <code>many</code>:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">// many: выполняет парсер, пока это возможно
+pub fn many&lt;P, I, O&gt;(p: P) -&gt; impl Parser&lt;I, Vec&lt;O&gt;&gt;
+where
+    P: Parser&lt;I, O&gt;,
+    I: Clone,
+{
+    move |mut input: I| {
+        let mut result = Vec::new();
+        while let Ok((o, next)) = p.parse(input.clone()) {
+            input = next;
+            result.push(o);
+        }
+        Ok((result, input))
+    }
+}</code></pre>
+        <p>Важный учебный момент: поскольку парсеры могут падать, для «отката» (backtracking) нужно клонировать вход и продвигаться только при успехе.</p>
+      </section>
+      <section>
+      <h2>Построение парсера JSON</h2>
+        <p>После знакомства с <code>map</code>, <code>and_then</code>, <code>left</code> и <code>right</code> учебник шаг за шагом строит парсер JSON: сначала <code>null</code>, <code>boolean</code> и <code>number</code>, затем пару <code>key: value</code>, потом «object» и «array» с разделителем <code>,</code>. Каждый шаг использует уже определённые комбинаторы.</p>
+        <p>Для проверки пишется набор простых тестов, показывающих поведение парсера на правильных и неправильных данных; в итоге финальный парсер меньше чем в 200 строк читает полный JSON.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Учебник отлично показывает, как без внешних инструментов и всего несколькими маленькими функциями собрать полный надёжный парсер. Техника комбинаторов очень востребована в реальных проектах (интерпретаторы, инструменты командной строки).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Парсер-комбинаторы на Rust» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Парсер-комбинаторы на Rust» принадлежит автору оригинала (Bodil Stokke). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Bodil Stokke). Читайте оригинал на
         <a href="https://bodil.lol/parser-combinators/" target="_blank" rel="noopener">https://bodil.lol/parser-combinators/</a>.
       </div>
     </article>

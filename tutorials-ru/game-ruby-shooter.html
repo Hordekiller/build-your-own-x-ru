@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Шутер на Ruby»
+          <b>Оригинальный источник:</b> «Developing Games with Ruby»
         </div>
         <a class="btn solid" href="https://leanpub.com/developing-games-with-ruby/read" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-ruby-shooter.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,67 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>2D-шутер на Ruby: спрайты, пули и счёт — игры на неигровом языке.</p>
+      <h2>О книге</h2>
+        <p>Эта многотомная книга — лучший ресурс по разработке игр на Ruby: с нуля создаётся вертикальный шутер (в духе популярных игр 90-х) — с быстрым геймплеем, автоматической камерой, ИИ врагов, случайными картами и системами очков. Основной инструмент книги — библиотека <b>Gosu</b> (самая известная игровая библиотека Ruby). Онлайн-версия бесплатно читается на Leanpub, а покупка книги поддерживает автора.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> автор — основатель сообщества «Game Hero» (разработка игр на Ruby) и включает в книгу практический опыт построения городов и продвинутые концепции геймдева.
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Ключевые главы</h2>
         <ul>
-          <li>Спрайты и анимация</li>
-          <li>Стрельба</li>
-          <li>Враги</li>
-          <li>Очки</li>
+          <li>Настройка Gosu и создание окна</li>
+          <li>Игровой цикл, состояния и управление вводом</li>
+          <li>Спрайты и анимации с bmfont</li>
+          <li>Камера и мир больше экрана</li>
+          <li>ИИ: преследование, стрельба и паттерны</li>
+          <li>Случайные карты и простая физика</li>
+          <li>Система сохранения рекордов и дальнейшие вызовы</li>
+        </ul>
+      </section>
+      <section>
+      <h2>Пример кода</h2>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left"># Структура игры на Gosu
+require &#x27;gosu&#x27;
+
+class Game &lt; Gosu::Window
+  def initialize(width = 800, height = 600)
+    super(width, height)
+    self.caption = &#x27;Моя игра на Ruby&#x27;
+    @player_x = 400
+    @player_y = 300
+  end
+
+  # Обновление логики каждый кадр
+  def update
+    # Движение клавишами
+    @player_x -= 5 if Gosu.button_down?(Gosu::KB_LEFT)
+    @player_x += 5 if Gosu.button_down?(Gosu::KB_RIGHT)
+    @player_y -= 5 if Gosu.button_down?(Gosu::KB_UP)
+    @player_y += 5 if Gosu.button_down?(Gosu::KB_DOWN)
+  end
+
+  # Рендер каждого кадра
+  def draw
+    # (отрисовка через Gosu::Image или простые фигуры)
+  end
+end
+
+Game.new.show</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <ul>
+          <li>Самый полный справочник по разработке игр на Ruby; бесплатно онлайн.</li>
+          <li>Реалистичное покрытие: не только «hello world» — камера, ИИ, случайная карта.</li>
+          <li>Подойдёт ruby-разработчикам и всем, кто хочет работать с простым языком.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Шутер — движущиеся цели и пули: каждый объект — класс, каждый кадр — обновление. Ruby делает это выразительно.</p>
-        <p>Пуля летит по вектору:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code>bullet.x += bullet.vx * dt
-bullet.y += bullet.vy * dt</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Игры не привязаны к «игровым» языкам: этот шутер докажет гибкость Ruby.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Шутер на Ruby» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Шутер на Ruby» принадлежит автору оригинала (Томас Варанецкас (Tomas Varaneckas)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Томас Варанецкас (Tomas Varaneckas)). Читайте оригинал на
         <a href="https://leanpub.com/developing-games-with-ruby/read" target="_blank" rel="noopener">https://leanpub.com/developing-games-with-ruby/read</a>.
       </div>
     </article>

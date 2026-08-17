@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Игрушечный шаблонизатор на Python»
+          <b>Оригинальный источник:</b> «Approach: Building a toy template engine in Python»
         </div>
         <a class="btn solid" href="http://alexmic.net/building-a-template-engine/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/template-engine-python-toy.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,141 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Пишем шаблонизатор на Python: разбор шаблона, теги и подстановки — свой mini-Jinja.</p>
+      <h2>Введение и проектирование языка</h2>
+        <p>Этот урок строит простой Python-движок шаблонов и показывает, что у него под капотом — как шаблон «компилируется», а затем «рендерится». В языке шаблонов два вида тегов: <b>переменные</b> через <code>{{ }}</code> и <b>блоки</b> через <code>{% %}</code>:</p>
+        <pre class="code"><span class="lang-tag">html</span><code style="direction:ltr;text-align:left">&lt;!-- переменные между двумя фигурными скобками --&gt;
+&lt;div&gt;{{my_var}}&lt;/div&gt;
+
+&lt;!-- блоки через {% %} и закрытие через «end» --&gt;
+{% each items %}
+    &lt;div&gt;{{it}}&lt;/div&gt;
+{% end %}</code></pre>
+        <p>Возможности языка: циклы <code>each</code>, условия <code>if/else</code> (с операторами <code>==</code>, <code>&lt;=</code>, <code>&gt;=</code>, <code>!=</code>, <code>is</code>, <code>&gt;</code>, <code>&lt;</code>), а также <b>вызовы функций</b> (callables) с позиционными или ключевыми аргументами:</p>
+        <pre class="code"><span class="lang-tag">html</span><code style="direction:ltr;text-align:left">&lt;!-- цикл по людям; «it» — текущий элемент --&gt;
+{% each people %}
+    &lt;div&gt;{{it.name}}&lt;/div&gt;
+{% end %}
+
+&lt;!-- «..» означает доступ к переменной родительского контекста --&gt;
+{% each records %}
+    &lt;div&gt;{{..name}}&lt;/div&gt;
+{% end %}
+
+&lt;!-- условие --&gt;
+{% if num &gt; 5 %}
+    &lt;div&gt;more than 5&lt;/div&gt;
+{% else %}
+    &lt;div&gt;less than or equal to 5&lt;/div&gt;
+{% end %}
+
+&lt;!-- вызов функции с аргументом и ключевым словом --&gt;
+&lt;div class=&#x27;date&#x27;&gt;{% call prettify date_created %}&lt;/div&gt;
+&lt;div&gt;{% call log &#x27;here&#x27; verbosity=&#x27;debug&#x27; %}&lt;/div&gt;</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Разбор шаблона</li>
-          <li>Теги</li>
-          <li>Фильтры</li>
-          <li>Рендер и поток</li>
-        </ul>
+      <h2>Теория: зачем нужно синтаксическое дерево (AST)?</h2>
+        <p>Компиляторы представляют содержимое программы в виде <b>абстрактного синтаксического дерева (AST)</b> — результата лексического анализа текста. У дерева есть преимущество перед сырым текстом: в нём нет лишних разделителей (например, фигурных скобок шаблона), а к узлам можно добавлять свойства, не трогая код. Путь работы нашего движка: <b>токенизация → построение AST → рендер (обход дерева с контекстом)</b>.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Python-шаблонизатор учит парсингу: теги, фильтры и условия в декларативном виде превращаются в исполняемый код.</p>
-        <p>Частичный разбор тега:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def parse_tags(tpl):
-    # {{ name|upper }} -&gt; (name, filter)
-    return re.findall(r"{{([^}]+)}}", tpl)</code></pre>
+      <h2>Токенизация регулярным выражением</h2>
+        <p>Первый шаг — разбить шаблон на фрагменты; каждый фрагмент — либо сырой HTML, либо тег. Используем <code>re.split</code> и ленивое (нежадное) регулярное выражение, которое распознаёт оба вида тегов:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import re
+
+VAR_TOKEN_START = &#x27;{{&#x27;
+VAR_TOKEN_END = &#x27;}}&#x27;
+BLOCK_TOKEN_START = &#x27;{%&#x27;
+BLOCK_TOKEN_END = &#x27;%}&#x27;
+
+TOK_REGEX = re.compile(r&quot;(%s.*?%s|%s.*?%s)&quot; % (
+    VAR_TOKEN_START, VAR_TOKEN_END,
+    BLOCK_TOKEN_START, BLOCK_TOKEN_END
+))
+
+# пример:
+&gt;&gt;&gt; TOK_REGEX.split(&#x27;{% each vars %}&lt;i&gt;{{it}}&lt;/i&gt;{% endeach %}&#x27;)
+[&#x27;{% each vars %}&#x27;, &#x27;&lt;i&gt;&#x27;, &#x27;{{it}}&#x27;, &#x27;&lt;/i&gt;&#x27;, &#x27;{% endeach %}&#x27;]</code></pre>
+        <p><code>?</code> внутри опций означает ленивое повторение; регулярное выражение должно остановиться на первом совпадении, чтобы, например, теги переменных внутри блоков отделялись правильно. Каждый фрагмент помещается в объект <code>_Fragment</code>, который определяет его тип; четыре типа: <code>VAR</code>, <code>OPEN_BLOCK</code>, <code>CLOSE_BLOCK</code> и <code>TEXT</code>.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Из таких игрушек выросли Jinja и Django: серия покажет рождение серьёзных инструментов из простых идей.</p>
+      <h2>Построение AST</h2>
+        <p>Теперь фрагменты становятся узлами. Базовый класс <code>_Node</code> определяет методы <code>process_fragment()</code> и <code>render()</code>, а также имеет хуки <code>enter_scope()</code>/<code>exit_scope()</code>, которые компилятор вызывает при открытии/закрытии области видимости узла. Дочерние узлы хранятся в <code>children</code>:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">class _Node(object):
+    def __init__(self, fragment=None):
+        self.children = []
+        self.creates_scope = False
+        self.process_fragment(fragment)
+    def process_fragment(self, fragment): pass
+    def enter_scope(self): pass
+    def render(self, context): pass
+    def exit_scope(self): pass
+    def render_children(self, context, children=None):
+        if children is None:
+            children = self.children
+        def render_child(child):
+            child_html = child.render(context)
+            return &#x27;&#x27; if not child_html else str(child_html)
+        return &#x27;&#x27;.join(map(render_child, children))
+
+# пример: узел переменной
+class _Variable(_Node):
+    def process_fragment(self, fragment):
+        self.name = fragment
+    def render(self, context):
+        return resolve_in_context(self.name, context)</code></pre>
+        <p>Тип узла определяется по «команде блока» (первому слову внутри <code>{% %}</code>); например, <code>{% each items %}</code> — это узел <code>each</code>. Узлы, создающие область видимости (циклы/условия), при компиляции добавляются в стек областей, а их дочерние прикрепляются к ним; достижение закрывающего тега закрывает область:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def compile(self):
+    root = _Root()
+    scope_stack = [root]
+    for fragment in self.each_fragment():
+        if not scope_stack:
+            raise TemplateError(&#x27;nesting issues&#x27;)
+        parent_scope = scope_stack[-1]
+        if fragment.type == CLOSE_BLOCK_FRAGMENT:
+            parent_scope.exit_scope()
+            scope_stack.pop()
+            continue
+        new_node = self.create_node(fragment)
+        if new_node:
+            parent_scope.children.append(new_node)
+            if new_node.creates_scope:
+                scope_stack.append(new_node)
+                new_node.enter_scope()
+    return root</code></pre>
+      </section>
+      <section>
+      <h2>Рендер: различение литералов и имён переменных</h2>
+        <p>На этапе рендера нужно понять, является ли выражение «константой» или «именем переменной в контексте» — это делает <code>ast.literal_eval</code>, безопасно вычисляющий строку Python:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import ast
+
+def eval_expression(expr):
+    try:
+        return &#x27;literal&#x27;, ast.literal_eval(expr)
+    except (ValueError, SyntaxError):
+        return &#x27;name&#x27;, expr</code></pre>
+      </section>
+      <section>
+      <h2>Разрешение имён: точечные пути и «..»</h2>
+        <p>Финальный кусочек пазла: функция разрешения имени, которая проходит и по точечным именам (<code>it.name</code>) во вложенных словарях, и по префиксу <code>..</code> возвращается к родительскому контексту:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def resolve(name, context):
+    if name.startswith(&#x27;..&#x27;):
+        context = context.get(&#x27;..&#x27;, {})
+        name = name[2:]
+    try:
+        for tok in name.split(&#x27;.&#x27;):
+            context = context[tok]
+        return context
+    except KeyError:
+        raise TemplateContextError(name)</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Это «академическое» упражнение — вкус настоящего движка шаблонов изнутри: токенизация регулярным выражением, построение синтаксического дерева с управлением областями видимости и обходный рендер с контекстом. Разумеется, эта реализация не готова к продакшену — но это отличный проводник в основы таких движков, как Jinja2. Полный код: <a href="https://github.com/alexmic/microtemplates" target="_blank" rel="noopener">github.com/alexmic/microtemplates</a>.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Игрушечный шаблонизатор на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Игрушечный шаблонизатор на Python» принадлежит автору оригинала (Алекс Майкл (Alex Michael)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Алекс Майкл (Alex Michael)). Читайте оригинал на
         <a href="http://alexmic.net/building-a-template-engine/" target="_blank" rel="noopener">http://alexmic.net/building-a-template-engine/</a>.
       </div>
     </article>

@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Тетрис на C++ с контролем»
+          <b>Оригинальный источник:</b> «Tetris Tutorial in C++ Platform Independent»
         </div>
         <a class="btn solid" href="http://javilop.com/gamedev/tetris-tutorial-in-c-platform-independent-focused-in-game-logic-for-beginners/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/game-tetris-cpp.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,87 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Тетрис на C++: классы для поля, фигур и ввода — структурированная версия классики.</p>
+      <h2>Главная идея: отделение логики от графики</h2>
+        <p>Класс <code>Board</code> (логика) ничего не знает о графике: ни SDL, ни OpenGL, ни окон. Только матрицы и простые функции — а значит, игровой код работает на любой платформе (десктоп, мобильные, веб) с любой библиотекой. В уроке логика отображается через SDL 1.2, но фокус статьи — на самой логике.</p>
+        <div class="callout tip">
+          <strong>Совет:</strong> этот подход — лучшая практика для понимания того, «почему профессиональные игры отделяют движок от игры».
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Представление фигур матрицами</h2>
+        <p>Каждая фигура (тетромино) и само игровое поле — матрицы; простейший и одновременно самый мощный способ представить сетку тетриса:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Игровое поле: матрица
+const int BOARD_WIDTH  = 10;
+const int BOARD_HEIGHT = 20;
+int board[BOARD_WIDTH * BOARD_HEIGHT]; // 0 = пусто, 1 = занято
+
+// Каждая фигура задаётся матрицей 2×2, 3×3 или 4×4
+// Пример: фигура L
+int pieceL[4][4] = {
+  { 0, 0, 0, 0 },
+  { 1, 1, 1, 0 },
+  { 1, 0, 0, 0 },
+  { 0, 0, 0, 0 },
+};
+
+// Цвет каждой клетки матрицы — это сам номер типа фигуры (1..7)
+// так матрицы задают и форму, и цвет</code></pre>
+      </section>
+      <section>
+      <h2>Хак вращения без сложной математики</h2>
+        <p>Вместо вычисления поворота матричным умножением каждая фигура имеет <b>четыре предопределённых состояния вращения</b>, и при повороте меняется только индекс состояния:</p>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Вращение: переход к следующему состоянию — у каждой фигуры 4 состояния
+void rotate(int x, int y, int rotation) {
+  switch (rotation) {
+    case 0: // базовое состояние (та же матрица)
+      ...
+    case 1: // поворот на 90 градусов — вычислено заранее
+      ...
+    // ...
+  }
+}</code></pre>
+        <p>Почему это работает: у поворота на 90 градусов всего 4 состояния для каждой фигуры, и их можно заранее выписать на бумаге; никакая формула вращения не нужна.</p>
+      </section>
+      <section>
+      <h2>Столкновения и главный цикл</h2>
+        <pre class="code"><span class="lang-tag">cpp</span><code style="direction:ltr;text-align:left">// Проверка столкновения: помещается ли фигура в (x, y)
+// при данном вращении?
+bool Board::isFreeBlock(int pX, int pY, int pType, int pRotation) {
+  // Сравни каждую ненулевую клетку матрицы фигуры с полем
+  for (int i1 = pX, i2 = 0; i1 &lt; pX + size(pType); i1++, i2++) {
+    for (int j1 = pY, j2 = 0; j1 &lt; pY + size(pType); j1++, j2++) {
+      if (getBlock(i2, j2, pType, pRotation) != 0 &amp;&amp; isBlock(i1, j1)) {
+        return false; // пересечение → столкновение
+      }
+    }
+  }
+  return true;
+}
+
+// Главный цикл игры
+while (gameRunning) {
+  // Ввод: движение/вращение/быстрое падение
+  // Шаг времени: каждые несколько миллисекунд — строка вниз
+  if (timer.elapsed() &gt; speed) {
+    if (!movePieceDown()) { lockPiece(); clearLines(); newPiece(); }
+    timer.reset();
+  }
+  render();  // графическое отображение логики
+}</code></pre>
+      </section>
+      <section>
+      <h2>Итоги</h2>
         <ul>
-          <li>Класс Field</li>
-          <li>Тетрамино</li>
-          <li>Ввод и падение</li>
-          <li>Геймплей и точки</li>
+          <li>Логика игры на матрицах и независимых функциях — работает на любой платформе.</li>
+          <li>Вращение предопределёнными состояниями — без сложной математики.</li>
+          <li>Полный код урока читается и пишется меньше чем за час; лучший старт в C++ и разработке игр.</li>
         </ul>
       </section>
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>C++-версия добавляет структуру: объекты контролируют поле, фигуры и состояние. Тетрис становится упражнением в дизайне.</p>
-        <p>Класс фигуры — данные и повороты:</p>
-        <pre class="code"><span class="lang-tag">C++</span><code>class Tetromino {
-public:
-    std::vector&lt;std::vector&lt;bool&gt;&gt; shape;
-    void rotate90();
-};</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Тетрис на C++ — два навыка сразу: игровая логика и объектно-ориентированный дизайн.</p>
-      </section>
-
       <div class="callout note">
-        <strong>Авторские права:</strong> «Тетрис на C++ с контролем» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Тетрис на C++ с контролем» принадлежит автору оригинала (Хавьер Лопес (Javier López)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Хавьер Лопес (Javier López)). Читайте оригинал на
         <a href="http://javilop.com/gamedev/tetris-tutorial-in-c-platform-independent-focused-in-game-logic-for-beginners/" target="_blank" rel="noopener">http://javilop.com/gamedev/tetris-tutorial-in-c-platform-independent-focused-in-game-logic-for-beginners/</a>.
       </div>
     </article>

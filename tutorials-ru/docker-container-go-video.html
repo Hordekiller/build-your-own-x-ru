@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Контейнер на Go (видео: libcontainer и cgroups)»
+          <b>Оригинальный источник:</b> «Build a container from scratch in Go»
         </div>
         <a class="btn solid" href="https://www.youtube.com/watch?v=8fi7uSYlOdc" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/docker-container-go-video.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,40 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Видео-курс создаёт контейнер на Go: использование libcontainer API, cgroups и сетевые мосты — низкоуровневое устройство контейнеров на экране.</p>
-      </section>
-
-      <section>
-        <h2>Что вы узнаете</h2>
+      <h2>О видео</h2>
+        <p>В этом живом сеансе программирования «Лиз Райс (Liz Rice)» создаёт контейнер с нуля — только на Go, без готовых инструментов вроде Docker. Вы увидите, как примерно в 100 строк кода рождается настоящий контейнер, запускающий изолированные процессы.</p>
+        <p>В ходе видео эти концепции демонстрируются на практике:</p>
         <ul>
-          <li>libcontainer: низкоуровневое API</li>
-          <li>Сети: мост и veth</li>
-          <li>Cgroups на практике</li>
-          <li>Жизненный цикл контейнера</li>
+          <li><strong>Namespaces:</strong> изоляция PID, сети, mount и имени хоста с помощью <code class="inline">CLONE_NEWPID</code> и других флагов <code class="inline">clone()</code></li>
+          <li><strong>Изоляция файловой системы:</strong> монтирование rootfs и <code class="inline">pivot_root</code></li>
+          <li><strong>cgroups:</strong> ограничение ресурсов (таких как CPU и память) для процесса внутри контейнера</li>
+          <li><strong>Понижение привилегий:</strong> управление capabilities и <code class="inline">setuid</code> для большей безопасности</li>
+          <li><strong>Цепочка процессов:</strong> как «родительский» процесс запускает «дочерний» внутри изолированных namespace</li>
         </ul>
+        <p>Это видео — отличная отправная точка для всех, кто хочет понять, как контейнеры реально работают на уровне операционной системы.</p>
+        <pre class="code"><span class="lang-tag">go</span><code style="direction:ltr;text-align:left">// Ядро контейнера: запуск дочернего процесса в изолированных namespace
+cmd := exec.Command(&quot;/proc/self/exe&quot;, &quot;child&quot;)
+cmd.SysProcAttr = &amp;syscall.SysProcAttr{
+    Cloneflags: syscall.CLONE_NEWUTS | // отдельное имя хоста
+        syscall.CLONE_NEWPID |         // отдельное дерево процессов
+        syscall.CLONE_NEWNS,           // отдельный mount
+}
+cmd.Run()</code></pre>
+        <p>Именно эти несколько флагов и есть то, что в видео доводится до конца примерно в 100 строках Go; cgroups позже добавляют ограничение ресурсов.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Видео показывает код и системные эффекты одновременно: изоляция, сети и ограничения ресурсов — то, что Docker прячет от глаз.</p>
-        <p>Создание файловой системы rootfs:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>os.MkdirAll("/var/lib/ct/busybox/rootfs", 0755)
-// разворачиваем busybox и делаем rootfs корнем</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>Увидеть libcontainer на видео — почувствовать вес каждого вызова: вы будете читать исходники runc с уверенностью.</p>
+      <h2>Смотреть видео</h2>
+        <p>Видео можно смотреть прямо на YouTube:</p>
+        <div style="text-align:center;margin:24px 0">
+          <a class="btn solid" style="font-size:1.05rem;padding:14px 32px" href="https://www.youtube.com/watch?v=8fi7uSYlOdc" target="_blank" rel="noopener">▶ Смотреть на YouTube</a>
+        </div>
+        <p>Версия доклада также есть на сайте конференции GOTO: <span dir="ltr">goto-con.com</span></p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Контейнер на Go (видео: libcontainer и cgroups)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Контейнер на Go (видео: libcontainer и cgroups)» принадлежит автору оригинала (Лиз Райс (Liz Rice)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Лиз Райс (Liz Rice)). Читайте оригинал на
         <a href="https://www.youtube.com/watch?v=8fi7uSYlOdc" target="_blank" rel="noopener">https://www.youtube.com/watch?v=8fi7uSYlOdc</a>.
       </div>
     </article>

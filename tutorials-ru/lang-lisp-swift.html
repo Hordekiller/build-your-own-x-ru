@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Lisp-интерпретатор на Swift»
+          <b>Оригинальный источник:</b> «Building a LISP from scratch with Swift»
         </div>
         <a class="btn solid" href="https://www.uraimo.com/2017/02/05/building-a-lisp-from-scratch-with-swift/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-lisp-swift.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,71 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Интерпретатор Lisp на Swift: парсер, eval и REPL — язык на мобильном стеке.</p>
+      <h2>Почему Swift для Lisp-интерпретатора?</h2>
+        <p>Lisp — один из самых простых языков для написания интерпретатора (его синтаксис — почти только скобки и функции), а Swift с вложенными enum и замыканиями даёт удобные инструменты для моделирования функциональных типов данных. Такое сочетание делает учебник интересным и знакомым с интерпретаторами, и любителям Swift.</p>
+        <p>У построенного интерпретатора три классических этапа: <b>токенизатор</b>, <b>парсер</b> и <b>вычислитель</b> — а в конце REPL, с которым можно работать в терминале.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Парсер</li>
-          <li>Eval</li>
-          <li>REPL</li>
-          <li>Типы Swift</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Swift подходит для интерпретаторов: перечисления и опциональные значения обрабатывают AST естественно.</p>
-        <p>Тип выражения на Swift:</p>
-        <pre class="code"><span class="lang-tag">Swift</span><code>indirect enum Expr {
-    case number(Double)
-    case symbol(String)
-    case list([Expr])
-    case lambda([String], Expr, Env)
+      <h2>Моделирование LispVal с enum</h2>
+        <p>Важнейшее архитектурное решение — определение типа данных всех значений Lisp. С enum Swift это делается очень естественно:</p>
+        <pre class="code"><span class="lang-tag">swift</span><code style="direction:ltr;text-align:left">// Все значения языка: число, имя символа, список, функция
+enum LispVal {
+    case atom(String)
+    case number(Int)
+    case string(String)
+    case list([LispVal])
+    case function(String, ([LispVal]) throws -&gt; LispVal)
 }</code></pre>
+        <p>С таким определением список сам содержит другие LispVal, а функция моделируется как компонуемая структура. Все дальнейшие алгоритмы (парсер и evaluator) строятся на этой основе.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Интерпретатор на Swift — приятный опыт: вы увидите, как индустриальный язык справляется с семантикой.</p>
+      <h2>Токенизатор и парсер</h2>
+        <p>Парсер работает посимвольно и при встрече <code>(</code> начинает строить список. Для управления вложенными скобками используется рекурсия:</p>
+        <pre class="code"><span class="lang-tag">swift</span><code style="direction:ltr;text-align:left">func parseList(_ chars: [Character], _ pos: Int) throws -&gt; (LispVal, Int) {
+    var result: [LispVal] = []
+    var i = pos
+    while i &lt; chars.count {
+        let c = chars[i]
+        if c == &quot;)&quot; { return (LispVal.list(result), i + 1) }
+        if c == &quot;(&quot; {
+            let (list, next) = try parseList(chars, i + 1)
+            result.append(list)
+            i = next
+        } else {
+            let (v, next) = try parseAtom(chars, i)
+            result.append(v)
+            i = next
+        }
+    }
+    throw LispError.unexpectedEnd
+}
+
+// Преобразование атома в число или символ
+func parseAtom(_ chars: [Character], _ pos: Int) throws -&gt; (LispVal, Int) {
+    var s = &quot;&quot;
+    var i = pos
+    while i &lt; chars.count, !&quot;() &quot;.contains(chars[i]) {
+        s.append(chars[i]); i += 1
+    }
+    if let n = Int(s) { return (LispVal.number(n), i) }
+    return (LispVal.atom(s), i)
+}</code></pre>
+        <p>Этот простой парсер без ошибок читает весь базовый Lisp (числа, символы и глубокие списки).</p>
+      </section>
+      <section>
+      <h2>Вычисление и замыкания</h2>
+        <p>Вычислитель работает сопоставлением с образцом по LispVal: для <code>atom</code> выполняет определённую базовую функцию; для <code>list</code> вычисляет первый элемент как функцию, а остальные как аргументы. Функции хранятся как замыкания, чтобы иметь доступ к переменным своего окружения.</p>
+        <p>В конце учебник показывает разные решения: определение <code>defun</code> (именованные функции), арифметические операторы и даже рекурсию (fibonacci) — всё построено на тех же трёх основных конструкциях.</p>
+      </section>
+      <section>
+      <h2>Итоги</h2>
+        <p>Учебник показывает, что Swift с его сильной типизацией отлично подходит для маленьких учебных интерпретаторов. Если вы не знакомы с Lisp или созданием языков, после этого проекта можно перейти к более крупным: mal или Crafting Interpreters.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Lisp-интерпретатор на Swift» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Lisp-интерпретатор на Swift» принадлежит автору оригинала (Francesco Uraimo). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Francesco Uraimo). Читайте оригинал на
         <a href="https://www.uraimo.com/2017/02/05/building-a-lisp-from-scratch-with-swift/" target="_blank" rel="noopener">https://www.uraimo.com/2017/02/05/building-a-lisp-from-scratch-with-swift/</a>.
       </div>
     </article>

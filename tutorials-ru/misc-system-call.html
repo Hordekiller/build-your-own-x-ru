@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Напишем системный вызов»
+          <b>Оригинальный источник:</b> «Writing a system call (Linux Kernel Development)»
         </div>
         <a class="btn solid" href="https://brennan.io/2016/11/14/kernel-dev-ep3/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-system-call.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,61 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство проводит по ядру Linux: вы добавите собственный системный вызов в исходники ядра, соберёте его и вызовете из пользовательской программы, пройдя весь путь от entry point до возврата значения.</p>
+      <h2>Что такое system call?</h2>
+        <p>Прикладные программы для доступа к ресурсам системы (файлы, сеть, процессор вовремя) действуют через API ядра. System call — то самое окно входа из пользовательского пространства (user space) в пространство ядра (kernel space): определённый номер, который процессор использует как индекс функции в таблице syscall.</p>
+        <p>В этом уроке вы пишете простой syscall, печатающий строку в ядре; затем регистрируете его в системной таблице и вызываете из пользовательской программы.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Зачем нужны системные вызовы и как они попадают в ядро</li>
-          <li>Добавление вызова в таблицу syscalls ядра</li>
-          <li>Регистрация в syscall_64.tbl и объявление в unistd.h</li>
-          <li>Вызов из программы на C и проверка работы</li>
-        </ul>
-      </section>
+      <h2>Структура: таблица syscall</h2>
+        <p>В ядре Linux каждый syscall регистрируется в таблице <code>sys_call_table</code>, а все они определяются через <code>SYSCALL_DEFINEx</code>. Например, syscall, принимающий сообщение:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">// Определение syscall с одним строковым аргументом
+SYSCALL_DEFINE1(hello, const char __user*, buffer) {
+    // Безопасное копирование из пользовательского пространства (kernel 5.16+)
+    char kernel_buf[128];
+    size_t len;
+    ssize_t copied;
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Системный вызов — единственный контролируемый путь в ядро: программа кладёт номер вызова в регистр и выполняет инструкцию syscall. Ядро смотрит в таблицу, находит вашу функцию и исполняет её с привилегиями ядра.</p>
-        <p>Обработчик в ядре умещается в несколько строк:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>// Новая функция ядра: возвращает ответ из мира ядра
-SYSCALL_DEFINE0(mysyscall) {
-    printk(KERN_INFO "hello from kernel\n");
-    return 42;
+    copied = strncpy_from_user(kernel_buf, buffer, sizeof(kernel_buf) - 1);
+    if (copied &lt; 0) {
+        return -EFAULT;
+    }
+    kernel_buf[copied] = &#x27;\0&#x27;;
+
+    printk(KERN_INFO &quot;hello syscall: %s\n&quot;, kernel_buf);
+    return 0;
 }</code></pre>
+        <p>Ключевая заметка по безопасности: поскольку данные приходят из пользовательского пространства, нельзя делать <code>copy_from_user</code> без проверки размера. Иначе возможны проблемы вплоть до утечек или падений.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Вы узнаете, что на самом деле происходит за вызовом printf или fopen, и как проходят границу между пользовательским пространством и ядром — фундамент, на котором стоит вся современная ОС.</p>
+      <h2>Вызов из пользовательского пространства</h2>
+        <p>Для вызова syscall из C можно использовать <code>syscall()</code>. Номер syscall должен быть заранее зарегистрирован в таблице:</p>
+        <pre class="code"><span class="lang-tag">c</span><code style="direction:ltr;text-align:left">#define SYS_HELLO 548   // номер, назначенный вами в ядре
+
+#include &lt;unistd.h&gt;
+#include &lt;sys/syscall.h&gt;
+#include &lt;stdio.h&gt;
+
+int main(void) {
+    // Вызов своего syscall
+    long ret = syscall(SYS_HELLO, &quot;Привет из пользовательского пространства!&quot;);
+    if (ret &lt; 0) {
+        perror(&quot;syscall&quot;);
+        return 1;
+    }
+    printf(&quot;syscall вернул: %ld\n&quot;, ret);
+    return 0;
+}</code></pre>
+        <p>После вывода из ядра (dmesg) вы увидите напечатанное сообщение — значит, ваша программа действительно вошла в ядро и выполнилась там.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Написание syscall — лучший способ понять «границу» между ядром и прикладными программами. Вы на практике узнаете таблицы имён, безопасное копирование между пространствами и контроль доступа — и будете готовы продолжить путь создания ядра.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Напишем системный вызов» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Напишем системный вызов» принадлежит автору оригинала (Stephen Brennan). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Stephen Brennan). Читайте оригинал на
         <a href="https://brennan.io/2016/11/14/kernel-dev-ep3/" target="_blank" rel="noopener">https://brennan.io/2016/11/14/kernel-dev-ep3/</a>.
       </div>
     </article>

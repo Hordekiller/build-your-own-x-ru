@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «ACWJ: компилятор C на C (Серия)»
+          <b>Оригинальный источник:</b> «A Compiler Writing Journey»
         </div>
         <a class="btn solid" href="https://github.com/DoctorWkt/acwj" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-acwj.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,54 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Серия ACWJ строит компилятор C: лексер, парсер, семантика и генерация — полный тулчейн своими руками.</p>
+      <h2>Самая реальная серия по сборке C-компилятора</h2>
+        <p>Большинство уроков либо строят искусственный язык, либо ограничиваются маленьким подмножеством. Но курс Уоррена Туми (годы работы с настоящими компиляторами) строит компилятор SubC, поддерживающий большую часть настоящего языка C: все операторы, базовые типы, struct, union, enum, typedef, функции с переменным числом аргументов (varargs) и даже простой препроцессор.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>Парсер и AST</li>
-          <li>Семантика</li>
-          <li>Генерация кода</li>
-        </ul>
+      <h2>Базовая архитектура: парсер Пратта</h2>
+        <p>Первые части быстро закладывают основы: лексер с классами токенов, затем парсер, использующий «силу связывания» (binding power) и метод парсинга Пратта — современный способ, очень чисто обрабатывающий операторы с разными приоритетами:</p>
+        <pre class="code"><span class="lang-tag">C</span><code style="direction:ltr;text-align:left">// Таблица приоритетов операторов
+static struct {
+  int token;
+  int precedence;
+} binop_prec[] = {
+  { T_PLUS, 10 }, { T_MINUS, 10 },   // сложение/вычитание
+  { T_STAR, 20 }, { T_SLASH, 20 },   // умножение/деление
+  { T_EQ,   40 }, { T_NE, 40 },      // равенство
+  ...
+};
+
+// Парсер бинарных операторов (Pratt)
+static struct ASTnode *binexpr(int ptp) {
+  struct ASTnode *left = unary();
+  while (op_precedence(Token.token) &gt; ptp) {
+    int tok = Token.token;
+    left = mkastnode(A_BINOP, left, NULL, tok, ...);
+  }
+  return left;
+}</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Серия идёт медленно и глубоко: каждое понятие — модуль, каждая стадия — глава. Финальный компилятор компилирует настоящий C.</p>
-        <p>Семантическая проверка типа:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>// несовпадение типов — ошибка компиляции
-if (expr_type(left) != expr_type(right)) error("type mismatch");</code></pre>
+      <h2>Главные шаги путешествия</h2>
+        <p>Путешествие в 34 части: 1–5) основы lexer/parser и генерация ассемблера; 6–8) значения и логические операторы; 9–12) условия и циклы; 13–15) функции и вызовы (callq); 16–22) указатели и разыменование (самые напряжённые места!); 23–28) struct/union/enum и typedef; 29–31) varargs и препроцессор; 32–34) логические значения, лямбды и т.д.</p>
+        <p>Важно: каждая часть включает тесты, гарантирующие отсутствие регрессий, — как в настоящем проекте.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>ACWJ — образцовый путь к компиляторам: вы получите и знание, и уверенность в архитектуре.</p>
+      <h2>Пример кода: генерация ассемблера для умножения</h2>
+        <pre class="code"><span class="lang-tag">Assembly</span><code style="direction:ltr;text-align:left"># a = b * 3  →  сгенерированный код для x86-64
+        movq    %rbx, %rax    # поместить b в rax
+        imulq   $3, %rax, %rax   # умножение на 3
+        movq    %rax, a(%rip) # сохранить в a</code></pre>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Если хотите понять, «как работает настоящий C-компилятор», acwj — лучший доступный источник: полная глубина, регулярные тесты, а в конце — компилятор, превращающий настоящие C-файлы в ассемблер.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «ACWJ: компилятор C на C (Серия)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «ACWJ: компилятор C на C (Серия)» принадлежит автору оригинала (Warren Toomey (DoctorWkt)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Warren Toomey (DoctorWkt)). Читайте оригинал на
         <a href="https://github.com/DoctorWkt/acwj" target="_blank" rel="noopener">https://github.com/DoctorWkt/acwj</a>.
       </div>
     </article>

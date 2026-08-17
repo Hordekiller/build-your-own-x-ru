@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Нейросеть на F# — часть 1»
+          <b>Оригинальный источник:</b> «Building Neural Networks in F# — Part 1»
         </div>
         <a class="btn solid" href="https://medium.com/data-science/building-neural-networks-in-f-part-1-a2832ae972e6" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/neural-fsharp-part1.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,57 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Часть 1 серии о нейросетях на F#: перцептрон, обучение и первые эксперименты — функциональный ML.</p>
+      <h2>Почему F# для нейросетей</h2>
+        <p>Функциональные языки естественны для математики нейросетей: неизменяемость данных, строгая типизация и лаконичный синтаксис. Автор решает строить всё на <b>MathNet.Numerics</b> — без тяжёлого ML-фреймворка — чтобы увидеть глубину понятий: функция активации, слои, матрица весов, стоимость и обучение градиентным спуском. Результат — типы, у каждого из которых ясный смысл, а компилятор ловит логические ошибки рано.</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Типы, придающие смысл математике сети
+type Node&lt;&#x27;a&gt; = { Values: Vector&lt;&#x27;a&gt; }
+type Layer&lt;&#x27;a&gt; = { Nodes: List&lt;Node&lt;&#x27;a&gt;&gt; }
+type NodesVect&lt;&#x27;a&gt; = { Nodes: Vector&lt;&#x27;a&gt; }</code></pre>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Перцептрон</li>
-          <li>Обучение</li>
-          <li>Ошибки и веса</li>
-          <li>Первые тесты</li>
-        </ul>
+      <h2>Нейрон и слой: две базовые абстракции</h2>
+        <p>Каждый нейрон — вектор значений (несколько входов/выходов одновременно, ради матричной эффективности). Слой — список нейронов. Простой дизайн позже позволит нам соединять слои в цепочку: выход первого слоя — вход второго. Для весов используется матрица MathNet с готовыми оптимизированными функциями матричного умножения.</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Создание слоя из n нейронов; каждый нейрон — вектор значений
+let createLayer (n: int) (size: int) =
+    { Nodes = [ for _ in 1 .. n -&gt; { Values = Vector.Build.Random(size) } ] }</code></pre>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Серия на F# показывает нейросети в функциональном стиле: перцептрон, веса и порог — чистые функции.</p>
-        <p>Предсказание перцептрона:</p>
-        <pre class="code"><span class="lang-tag">F#</span><code>let predict (w: float[]) (x: float[]) =
-    let z = Array.map2 (*) w x |&gt; Array.sum
-    if z &gt; 0.0 then 1.0 else 0.0</code></pre>
+      <h2>Функция активации: гиперболический тангенс (tanh)</h2>
+        <p>Функция активации даёт сети нелинейность; без неё любая глубина сети вырождается в линейное преобразование. Автор выбирает <b>tanh</b>: выход от −1 до +1, простая производная и симметричный центр — что ускоряет сходимость лучше, чем сигмоид. Производная tanh — <code>1 - tanh(x)²</code> — играет ключевую роль в обратном распространении:</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">let tanh (x: double) = Math.Tanh(x)
+
+// Производная tanh — нужна в backpropagation для распространения ошибки
+let tanhDerivative (x: double) = 1.0 - (Math.Tanh(x) * Math.Tanh(x))</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Функциональный ML — свежий взгляд: серия на F# подходит и новичкам, и практикующим функциональщикам.</p>
+      <h2>Прямое распространение (forward pass)</h2>
+        <p>Выход каждого нейрона получается умножением матрицы весов на входы, прибавлением смещения и применением tanh. Прямое распространение — послойное применение этого вычисления до конечного выхода. При матричном представлении все нейроны слоя считаются сразу, векторно:</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Один шаг вперёд: выход слоя = tanh(матрица весов × значения нейронов + смещение)
+let feedForward (weights: Matrix&lt;double&gt;) (inputs: Vector&lt;double&gt;) =
+    weights * inputs
+    |&gt; Vector.map tanh</code></pre>
+        <p>Этот шаг — «предсказание» сети: со случайными начальными весами выход бессмыслен; веса должны настраиваться обучением.</p>
+      </section>
+      <section>
+      <h2>Стоимость и ошибка</h2>
+        <p>Чтобы учиться, нужно измерить «плохость» сети: функция стоимости <b>среднеквадратичной ошибки (MSE)</b>. Предсказанный выход сравнивается с ожидаемым; квадрат разности усредняется, чтобы большие ошибки наказывались сильнее и чтобы отрицательные/положительные ошибки не гасили друг друга:</p>
+        <pre class="code"><span class="lang-tag">fsharp</span><code style="direction:ltr;text-align:left">// Среднеквадратичная ошибка между выходом сети и верным ответом
+let cost (outputs: Vector&lt;double&gt;) (expected: Vector&lt;double&gt;) =
+    let errors = outputs - expected
+    errors.PointwisePower(2.0) |&gt; Vector.Sum / float errors.Count</code></pre>
+      </section>
+      <section>
+      <h2>Дорога вперёд</h2>
+        <p>Часть 1 строит инфраструктуру: типы Node/Layer, активацию tanh, прямое распространение и функцию стоимости. Никакого «обучения» ещё нет — веса случайны. Во второй части автор реализует <b>обратное распространение</b> и <b>градиентный спуск</b>, обучает сеть на реальном датасете и оценивает её.</p>
+        <div class="callout note">
+          <strong>Дополнительное замечание:</strong> эта часть продолжается — страница «Создание нейросетей на F#: часть 2» переведена в этом же каталоге.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Нейросеть на F# — часть 1» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Нейросеть на F# — часть 1» принадлежит автору оригинала (Haaris Mehmood). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Haaris Mehmood). Читайте оригинал на
         <a href="https://medium.com/data-science/building-neural-networks-in-f-part-1-a2832ae972e6" target="_blank" rel="noopener">https://medium.com/data-science/building-neural-networks-in-f-part-1-a2832ae972e6</a>.
       </div>
     </article>

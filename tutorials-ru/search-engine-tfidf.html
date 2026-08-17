@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «TF-IDF: поиск по частоте термов»
+          <b>Оригинальный источник:</b> «Finding Important Words in Text Using TF-IDF»
         </div>
         <a class="btn solid" href="https://stevenloria.com/tf-idf/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/search-engine-tfidf-python.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,91 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>TF-IDF в деталях: частоты, редкость и веса — классический лексический поиск с нуля.</p>
+      <h2>Зачем нужен TF-IDF?</h2>
+        <p>Когда у вас есть текст и вы хотите понять, «о чём этот текст», простого подсчёта слов недостаточно: частые слова вроде «the» и «and» выходят в топ, но не несут никакой информации. <b>TF-IDF</b> (частота слова в документе × обратная частота документа) — это способ измерить «важность» слова в документе относительно набора документов: слово, которое часто встречается в одном документе, но редко в остальных, является признаком темы этого документа. Стивен Лориа в этом коротком уроке реализует данную метрику примерно в 14 строк Python и демонстрирует её на реальных примерах.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Определения: tf и idf</h2>
         <ul>
-          <li>TF: частоты в документе</li>
-          <li>IDF: редкость по коллекции</li>
-          <li>Скоринг документа</li>
-          <li>Плюсы и минусы TF-IDF</li>
+          <li><b>TF (Term Frequency)</b>: сколько раз слово встретилось в документе. Иногда нормализуется, но в этой простой реализации — просто сырое количество.</li>
+          <li><b>IDF (Inverse Document Frequency)</b>: обратная величина «какой процент всех документов содержит это слово». Логарифм обратного отношения числа документов со словом к общему числу документов; слово, которое есть во всех документах → idf≈0, редкое слово → большое idf.</li>
+          <li><b>TF-IDF</b>: произведение этих двух величин — число, которое учитывает и частоту слова в документе, и его редкость в наборе документов.</li>
+        </ul>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from math import log
+from collections import Counter
+
+def tf(word, doc):
+    &quot;&quot;&quot;Частота слова в документе = число вхождений, делённое на общее число слов&quot;&quot;&quot;
+    counts = Counter(doc.split())
+    return counts[word] / len(doc.split())
+
+def idf(word, docs):
+    &quot;&quot;&quot;Обратная частота документа: логарифм (все документы / документы со словом) — просто, без сглаживания&quot;&quot;&quot;
+    n_docs_with = sum(1 for d in docs if word in d.split())
+    if n_docs_with == 0:
+        return 0.0
+    return log(len(docs) / n_docs_with)
+
+def tfidf(word, doc, docs):
+    &quot;&quot;&quot;Итоговая оценка: повторяемость в документе × редкость во всём наборе&quot;&quot;&quot;
+    return tf(word, doc) * idf(word, docs)</code></pre>
+        <p>Функция <code>idf</code> в статье имеет необязательный параметр <code>default</code> (начальное число для log, которое можно настроить по желанию), чтобы поведение было определённым, когда слово не встречается ни в одном документе.</p>
+      </section>
+      <section>
+      <h2>Полная реализация и пример</h2>
+        <p>В статье с помощью <b>TextBlob 0.6.1</b> (Python-библиотека для обработки текста) создаётся демонстрационный набор: несколько коротких документов, у каждого своя тема (например, один про биткойн, один про химию/книги и т.д.), после чего вычисляются и сортируются оценки TF-IDF всех слов, чтобы определить «важные слова» каждого документа. Полный код шаг за шагом:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import math
+import numpy as np
+from textblob import TextBlob
+from collections import Counter
+
+# 1) Создание набора текстовых документов (обучающие тексты по каждой теме)
+doc1 = &quot;The bitcoin blockchain is a distributed ledger that records every transaction...&quot;
+doc2 = &quot;Chemistry is the scientific study of the properties and behavior of matter...&quot;
+doc3 = &quot;Reading books helps you learn new things and improves your vocabulary...&quot;
+docs = [doc1, doc2, doc3]
+
+# 2) Через TextBlob получаем нормализованные слова (без стемминга)
+def get_tokens(doc):
+    blob = TextBlob(doc)
+    return [token.singularize().lower() for token in blob.words]
+
+tokenized = [get_tokens(d) for d in docs]
+
+# 3) TF-IDF каждого слова для каждого документа
+def tf_idf(word, doc_index):
+    tokens = tokenized[doc_index]
+    tf = tokens.count(word) / float(len(tokens))
+    n_docs_with = sum(1 for t in tokenized if word in t)
+    idf = math.log(len(docs) / float(n_docs_with))
+    return tf * idf
+
+# 4) Важные слова каждого документа: оценка и сортировка по убыванию
+for i, tokens in enumerate(tokenized):
+    uniques = Counter(tokens)
+    ranked = sorted(uniques, key=lambda w: tf_idf(w, i), reverse=True)
+    print(&quot;Самые важные слова документа&quot;, i + 1, &quot;:&quot;, ranked[:5])</code></pre>
+        <div class="callout note">
+          <strong>Смысл кода выше:</strong> суть урока — не только математика; важна комбинация: нормализация слов с TextBlob (приведение к единственному числу и нижнему регистру), подсчёт, вычисление tf и idf и, наконец, «сортировка слов каждого документа по оценке TF-IDF» для поиска представителей темы. Вывод примера из статьи в точности показывает, что слова «блокчейн», «химия» и «книга» получают в своих документах самые высокие оценки.
+        </div>
+      </section>
+      <section>
+      <h2>Почему это важно?</h2>
+        <ul>
+          <li><b>Извлечение темы/ключевых слов</b>: самый быстрый способ понять, «о чём этот набор текстов», не читая его целиком.</li>
+          <li><b>Основа поиска</b>: TF-IDF — сердце многих классических поисковых движков (вы это уже видели в уроках «Векторное пространство» и «Поиск с Redis» из этого же раздела).</li>
+          <li><b>Взвешивание при анализе текста</b>: перед сложными алгоритмами ML превращение документа в TF-IDF-вектор часто бывает достаточно и эффективно.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>TF-IDF взвешивает слова: частые внутри документа важны, частые по коллекции — бесполезны. Получается числовой балл релевантности.</p>
-        <p>IDF — логарифмическая редкость:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>import math
-idf = math.log(N / (1 + df))  # df — число документов со словом</code></pre>
-      </section>
-
-      <section>
-        <h2>Почему это важно</h2>
-        <p>TF-IDF — основа поиска и рекомендаций: этот урок останется в вашем инструментарии навсегда.</p>
+      <h2>Итоги</h2>
+        <p>Меньше чем в двадцати строках кода вы научились превращать текст в «оценки важности слов» — инструмент, применимый в поиске, суммаризации и классификации текста. Предложенный следующий шаг: соединить эти оценки с «векторным пространством» и «обратной связью пользователя», чтобы построить настоящий поисковый движок.</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «TF-IDF: поиск по частоте термов» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «TF-IDF: поиск по частоте термов» принадлежит автору оригинала (Стивен Лориа (Steven Loria)). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Стивен Лориа (Steven Loria)). Читайте оригинал на
         <a href="https://stevenloria.com/tf-idf/" target="_blank" rel="noopener">https://stevenloria.com/tf-idf/</a>.
       </div>
     </article>

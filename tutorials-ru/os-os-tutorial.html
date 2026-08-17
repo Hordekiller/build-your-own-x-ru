@@ -36,7 +36,7 @@
       </div>
       <h1>OSDev: учебник по ОС на C</h1>
       <div class="meta-row">
-        <span class="meta-badge">⚙ Язык: C</span>
+        <span class="meta-badge">⚙ Язык: C + Assembly</span>
         <span class="meta-badge">📁 Операционная система</span>
         <span class="meta-badge">🌐 Русская страница</span>
         <span class="meta-badge"><a href="https://github.com/cfenollosa/os-tutorial" target="_blank" rel="noopener">🔗 Оригинальный источник</a></span>
@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «OSDev: учебник по ОС на C»
+          <b>Оригинальный источник:</b> «os-tutorial»
         </div>
         <a class="btn solid" href="https://github.com/cfenollosa/os-tutorial" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/os-os-tutorial.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,38 +53,51 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Популярный учебник OSDev: ядро, память и планирование — ОС на C по шагам для эмуляторов.</p>
+      <h2>Подход: сто маленьких уроков вместо одного большого проекта</h2>
+        <p>Суть os-tutorial — «полностью выполнить одну маленькую задачу в каждом уроке». Каждый урок лежит в своей папке (01-bootsector-barebones, 02-bootsector-print и т.д.), читается и запускается за несколько минут и строится на предыдущем. Такая конструкция позволяет очень быстро прогрессировать и по-настоящему понимать каждый этап.</p>
+        <p>Большая часть материала основана на «Operating Systems Development» (os-dev.pdf Бирмингемского университета) — том же источнике, что и Little OS Book, — но с более короткими уроками и прямым запуском в QEMU.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
+      <h2>Карта уроков</h2>
         <ul>
-          <li>Загрузчик</li>
-          <li>Ядро</li>
-          <li>Страничная память</li>
-          <li>Многозадачность</li>
+          <li><b>Уроки 1–9 — загрузочный сектор</b>: сборка простого загрузочного сектора, печать текста через BIOS, определение строк, чтение диска.</li>
+          <li><b>Уроки 10–19 — вход в 32-битный режим</b>: GDT, защищённый режим, структура сегментов и кросс-компиляция C для bare-metal.</li>
+          <li><b>Уроки 20–30 — C-ядро</b>: вывод текста через VGA, переход в защищённый режим, полные idt/gdt, клавиатурные прерывания.</li>
+          <li><b>Дальнейшие уроки — память и планирование</b>: таблицы страниц, куча, переключение задач и т.д.</li>
         </ul>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Учебник проводит через все стадии ОС: загрузчик, ядро, память и процессы — с объяснением каждой строки.</p>
-        <p>Обновление страничных таблиц:</p>
-        <pre class="code"><span class="lang-tag">C</span><code>uint32_t page_dir[1024] __attribute__((aligned(4096)));
-page_dir[0] = ((uint32_t)page_tables | 0x3); // present + writable</code></pre>
+      <h2>Пример кода: первый загрузочный сектор (урок 1)</h2>
+        <p>Максимально простой загрузочный сектор — на котором затем строятся следующие уроки:</p>
+        <pre class="code"><span class="lang-tag">nasm</span><code style="direction:ltr;text-align:left">; lesson01: максимально простой загрузочный сектор — бесконечное повторение
+loop:
+    jmp loop
+
+times 510-($-$$) db 0   ; заполнение до байта 510
+dw 0xaa55               ; два магических загрузочных байта</code></pre>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left">nasm -f bin boot_sect_simple.asm -o boot_sect_simple.bin
+qemu-system-i386 -fda boot_sect_simple.bin
+# или создание файла дискеты и загрузка с него
+dd if=/dev/zero of=floppy.img bs=512 count=2880
+dd if=boot_sect_simple.bin of=floppy.img conv=notrunc</code></pre>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>OSDev-учебники — крупнейшие путеводители: вы пройдёте их путь и увидите современные ядра как знакомых.</p>
+      <h2>Сильные стороны и предостережения</h2>
+        <ul>
+          <li><b>Мелкие шаги</b>: разбиение каждой темы на 5–15-минутные уроки — один из самых популярных методов старта.</li>
+          <li><b>Мгновенный запуск</b>: каждый урок запускается сам по себе; нет цепных сбоев.</li>
+          <li><b>Эксперименты с QEMU</b>: без необходимости какого-либо железа.</li>
+          <li><b>Предостережение</b>: проект официально заброшен (abandoned); путь к более продвинутым урокам (переключение задач и далее) становится более незавершённым. Чтобы завершить путь, после урока 30 лучше перейти к Little OS Book или курсу Джеймса Моллоя.</li>
+        </ul>
+        <div class="callout tip">
+          <strong>Дополнительно:</strong> идеальный порядок для абсолютного новичка: загрузчик Джо Бержерона → os-tutorial (уроки 1–30) → Little OS Book.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «OSDev: учебник по ОС на C» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «OSDev: учебник по ОС на C» принадлежит автору оригинала (Carlos Fenollosa). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Carlos Fenollosa). Читайте оригинал на
         <a href="https://github.com/cfenollosa/os-tutorial" target="_blank" rel="noopener">https://github.com/cfenollosa/os-tutorial</a>.
       </div>
     </article>

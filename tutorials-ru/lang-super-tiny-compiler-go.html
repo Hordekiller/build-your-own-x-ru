@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Микро-компилятор на Go (Super Tiny Compiler)»
+          <b>Оригинальный источник:</b> «The Super Tiny Compiler (порт на Go)»
         </div>
         <a class="btn solid" href="https://github.com/hazbo/the-super-tiny-compiler" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/lang-super-tiny-compiler-go.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,47 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Супер-маленький компилятор на Go: лексер, парсер и генерация — компиляция на 200 строках.</p>
+      <h2>История компилятора из 200 строк</h2>
+        <p>Оригинальный компилятор (the-super-tiny-compiler) написан Джеймсом Кайлом (jamiebuilds) примерно в 200 строках JavaScript, чтобы показать: структура компилятора по сути проста; вход похож на Lisp (add 2 (subtract 4 2)), выход — на C: add(2, subtract(4, 2)). Версия на Go следует тем же путём с явными типами и аккуратными функциями.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Лексер</li>
-          <li>AST</li>
-          <li>Трансформация</li>
-          <li>Генерация кода</li>
-        </ul>
+      <h2>Четыре главных этапа</h2>
+        <p>1) Tokenizer: разбиение входа на токены; 2) Parser: превращение токенов в AST (дерево синтаксиса); 3) Transformer: превращение входного AST в выходной AST (со структурой C); 4) Code Generator: из выходного AST строится строка C-кода.</p>
+        <p>Для структурирования «компилятор» реализован тремя функциями — tokenizer, parser и transformer (с внутренним traverser), а в конце codeGenerator занимается печатью.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Super Tiny Compiler умещается в 200 строк: каждый этап — функция, каждая идея — комментарий.</p>
-        <p>Генерация кода из AST:</p>
-        <pre class="code"><span class="lang-tag">Go</span><code>func codegen(node Node) string {
-    switch n := node.(type) {
-    case NumberLiteral:
-        return n.Value
-    case CallExpression:
-        return n.Callee + "(" + join(n.Args) + ")"
+      <h2>Пример кода: этап transformer на Go</h2>
+        <pre class="code"><span class="lang-tag">Go</span><code style="direction:ltr;text-align:left">// Преобразование узлов: листья в &quot;CallExpression&quot;
+func transform(node *Node, parent *Node) {
+  switch n := (*node).(type) {
+  case *NumberLiteral:
+    if parent != nil {
+      (*parent).(type) = ... // преобразование в выходной NumberLiteral
     }
+  case *CallExpression:
+    // часть первая: функция превращается в отдельный CallExpression
+    expression := &amp;CallExpression{Callee: n.Callee, Arguments: []Node{}}
+    // часть вторая: рекурсивно обойти аргументы с ним (как родителем)
+    for _, arg := range n.Arguments {
+      transform(&amp;arg, newParent)
+    }
+  }
 }</code></pre>
+        <p>Главный трюк оригинального компилятора — функция traverser, которая обходит AST двумя видами посещения (enter и exit); версия на Go повторяет тот же паттерн.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Маленькие компиляторы — большие уроки: после STC вы сможете объяснить этапы компиляции за чашкой кофе.</p>
+      <h2>Что вы узнаете</h2>
+        <p>На 200 строках кода вы знакомитесь с главными концепциями компилятора: lexing (распознавание группирующих символов), parsing (построение иерархии), AST (дерево данных), traverser (рекурсивный обход) и codegen (печать кода). Поскольку вход прост, фокус на концепциях, а не на деталях языка.</p>
+      </section>
+      <section>
+      <h2>Итог</h2>
+        <p>Лучший «первый компилятор» для старта: короткий, читаемый, с тестами. Версия на Go отлично подходит тем, кому нравятся типы и ясность Go; JavaScript-версия — для быстрого знакомства с концепциями. После этого переходите к более реальным компиляторам (например, acwj или Crafting Interpreters).</p>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Микро-компилятор на Go (Super Tiny Compiler)» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Микро-компилятор на Go (Super Tiny Compiler)» принадлежит автору оригинала (hazbo). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (hazbo). Читайте оригинал на
         <a href="https://github.com/hazbo/the-super-tiny-compiler" target="_blank" rel="noopener">https://github.com/hazbo/the-super-tiny-compiler</a>.
       </div>
     </article>
