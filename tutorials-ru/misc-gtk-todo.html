@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Настольное приложение для Linux на Ruby с GTK»
+          <b>Оригинальный источник:</b> «Creating a GTK Todo application with Ruby»
         </div>
         <a class="btn solid" href="https://iridakos.com/tutorials/2018/01/25/creating-a-gtk-todo-application-with-ruby" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-gtk-todo.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,76 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок создаёт десктоп-приложение (todo-список) на Ruby с GTK: окно, список задач, добавление и удаление элементов и сохранение состояния в файл.</p>
+      <h2>GTK не только на C?</h2>
+        <p>GTK — имя графического интерфейса Linux (его использует GNOME). Хотя GTK написан на C, у него есть отличные привязки для Ruby (gem gtk3). Этот урок строит полноценный «список задач» (Todo list): окно, список, добавление/удаление задач.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Окно GTK и виджеты: список, кнопки, поле ввода</li>
-          <li>События: клики и сигналы</li>
-          <li>Сохранение задач между запусками</li>
-          <li>Сборка и запуск приложения</li>
-        </ul>
+      <h2>Окно и цикл событий</h2>
+        <p>У GTK есть «цикл событий»: программа ждёт события (клик, ввод, закрытие) и реагирует на них. Базовая структура:</p>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">require &#x27;gtk3&#x27;
+
+class TodoApp
+  def initialize
+    # создаём главное окно
+    @window = Gtk::Window.new(&#x27;Мой список дел&#x27;)
+    @window.set_default_size(400, 500)
+    @window.signal_connect(&#x27;destroy&#x27;) { Gtk.main_quit }
+
+    # вертикальная раскладка: поле ввода + кнопка + список
+    @vbox = Gtk::Box.new(:vertical, 6)
+    @entry = Gtk::Entry.new
+    @entry.placeholder_text = &#x27;Новая задача...&#x27;
+    @add_button = Gtk::Button.new(label: &#x27;Добавить&#x27;)
+    @list = Gtk::ListBox.new
+
+    @vbox.pack_start(@entry, expand: false, fill: false, padding: 0)
+    @vbox.pack_start(@add_button, expand: false, fill: false, padding: 0)
+    @vbox.pack_start(@list, expand: true, fill: true, padding: 0)
+    @window.add(@vbox)
+  end
+
+  def run
+    @window.show_all
+    Gtk.main   # запуск цикла событий
+  end
+end
+
+TodoApp.new.run</code></pre>
+        <p><code>signal_connect</code> подключает обработчик события — тот же механизм callback, что есть во всех тулкитах (Qt, Swing).</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>GTK — набор виджетов: окно, поле ввода, кнопка и список. Программа связывает их сигналами: клик — действие. Это классическая событийная архитектура GUI.</p>
-        <p>Создание окна и обработчик кнопки:</p>
-        <pre class="code"><span class="lang-tag">Ruby</span><code>builder = Gtk::Builder.new(file: "app.ui")
-button = builder.get_object("add_button")
-button.signal_connect("clicked") do
-  # Добавляем задачу в список
-  list.append(text_entry.text)
-end</code></pre>
+      <h2>Добавление задачи по сигналу</h2>
+        <pre class="code"><span class="lang-tag">ruby</span><code style="direction:ltr;text-align:left">def add_todo
+  text = @entry.text.strip
+  return if text.empty?
+
+  row = Gtk::ListBoxRow.new
+  row.add(Gtk::Label.new(text))
+  @list.add(row)          # добавить в список
+  @entry.text = &#x27;&#x27;        # очистить поле ввода
+end
+
+# связь: клик по кнопке ← добавление
+@add_button.signal_connect(&#x27;clicked&#x27;) { add_todo }
+# связь: Enter тоже добавляет
+@entry.signal_connect(&#x27;activate&#x27;) { add_todo }</code></pre>
+        <p>Для удаления каждая строка получает свою кнопку с отдельным callback — тот же паттерн «сигнала» повторяется.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Десктопные приложения не умерли — они стали проще: урок покажет всю палитру GUI-разработки и научит собирать полезные утилиты на Linux.</p>
+      <h2>Развитие и результат</h2>
+        <p>Дальше в уроке: хранение в файле SQLite, разметка listview для выполненных задач и стилизация через CSS (GTK CSS). После этого проекта любое настольное приложение для вас прозрачно: widget + signal + model.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Iridakos. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://iridakos.com/tutorials/2018/01/25/creating-a-gtk-todo-application-with-ruby" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Настольное приложение для Linux на Ruby с GTK» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Настольное приложение для Linux на Ruby с GTK» принадлежит автору оригинала (Iridakos). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Iridakos). Читайте оригинал на
         <a href="https://iridakos.com/tutorials/2018/01/25/creating-a-gtk-todo-application-with-ruby" target="_blank" rel="noopener">https://iridakos.com/tutorials/2018/01/25/creating-a-gtk-todo-application-with-ruby</a>.
       </div>
     </article>

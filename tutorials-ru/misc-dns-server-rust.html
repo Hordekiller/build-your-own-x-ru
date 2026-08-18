@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Создание DNS-сервера на Rust»
+          <b>Оригинальный источник:</b> «Implementing DNS in a weekend (Rust)»
         </div>
         <a class="btn solid" href="https://github.com/EmilHernvall/dnsguide/blob/master/README.md" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-dns-server-rust.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,44 +53,73 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство реализует DNS-сервер на Rust с нуля без внешних зависимостей: бинарный протокол запросов и ответов, рекурсивные запросы и собственная обработка UDP-дейтаграмм.</p>
+      <h2>Территория: байт за байтом</h2>
+        <p>DNS — простой двоичный протокол: по UDP на порт 53 отправляется запрос. Если разобрать сообщение байт за байтом (заголовок, вопрос, ответ), вы освоите концепции всех двоичных систем. Это руководство делает так на Rust — языке, отлично подходящем для байтовой работы.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Бинарный формат DNS: заголовок, вопрос, ответы</li>
-          <li>Сжатие имён и labels</li>
-          <li>Основной UDP-цикл сервера</li>
-          <li>Пересылка запросов реальным DNS-серверам</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>DNS — идеальный полигон для Rust: бинарные структуры, строгие типы, безопасная работа с сетью. Сервер принимает запрос, находит запись и формирует ответ байт в байт.</p>
-        <p>Разбор заголовка DNS — структура с as_bytes:</p>
-        <pre class="code"><span class="lang-tag">Rust</span><code>struct Header {
-    id: u16,
-    flags: u16,
-    qdcount: u16, ancount: u16, nscount: u16, arcount: u16,
+      <h2>Чтение байтов структурами Rust</h2>
+        <p>Первый шаг: отправить простой запрос и вывести сырые байты ответа. Затем определяется структура <code>Packet</code>, читающая из <code>BytePacketBuffer</code>; каждое поле (ID, флаги, счётчики) достаётся методами вроде <code>read_u16</code>:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">pub struct BytePacketBuffer {
+    pub buf: [u8; 512],
+    pub pos: usize,
 }
-impl Header {
-    fn read(bytes: &amp;[u8]) -&gt; Self { /* строгий разбор без паники */ }
-}</code></pre>
-      </section>
 
+impl BytePacketBuffer {
+    pub fn read_u16(&amp;mut self) -&gt; Result&lt;u16&gt; {
+        let hi = self.buf[self.pos] as u16;
+        let lo = self.buf[self.pos + 1] as u16;
+        self.pos += 2;
+        Ok((hi &lt;&lt; 8) | lo)      // в DNS — big-endian
+    }
+
+    pub fn read_string(&amp;mut self) -&gt; Result&lt;String&gt; {
+        // формат label: каждая секция = длина + буквы
+        let len = self.buf[self.pos]; self.pos += 1;
+        let mut s = String::with_capacity(len as usize);
+        for _ in 0..len {
+            s.push(self.buf[self.pos] as char); self.pos += 1;
+        }
+        Ok(s)
+    }
+}</code></pre>
+        <p>Важная деталь протокола: байты big-endian, а имена хранятся последовательностью label — без null-terminator, как в C.</p>
+      </section>
       <section>
-        <h2>Почему это важно</h2>
-        <p>Протоколы — это структуры: на Rust вы по-настоящему почувствуете, как типы помогают писать корректные сетевые серверы с первого раза.</p>
+      <h2>Мощь: forwarder и ответ</h2>
+        <p>После разбора запроса сервер пересылает его вышестоящему DNS-серверу (например, 8.8.8.8), получает ответ и возвращает его пользователю — это настоящий «релейный DNS-сервер». Распакуйте ответ и безопасно отправьте — дело сделано:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">fn handle_query(socket: &amp;UdpSocket, buf: &amp;mut [u8]) -&gt; Result&lt;()&gt; {
+    // читаем запрос пользователя и запоминаем его адрес
+    let (size, src) = socket.recv_from(buf)?;
+
+    let query = Packet::from_buffer(&amp;mut BytePacketBuffer::new(&amp;buf[..size]))?;
+
+    // пересылка вышестоящему серверу
+    let mut resolver = UdpSocket::bind(&quot;0.0.0.0:0&quot;)?;
+    resolver.send_to(&amp;buf[..size], &quot;8.8.8.8:53&quot;)?;
+    let mut response = [0u8; 512];
+    let (n, _) = resolver.recv_from(&amp;mut response)?;
+
+    // отправка ответа пользователю (тот же адрес отправителя)
+    socket.send_to(&amp;response[..n], src)?;
+    Ok(())
+}</code></pre>
+        <p>Благодаря <code>SocketAddr</code> клиента из <code>recv_from</code> ответ возвращается ровно туда, куда нужно.</p>
+      </section>
+      <section>
+      <h2>Апгрейды: recursive и DoT</h2>
+        <p>Руководство в следующих главах добавляет больше: кеширование (Cache) ответов, автоматический рекурсивный обход (без опоры на 8.8.8.8), DNS-over-TCP и даже DNS-over-TLS. Каждая из них строится на тех же маленьких байтовых примитивах.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Эмиль Хернвалль (Emil Hernvall). Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/EmilHernvall/dnsguide/blob/master/README.md" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Создание DNS-сервера на Rust» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Создание DNS-сервера на Rust» принадлежит автору оригинала (Emil Hernvall). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Emil Hernvall). Читайте оригинал на
         <a href="https://github.com/EmilHernvall/dnsguide/blob/master/README.md" target="_blank" rel="noopener">https://github.com/EmilHernvall/dnsguide/blob/master/README.md</a>.
       </div>
     </article>

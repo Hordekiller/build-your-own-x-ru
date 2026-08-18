@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Машинное обучение через код: деревья решений»
+          <b>Оригинальный источник:</b> «Learn ML algorithms by coding: decision trees»
         </div>
         <a class="btn solid" href="https://lethalbrains.com/learn-ml-algorithms-by-coding-decision-trees-439ac503c9a4" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-decision-trees.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,58 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует деревья решений с нуля: выбор лучшего признака, разбиение данных, энтропия и построение дерева до конца — вы напишете классификатор сами.</p>
+      <h2>Дерево решений — это «задавание вопросов»</h2>
+        <p>Дерево решений превращает классификацию в последовательность простых вопросов: «возраст старше 30?», «какого цвета айфон?». Каждый вопрос делит данные на две ветви, пока не будут достигнуты листья, где сосредоточены образцы одного класса. Главный вопрос построения: какой признак и с каким порогом даёт лучшее разделение?</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Оценка разбиения: энтропия и прирост информации</li>
-          <li>Выбор лучшего признака и порога</li>
-          <li>Рекурсивное построение дерева</li>
-          <li>Ограничение глубины и переобучение</li>
-        </ul>
+      <h2>Мера нечистоты: Gini</h2>
+        <p>Хорошее разделение разводит смешанные классы. «Нечистота Джини» измеряет, насколько классы перемешаны внутри группы (0 = чисто); каждый split выбирается так, чтобы уменьшение нечистоты было максимальным:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def gini(groups, classes):
+    &quot;&quot;&quot;Взвешенная нечистота всех ветвей&quot;&quot;&quot;
+    total = sum(len(g) for g in groups)
+    score = 0.0
+    for group in groups:
+        size = len(group)
+        if size == 0: continue
+        # вероятность каждого класса внутри этой ветви
+        probs = [group.count(c) / size for c in classes]
+        score += (size / total) * (1 - sum(p ** 2 for p in probs))
+    return score</code></pre>
+        <p><code>1 - Σp²</code>: если все одного класса → ноль. Чем сильнее перемешано, тем больше значение.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Дерево решений задаёт вопросы: «рост больше 180?» — да, «вес меньше 80?» — и так, пока не будет принято решение. Лучший порядок вопросов выбирается по приросту информации.</p>
-        <p>Прирост информации — сердце построения дерева:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def entropy(labels):
-    p = np.bincount(labels) / len(labels)
-    return -np.sum([x * np.log2(x) for x in p if x &gt; 0])</code></pre>
+      <h2>Поиск лучшего разделения</h2>
+        <p>Для каждого признака пробуем кандидатные пороги (средние соседних значений) — побеждает тот, у кого минимальный Gini:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def best_split(data, classes):
+    &quot;&quot;&quot;Найди (признак, порог) с наименьшим gini&quot;&quot;&quot;
+    best = None
+    for col in range(len(data[0]) - 1):
+        values = sorted({row[col] for row in data})
+        for i in range(len(values) - 1):
+            threshold = (values[i] + values[i + 1]) / 2
+            left = [r for r in data if r[col] &lt;= threshold]
+            right = [r for r in data if r[col] &gt; threshold]
+            g = gini([left, right], classes)
+            if best is None or g &lt; best[0]:
+                best = (g, col, threshold, left, right)
+    return best</code></pre>
+        <p>Построение порога из «среднего соседних значений» делает пригодными и непрерывные признаки.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Деревья лежат в основе случайных лесов и градиентного бустинга — сильнейших методов ML: написав своё дерево, вы поймёте их изнутри.</p>
+      <h2>Рекурсивное построение дерева</h2>
+        <p>Всё та же рекурсивная функция: если группа чистая → лист; иначе делаем лучший split и повторяем на двух ветвях. Предсказание проходит тот же путь от корня до листа. С этими ~80 строками у вас есть идея всех настоящих деревьев (Random Forest, XGBoost) — они лишь объединяют сотни таких деревьев.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Lethal Brains. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://lethalbrains.com/learn-ml-algorithms-by-coding-decision-trees-439ac503c9a4" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Машинное обучение через код: деревья решений» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Машинное обучение через код: деревья решений» принадлежит автору оригинала (Lethal Brains). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Lethal Brains). Читайте оригинал на
         <a href="https://lethalbrains.com/learn-ml-algorithms-by-coding-decision-trees-439ac503c9a4" target="_blank" rel="noopener">https://lethalbrains.com/learn-ml-algorithms-by-coding-decision-trees-439ac503c9a4</a>.
       </div>
     </article>

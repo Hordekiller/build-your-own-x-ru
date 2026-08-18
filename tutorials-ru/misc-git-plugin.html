@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Собственный Git-плагин на Python»
+          <b>Оригинальный источник:</b> «Build your own Git plugin»
         </div>
         <a class="btn solid" href="https://joshburns-xyz.vercel.app/posts/build-your-own-git-plugin" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-git-plugin.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,51 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Руководство расширяет git собственным плагином на Python: хуки, пользовательские команды и автоматизация репозитория через инструменты, которые уже встроены в git.</p>
+      <h2>Git расширяем на любом языке</h2>
+        <p>Мало кто знает: любая программа с именем <code>git-XXX</code>, лежащая в PATH, вызывается командой <code>git XXX</code>! Этот простой механизм создаёт все «плагины git» — от git-flow до личных инструментов. Так же можно и на Python — нужно лишь быть исполняемым файлом и правильно работать со stdin/stdout.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что такое хуки git и как их писать</li>
-          <li>Пользовательская команда git mycommand</li>
-          <li>Работа с протоколом git из Python</li>
-          <li>Автоматизация: предкоммитные проверки</li>
-        </ul>
+      <h2>Правило именования</h2>
+        <p>Главное правило: <code>git-&lt;имя&gt;</code> в PATH → команда <code>git &lt;имя&gt;</code>. Поэтому положите файл <code>git-brag</code> или <code>git-stats</code> в <code>/usr/local/bin</code> или в папку scripts проекта:</p>
+        <pre class="code"><span class="lang-tag">bash</span><code style="direction:ltr;text-align:left"># git-brag — работает без какой-либо настройки git
+code git-brag
+chmod +x git-brag          # обязателен исполняемый бит!
+sudo cp git-brag /usr/local/bin/
+
+git brag                   # ← плагин выполняется
+git brag --help            # ← аргументы тоже принимаются</code></pre>
+        <p>Важнейший момент: сам <code>git</code> не знает такую команду; он просто находит программу и запускает её.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Git — расширяемая система: хуки запускают ваши скрипты на события (pre-commit, post-merge), а команды вида git-xxx становятся подкомандами git. Плагин — это просто скрипт и несколько файлов.</p>
-        <p>Плагин-команда умещается в файл:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>#!/usr/bin/env python3
-# этот файл называется git-statline
-import subprocess
-print(subprocess.check_output(["git", "log", "--oneline", "-5"]).decode())</code></pre>
+      <h2>Простой плагин: ваша статистика за сегодня</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">#!/usr/bin/env python3
+import subprocess, sys
+
+# подсчёт всех коммитов за сегодня
+cmd = [&quot;git&quot;, &quot;log&quot;, &quot;--since=midnight&quot;, &quot;--oneline&quot;]
+result = subprocess.run(cmd, capture_output=True, text=True)
+
+commits = result.stdout.strip().splitlines()
+print(f&quot;Сегодня ты сделал {len(commits)} коммитов:&quot;)
+for c in commits[:10]:
+    print(&quot; &quot;, c)</code></pre>
+        <p>С <code>subprocess</code> вы опираетесь на сам git (а не переписываете его логику!) — стандартный подход всех плагинов.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Свой плагин — это привычка иерархии: если вы автоматизируете git-поток, команда уходит в подкоманды, а знание расширяемости git сэкономит часы рутины.</p>
+      <h2>Проверка хуками через плагин</h2>
+        <p>Плагины не только для веселья: можно запускать <code>git pre-push</code> плагин на CI или сделать плагин, читающий <code>git status --porcelain</code> и сообщающий об ошибках стиля кода. Разница плагина и хука: плагин пользователь вызывает сам, хук выполняется автоматически.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Josh Burns. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://joshburns-xyz.vercel.app/posts/build-your-own-git-plugin" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Собственный Git-плагин на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Собственный Git-плагин на Python» принадлежит автору оригинала (Josh Burns). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Josh Burns). Читайте оригинал на
         <a href="https://joshburns-xyz.vercel.app/posts/build-your-own-git-plugin" target="_blank" rel="noopener">https://joshburns-xyz.vercel.app/posts/build-your-own-git-plugin</a>.
       </div>
     </article>

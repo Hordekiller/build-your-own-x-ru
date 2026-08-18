@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «WebGL + Rust: обучающий пример воды»
+          <b>Оригинальный источник:</b> «A basic WebGL water tutorial in Rust»
         </div>
         <a class="btn solid" href="https://www.chinedufn.com/3d-webgl-basic-water-tutorial/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-webgl-water.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,39 +53,67 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок объединяет Rust и WebGL: сетка треугольника в браузере, симуляция волн в вершинах шейдера и интерактивная сцена — веб-графика на скорости низкого уровня.</p>
+      <h2>Rust в вебе?!</h2>
+        <p>Rust компилируется в WebAssembly (wasm) и выполняется в браузере. Этот урок строит трёхмерную веб-сцену, в которой: сцена и вода создаются на Three.js, но волну воды вычисляет Rust, а результат каждого кадра отдаётся в WebGL.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Rust в браузере и компиляция в WASM</li>
-          <li>Создание сетки и буферов WebGL</li>
-          <li>Вершинный шейдер: волны из математики</li>
-          <li>Связка Rust и JS в реальном времени</li>
-        </ul>
+      <h2>Цикл рендера в Rust</h2>
+        <p>Главное: структура <code>Water</code> в Rust, которая каждый кадр вычисляет высоты точек. Трёхмерные векторы — через <code>nalgebra</code>, передача чисел в JS — через <code>wasm-bindgen</code>:</p>
+        <pre class="code"><span class="lang-tag">rust</span><code style="direction:ltr;text-align:left">use wasm_bindgen::prelude::*;
+use nalgebra::Vector3;
+
+/// Геометрия воды: поверхность из точек (полигоны)
+#[wasm_bindgen]
+pub struct Water {
+    pub segments: usize,
+}
+
+impl Water {
+    /// Высота точки в момент t — простая синусоида
+    pub fn height_at(&amp;self, x: f32, y: f32, t: f32) -&gt; f32 {
+        ((x * 0.3 + t) as f64).sin() as f32 * 0.5
+            + ((y * 0.2 - t) as f64).cos() as f32 * 0.3
+    }
+}</code></pre>
+        <p>Сочетание двух волн с противоположными фазами даёт узор «спокойной воды» — основа всякой настоящей волновой симуляции (FFT, Gerstner) в простом колебании.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Идея — тяжелые вычисления на Rust, вывод через WebGL: сетка точек, а их высоты считаются математикой волн в шейдере. Браузер становится полноценным 3D-канвасом.</p>
-        <p>Значение волны в вершине — формула в шейдере:</p>
-        <pre class="code"><span class="lang-tag">GLSL</span><code>// Высота точки на волне
-float h = 0.5 * sin(x * 3.0 + time * 2.0)
-         + 0.3 * sin(y * 2.0 + time * 1.5);</code></pre>
+      <h2>Связь с Three.js</h2>
+        <p>На стороне JS строится сцена, и в каждом кадре высоты берутся из метода Rust, чтобы обновлять вершины. Как «родная функция», работающая кадр за кадром:</p>
+        <pre class="code"><span class="lang-tag">javascript</span><code style="direction:ltr;text-align:left">const { Water } = wasm_bindgen(&#x27;water_wasm.js&#x27;);
+
+// геометрия с сеткой 16×16
+const geometry = new THREE.PlaneGeometry(10, 10, 15, 15);
+const water = Water.new(16);
+const material = new THREE.MeshPhongMaterial({ color: 0x1e88e5, wireframe: true });
+
+function animate(time) {
+  const pos = geometry.attributes.position;
+  for (let i = 0; i &lt; pos.count; i++) {
+    const x = pos.getX(i), y = pos.getY(i);
+    pos.setZ(i, water.height_at(x, y, time / 1000));  // работает Rust
+  }
+  pos.needsUpdate = true;
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}</code></pre>
+        <p>Сочетание «Rust считает, JS рендерит» — популярная архитектура: высокая производительность без GC там, где это важно.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Сочетание быстрого системного кода и браузера — подход современных веб-приложений: урок откроет вам мир WASM и интерактивной графики.</p>
+      <h2>Зачем это учить?</h2>
+        <p>Этот проект — мост в два мира: 3D-разработку (WebGL, шейдеры, геометрия) и WebAssembly (компиляция, байтовый бюджет, вход/выход через wasm-bindgen). Дальше в уроке: сборка через wasm-pack, бандлинг и более сложные анимации.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Chinedu. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.chinedufn.com/3d-webgl-basic-water-tutorial/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «WebGL + Rust: обучающий пример воды» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «WebGL + Rust: обучающий пример воды» принадлежит автору оригинала (Chinedu). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Chinedu). Читайте оригинал на
         <a href="https://www.chinedufn.com/3d-webgl-basic-water-tutorial/" target="_blank" rel="noopener">https://www.chinedufn.com/3d-webgl-basic-water-tutorial/</a>.
       </div>
     </article>

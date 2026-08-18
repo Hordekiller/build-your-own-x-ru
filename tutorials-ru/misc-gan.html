@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Строим простую Generative Adversarial Network (GAN) на TensorFlow»
+          <b>Оригинальный источник:</b> «Implementing GANs in TensorFlow (Paperspace)»
         </div>
         <a class="btn solid" href="https://blog.paperspace.com/implementing-gans-in-tensorflow/" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-gan.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,62 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует GAN на TensorFlow: генератор учится создавать правдоподобные картинки, а дискриминатор учится отличать их от настоящих — и так, соревнуясь, сеть учится творить.</p>
+      <h2>Что такое GAN?</h2>
+        <p>Generative Adversarial Network (порождающе-состязательная сеть) состоит из двух сетей: <b>генератор (Generator)</b>, который из случайного шума создаёт поддельное изображение, и <b>дискриминатор (Discriminator)</b>, который пытается отличить подделку от настоящего. Они «играют» друг с другом: подделыватель совершенствуется, пока не обманет распознавателя, а распознаватель становится точнее — равновесие этой гонки и есть реалистичные изображения.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Идея состязания: генератор против дискриминатора</li>
-          <li>Архитектуры двух сетей и их потери</li>
-          <li>Обучение по очереди и неустойчивость</li>
-          <li>Генерация рукописных цифр (MNIST)</li>
-        </ul>
+      <h2>Архитектура</h2>
+        <p>В этом простом уроке используются только слои Dense и LeakyReLU, без свёрток. Генератор: вход 100 шумов → несколько слоёв → изображение 28×28. Дискриминатор: изображение → несколько слоёв → вероятность «настоящести»:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def generator(z_dim):
+    model = Sequential([
+        Dense(256, input_dim=z_dim),
+        LeakyReLU(alpha=0.2),
+        Dense(512), LeakyReLU(alpha=0.2),
+        Dense(784, activation=&#x27;tanh&#x27;)   # 28*28 пикселей
+    ])
+    return model
+
+def discriminator():
+    model = Sequential([
+        Dense(256, input_dim=784),
+        LeakyReLU(alpha=0.2),
+        Dense(128), LeakyReLU(alpha=0.2),
+        Dense(1, activation=&#x27;sigmoid&#x27;)  # вероятность настоящести
+    ])
+    return model</code></pre>
+        <p><code>tanh</code> на выходе генератора держит изображение между -1 и 1: входные данные (MNIST) тоже должны быть заранее отмасштабированы в этот диапазон.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>GAN — соревнование: генератор (G) рисует картинки, дискриминатор (D) отличает подделку от оригинала. D улучшается, G старается его обхитрить — равновесие и есть качество генерации.</p>
-        <p>Оба шага обучения умещаются в цикл:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code># Сначала учим дискриминатор на честных и поддельных
-d_loss = disc.train_on_batch(batch, [real_label, fake_label])
-# Потом учим генератор обманывать дискриминатор
-g_loss = adv.train_on_batch(noise, fake_valid_labels)</code></pre>
+      <h2>Состязательное обучение</h2>
+        <p>В каждом шаге обучения сначала дискриминатор тренируется на настоящих+поддельных данных, затем генератор обновляется через всю объединённую сеть. Чтобы генератор не застрял в начале, дискриминатор иногда держат «сильнее», а метки подделок для генератора смягчают до ~0.9 (label smoothing):</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">for epoch in range(epochs):
+    # 1) обучение дискриминатора
+    real = batch_from_dataset()
+    fake = gen.predict(noise)
+    d_loss = disc.train_on_batch(
+        np.concatenate([real, fake]),
+        np.concatenate([ones, zeros])   # real=1, fake=0
+    )
+
+    # 2) обучение генератора через объединённую сеть
+    combined.train_on_batch(noise, ones * 0.9)</code></pre>
+        <p>Классическая ошибка: если дискриминатор слишком быстро «отвергает всё», градиент генератора исчезает, и изображения становятся серыми; стабильность GAN — искусство этого равновесия.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>GAN породили эру генеративных моделей — от deepfakes до дизайна: поняв механизм состязания, вы сможете осознанно работать с генеративным ИИ.</p>
+      <h2>Наблюдение за прогрессом</h2>
+        <p>Каждые несколько шагов делайте снимок с генератора и сохраняйте: вы увидите путь от полного шума до читаемых цифр. Это «наблюдение за обучением» — одно из самых захватывающих переживаний в машинном обучении.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Paperspace. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://blog.paperspace.com/implementing-gans-in-tensorflow/" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Строим простую Generative Adversarial Network (GAN) на TensorFlow» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Строим простую Generative Adversarial Network (GAN) на TensorFlow» принадлежит автору оригинала (Paperspace). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Paperspace). Читайте оригинал на
         <a href="https://blog.paperspace.com/implementing-gans-in-tensorflow/" target="_blank" rel="noopener">https://blog.paperspace.com/implementing-gans-in-tensorflow/</a>.
       </div>
     </article>

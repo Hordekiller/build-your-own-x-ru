@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Крошечный package manager — как устроены npm и Yarn»
+          <b>Оригинальный источник:</b> «tiny-package-manager: learn how npm and Yarn work»
         </div>
         <a class="btn solid" href="https://github.com/g-plane/tiny-package-manager" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-package-manager.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,40 +53,62 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует мини-пакетный менеджер на TypeScript: папка node_modules, разрешение версий, установка зависимостей и обработка конфликтов — вы поймёте npm изнутри.</p>
+      <h2>Что делает npm? (а что не делает?)</h2>
+        <p>Менеджер пакетов выполняет три задачи: читает <code>package.json</code>, разрешает зависимости (resolution) и устанавливает файлы в <code>node_modules</code>. Выглядит просто, но часть «разрешение зависимостей» — понять, какую версию хочет каждый пакет, — это настоящее место сложности. Этот проект проясняет её, добавляя код шаг за шагом.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Что в package.json и как хранятся зависимости</li>
-          <li>Алгоритмы семантического версионирования</li>
-          <li>Установка: node_modules и резолвинг версий</li>
-          <li>Локальные и глобальные зависимости</li>
-        </ul>
-      </section>
+      <h2>Резолюция: какая версия?</h2>
+        <p>Пакет говорит <code>"lodash": "^4.17.0"</code> — значит 4.17.0 или выше, но ниже 5. Для каждой зависимости нужно получить из реестра список существующих версий и выбрать лучшую. Версии semver осмысленны при сравнении по компонентам (major.minor.patch):</p>
+        <pre class="code"><span class="lang-tag">typescript</span><code style="direction:ltr;text-align:left">// сравнение двух semver-версий, например &quot;2.1.4&quot; и &quot;2.2.0&quot;
+function compareVersions(a: string, b: string): number {
+  const pa = a.split(&#x27;.&#x27;).map(Number);
+  const pb = b.split(&#x27;.&#x27;).map(Number);
+  for (let i = 0; i &lt; 3; i++) {
+    if (pa[i] !== pb[i]) return pa[i] - pb[i];
+  }
+  return 0;
+}
 
-      <section>
-        <h2>Основная идея</h2>
-        <p>Пакетный менеджер решает задачу: какие версии каких библиотек установить, чтобы всем хватило. Алгоритм резолвинга версий — настоящий интеллект npm под шелухой команд.</p>
-        <p>Проверка совместимости версии — функция:</p>
-        <pre class="code"><span class="lang-tag">TypeScript</span><code>function satisfies(version: string, range: string): boolean {
-  // "^1.2.0" означает: любые 1.x.x &gt;= 1.2.0
-  return semVerMatches(version, range);
+// &quot;^4.17.0&quot;: версия с major=4 и максимальная из них
+function resolveRange(range: string, versions: string[]): string {
+  const [major] = range.slice(1).split(&#x27;.&#x27;).map(Number);
+  return versions
+    .filter(v =&gt; Number(v.split(&#x27;.&#x27;)[0]) === major)
+    .sort(compareVersions)
+    .pop()!;
 }</code></pre>
+        <p>В действительности semver сложнее (prerelease, тильда, диапазоны) — существуют пакеты вроде <code>semver</code>, чтобы не выдумывать своё.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждый npm install запускает целый алгоритмический мир: увидев его изнутри своими руками, вы перестанете бояться конфликтов зависимостей.</p>
+      <h2>Граф зависимостей и кризис вложенности</h2>
+        <p>Пакет A зависит от B, B от C и так далее. Строится древовидный граф, решаемый обходом BFS, и создаётся «замок» (lockfile) с точным списком всех версий, чтобы последующие установки были одинаковыми:</p>
+        <pre class="code"><span class="lang-tag">typescript</span><code style="direction:ltr;text-align:left">// уплощение графа зависимостей и запись в lockfile
+const lock: Record&lt;string, string&gt; = {};
+
+function resolve(pkg, versions, depth = 0) {
+  for (const [name, range] of Object.entries(pkg.dependencies ?? {})) {
+    const version = resolveRange(range, versions[name]);
+    if (lock[name] === undefined) lock[name] = version;
+    // ... рекурсивно для подзависимостей
+  }
+}</code></pre>
+        <p>Вызов, который решают yarn/pnpm: два пакета могут хотеть разные версии одной общей зависимости; «выравнивание» (dedupe) или «отдельные папки» (pnpm) — оба подхода решения одной задачи.</p>
+      </section>
+      <section>
+      <h2>Установка и итог</h2>
+        <p>Последний этап: скачивание tarball'а из реестра (<code>registry.npmjs.org</code>) и распаковка в <code>node_modules/&lt;имя&gt;</code>. Этими ~200 строками TypeScript <code>tiny-package-manager</code> симулирует npm. После этого, глядя на любой инструмент — Yarn, pnpm или Bun, — вы знаете, какие решения они приняли и почему.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> g-plane. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/g-plane/tiny-package-manager" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Крошечный package manager — как устроены npm и Yarn» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Крошечный package manager — как устроены npm и Yarn» принадлежит автору оригинала (g-plane). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (g-plane). Читайте оригинал на
         <a href="https://github.com/g-plane/tiny-package-manager" target="_blank" rel="noopener">https://github.com/g-plane/tiny-package-manager</a>.
       </div>
     </article>

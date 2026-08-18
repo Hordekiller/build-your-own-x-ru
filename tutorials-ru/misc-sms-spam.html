@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Детектор SMS-спама с Scikit-learn на Python»
+          <b>Оригинальный источник:</b> «Detect SMS spam in Kaggle with Scikit-learn»
         </div>
         <a class="btn solid" href="https://medium.com/@kopilov.vlad/detect-sms-spam-in-kaggle-with-scikit-learn-5f6afa7a3ca2" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-sms-spam.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,55 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Практический ML-урок: классификатор SMS-сообщений на спам и обычные сообщения с Scikit-learn — от подготовки текста до оценки точности модели на реальном наборе данных.</p>
+      <h2>Задача: классифицировать текст</h2>
+        <p>Датасет (из Kaggle) содержит тысячи SMS с метками «spam» или «ham». Задача: научить алгоритм распознавать новое сообщение. Это классическая задача NLP начального уровня, решаемая на scikit-learn в несколько строк.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Подготовка текста: токенизация и мешки слов (TF)</li>
-          <li>Векторизация сообщений для модели</li>
-          <li>Логистическая регрессия и наивный Байес</li>
-          <li>Метрики: точность, полнота, F1</li>
-        </ul>
-      </section>
-
-      <section>
-        <h2>Основная идея</h2>
-        <p>Спам-фильтр учится на примерах: сообщения превращаются в векторы частот слов, а модель находит закономерности типа «содержит слово „выигрыш“ — спам». Всё это — минуты кода на Scikit-learn.</p>
-        <p>Классический пайплайн умещается в 5 строк:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>from sklearn.feature_extraction.text import CountVectorizer
+      <h2>От текста к числам: TF-IDF</h2>
+        <p>Алгоритмы понимают только числа. Текст превращается в вектор «частот слов»; лучше простого подсчёта — TF-IDF, который делает редкостные в общем потоке сообщений слова важными, а слишком частые — неважными:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.model_selection import train_test_split
 from sklearn.naive_bayes import MultinomialNB
+from sklearn.metrics import accuracy_score, confusion_matrix
 
-vec = CountVectorizer()
-X = vec.fit_transform(messages)
-clf = MultinomialNB().fit(X, labels)</code></pre>
+# df: колонки &#x27;text&#x27; и &#x27;label&#x27; (spam/ham)
+X = df[&#x27;text&#x27;]; y = df[&#x27;label&#x27;].map({&#x27;spam&#x27;: 1, &#x27;ham&#x27;: 0})
+
+# превращаем текст в векторы TF-IDF
+vec = TfidfVectorizer(stop_words=&#x27;english&#x27;)
+Xv = vec.fit_transform(X)
+
+X_train, X_test, y_train, y_test = train_test_split(
+    Xv, y, test_size=0.2, random_state=42)</code></pre>
+        <p>Почему Multinomial NB? Потому что он по своей природе подходит для классификации текста по подсчёту слов и работает быстро.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Фильтрация спама — один из самых старых успехов машинного обучения: этот урок покажет полный пайплайн — от сырых текстов до оценки модели на практике.</p>
+      <h2>Обучение и оценка</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">model = MultinomialNB()
+model.fit(X_train, y_train)
+
+pred = model.predict(X_test)
+print(&#x27;Точность:&#x27;, accuracy_score(y_test, pred).round(3))
+
+# матрица ошибок: где модель ошибается?
+print(confusion_matrix(y_test, pred))</code></pre>
+        <p>Профессиональный нюанс: в антиспаме одной точности (accuracy) мало — важны recall и precision: потерять спам недопустимо, а вот обмануть обычного пользователя плохо. <code>classification_report</code> покажет все три метрики.</p>
+      </section>
+      <section>
+      <h2>Итог и следующий шаг</h2>
+        <p>Примерно 15 строк кода — и рабочий классификатор. Дальнейшие вызовы: несбалансированные данные (спама меньше), персидский язык (нужен токенизатор), более сильные модели (SVM, fastText). Но основа — TF-IDF + NB — работает и в продакшене.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Влад Копилов. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://medium.com/@kopilov.vlad/detect-sms-spam-in-kaggle-with-scikit-learn-5f6afa7a3ca2" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Детектор SMS-спама с Scikit-learn на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Детектор SMS-спама с Scikit-learn на Python» принадлежит автору оригинала (Влад Копилов). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Влад Копилов). Читайте оригинал на
         <a href="https://medium.com/@kopilov.vlad/detect-sms-spam-in-kaggle-with-scikit-learn-5f6afa7a3ca2" target="_blank" rel="noopener">https://medium.com/@kopilov.vlad/detect-sms-spam-in-kaggle-with-scikit-learn-5f6afa7a3ca2</a>.
       </div>
     </article>

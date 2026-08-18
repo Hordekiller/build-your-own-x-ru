@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Прогнозирование рынка акций на LSTM в Python»
+          <b>Оригинальный источник:</b> «LSTM for time series forecasting in Python (DataCamp)»
         </div>
         <a class="btn solid" href="https://www.datacamp.com/community/tutorials/lstm-python-stock-market" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-stock-lstm.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,63 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок обучает LSTM на котировках акций: подготовка временных рядов, обучение сети и генерация прогноза. Вместе с кодом — честный разбор ограничений моделирования рынка.</p>
+      <h2>Зачем LSTM для временных рядов?</h2>
+        <p>Цена акций — «временной ряд»: результат каждого дня зависит от предыдущих. Обычные нейросети не видят прошлого; LSTM (Long Short-Term Memory — долгая и короткая память) имеет «заслонки», которые говорят сети, что удержать из прошлого, а что забыть.</p>
+        <div class="callout warn">
+          Реалистичная оговорка: рынок не предсказуем достоверно; цель урока — научиться моделировать временные ряды, а не разбогатеть!
+        </div>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Подготовка временных рядов для обучения</li>
-          <li>Архитектура LSTM и тренировка</li>
-          <li>Прогноз котировок и скользящие окна</li>
-          <li>Почему рынок почти непредсказуем: пределы модели</li>
-        </ul>
+      <h2>Подготовка данных</h2>
+        <p>Цены имеют жёсткий масштаб; сначала нормализуем их (между 0 и 1), затем строим окна: для предсказания дня t на вход подаются цены за 60 предыдущих дней:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">import numpy as np
+from sklearn.preprocessing import MinMaxScaler
+
+scaler = MinMaxScaler(feature_range=(0, 1))
+scaled = scaler.fit_transform(df[&#x27;Close&#x27;].values.reshape(-1, 1))
+
+def make_windows(data, window=60):
+    X, y = [], []
+    for i in range(window, len(data)):
+        X.append(data[i-window:i, 0])
+        y.append(data[i, 0])
+    return np.array(X), np.array(y)
+
+X, y = make_windows(scaled)
+X = X.reshape(X.shape[0], X.shape[1], 1)   # форма для LSTM</code></pre>
+        <p>Форма входа LSTM: (число образцов, длина окна, число признаков).</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>LSTM — сеть, запоминающая последовательности: подав ей окна котировок, мы надеемся выучить закономерности. Но рынок полон шума и событий, поэтому урок честно показывает, как оценивать результат.</p>
-        <p>Обучение на последовательностях — стандарт:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>model = Sequential([
-    LSTM(50, return_sequences=True),
-    LSTM(50),
-    Dense(1)
+      <h2>Модель LSTM</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from keras.models import Sequential
+from keras.layers import LSTM, Dense, Dropout
+
+model = Sequential([
+    LSTM(units=50, return_sequences=True, input_shape=(60, 1)),
+    Dropout(0.2),
+    LSTM(units=50, return_sequences=False),
+    Dropout(0.2),
+    Dense(units=1)          # следующая цена
 ])
-model.compile(optimizer="adam", loss="mse")</code></pre>
+model.compile(optimizer=&#x27;adam&#x27;, loss=&#x27;mean_squared_error&#x27;)
+model.fit(X_train, y_train, epochs=50, batch_size=32)</code></pre>
+        <p><code>return_sequences=True</code> нужен для промежуточных слоёв, чтобы последовательность доходила до следующего слоя LSTM. После предсказания значение возвращается к реальному масштабу через <code>inverse_transform</code>.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Ключевой урок — трезвость: модель может выглядеть точной на истории и ошибаться в будущем. После этого проекта вы сможете читать любые ML-исследования временных рядов со здравым скепсисом.</p>
+      <h2>Честная оценка</h2>
+        <p>Никогда не меряйте точность на тех же данных, на которых обучали: разделите данные на train/validation/test и считайте RMSE на «предсказаниях за пределами виденного». На практике модели LSTM полезны для краткосрочного тренда, но не для внезапных скачков.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> DataCamp. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://www.datacamp.com/community/tutorials/lstm-python-stock-market" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Прогнозирование рынка акций на LSTM в Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Прогнозирование рынка акций на LSTM в Python» принадлежит автору оригинала (DataCamp). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (DataCamp). Читайте оригинал на
         <a href="https://www.datacamp.com/community/tutorials/lstm-python-stock-market" target="_blank" rel="noopener">https://www.datacamp.com/community/tutorials/lstm-python-stock-market</a>.
       </div>
     </article>

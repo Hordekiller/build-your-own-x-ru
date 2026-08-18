@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Простой контентный рекомендательный движок на Python»
+          <b>Оригинальный источник:</b> «Simple Similar Products Recommendation Engine in Python»
         </div>
         <a class="btn solid" href="http://blog.untrod.com/2016/06/simple-similar-products-recommendation-engine-in-python.html" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-product-recommendation.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,42 +53,55 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок строит рекомендации на контенте: описание товаров превращается в векторы признаков, и каждому пользователю предлагаются похожие по описанию позиции.</p>
+      <h2>Что такое контентная рекомендация?</h2>
+        <p>«Если тебе нравится это, тебе понравится и вот это» — на основе самих товаров, а не поведения других людей. Каждый товар превращается в вектор признаков (текст описания, категория, бренд), и предлагаются товары с самыми близкими векторами. Преимущество: работает и для нового товара без истории продаж (решает проблему cold start).</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Векторизация описаний (TF-IDF)</li>
-          <li>Косинусная близость описаний</li>
-          <li>Рекомендация «похожее на это»</li>
-          <li>Расширение: веса признаков и отзывы</li>
-        </ul>
+      <h2>Построение векторов с TF-IDF</h2>
+        <p>Если у товаров есть текстовое описание (или комбинация признаков в одну строку), TF-IDF превращает его в вектор; слова, встречающиеся только в некоторых товарах, получают больший вес:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import linear_kernel
+
+# каждый товар: id + склеенный текст признаков (title, brand, category)
+docs = products[&#x27;combined&#x27;].values
+
+vec = TfidfVectorizer(stop_words=&#x27;english&#x27;)
+matrix = vec.fit_transform(docs)          # (n_products, n_terms)
+
+# матрица сходства между всеми товарами (вычисляется один раз)
+cosine = linear_kernel(matrix, matrix)</code></pre>
+        <p><code>linear_kernel</code> — это та же косинусная мера сходства, но быстрее, чем brute force для больших матриц.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>Контентная фильтрация сравнивает описания: у каждого товара есть вектор слов, и ближайшие по косинусу товары — кандидаты в рекомендации. Никаких данных о пользователях не нужно.</p>
-        <p>Рекомендация «похожие товары» — три шага:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
+      <h2>Рекомендация для товара</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def recommend(product_id, top_n=5):
+    idx = products.index[products[&#x27;id&#x27;] == product_id][0]
 
-vec = TfidfVectorizer()
-X = vec.fit_transform(descriptions)
-scores = cosine_similarity(X, X[item_id])</code></pre>
+    scores = list(enumerate(cosine[idx]))   # сходство со всеми
+    scores = sorted(scores, key=lambda x: x[1], reverse=True)
+
+    # первый — сам товар; начни со второго и возьми похожие
+    similar = [products.iloc[i][&#x27;id&#x27;] for i, s in scores[1:top_n + 1]]
+    return similar
+
+print(recommend(&#x27;P-1042&#x27;))   # пять похожих товаров</code></pre>
+        <p>Привлекательность подхода: никакого обучения не нужно — только TF-IDF и умножение матриц; меньше чем за 50 строк интернет-магазин получает блок «похожие товары».</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Похожее-на-вас раздела «похожие товары»: контентные методы — база, которую вы можете надстроить аудиторией, и отличная первая ступень рекомендаций.</p>
+      <h2>Развитие</h2>
+        <p>В продвинутой версии: комбинация нескольких признаков с разными весами (бренд важнее слов описания), векторы embedding (Word2Vec) вместо TF-IDF для смыслового понимания и гибрид с совместной фильтрацией для лучшей точности.</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Untrod. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="http://blog.untrod.com/2016/06/simple-similar-products-recommendation-engine-in-python.html" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Простой контентный рекомендательный движок на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Простой контентный рекомендательный движок на Python» принадлежит автору оригинала (Untrod). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Untrod). Читайте оригинал на
         <a href="http://blog.untrod.com/2016/06/simple-similar-products-recommendation-engine-in-python.html" target="_blank" rel="noopener">http://blog.untrod.com/2016/06/simple-similar-products-recommendation-engine-in-python.html</a>.
       </div>
     </article>

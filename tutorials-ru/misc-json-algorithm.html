@@ -44,7 +44,7 @@
 
       <div class="sourcebox">
         <div class="txt">
-          <b>Оригинальный источник:</b> «Алгоритм декодирования JSON на Python»
+          <b>Оригинальный источник:</b> «The JSON decoding algorithm (Cheery)»
         </div>
         <a class="btn solid" href="https://github.com/cheery/json-algorithm" target="_blank" rel="noopener">↗ Перейти к оригинальному уроку</a>
         <a class="btn solid" href="https://hordekiller.github.io/build-your-own-x/tutorials/misc-json-algorithm.html" target="_blank" rel="noopener">فارسی — Персидская версия</a>
@@ -53,41 +53,98 @@
     </header>
 
     <article class="content">
-
       <section>
-        <h2>О чём это</h2>
-        <p>Урок реализует парсер JSON с нуля на Python: разбор чисел, строк, массивов и объектов, обработка вложенности и корректные ошибки на неверном вводе.</p>
+      <h2>Как выглядит JSON?</h2>
+        <p>JSON — маленький язык с 8 типами значений: null, true, false, число, строка (с escape вида <code>\"</code> и <code>\n</code>), массив <code>[...]</code>, объект <code>{"k": v}</code> и вложенные комбинации. Декодирование — это: прочитать текст и превратить его в структуры данных целевого языка.</p>
       </section>
-
       <section>
-        <h2>Что вы узнаете</h2>
-        <ul>
-          <li>Грамматика JSON: пары ключ-значение, массивы, примитивы</li>
-          <li>Рекурсивный нисходящий разбор</li>
-          <li>Строки: экранирование и юникод</li>
-          <li>Обработка ошибок формата</li>
-        </ul>
+      <h2>Главный алгоритм</h2>
+        <p>Центральная идея этой реализации: функция <code>decoder</code>, которая по следующему символу выбирает подходящую форму — диспетчеризация по состоянию. Вся логика умещается в одной рекурсивной функции:</p>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">def decode(json_string):
+    &quot;&quot;&quot;JSON-декодер Чери в 80 строк&quot;&quot;&quot;
+    pos = 0
+    n = len(json_string)
+
+    def read_ws():
+        nonlocal pos
+        while pos &lt; n and json_string[pos] in &#x27; \t\n\r&#x27;:
+            pos += 1
+
+    def read_string():
+        nonlocal pos
+        pos += 1                       # пропускаем &quot;
+        out = []
+        while json_string[pos] != &#x27;&quot;&#x27;:
+            c = json_string[pos]
+            if c == &#x27;\\&#x27;:              # escape
+                pos += 1
+                esc = json_string[pos]
+                out.append({&#x27;n&#x27;: &#x27;\n&#x27;, &#x27;t&#x27;: &#x27;\t&#x27;, &#x27;&quot;&#x27;: &#x27;&quot;&#x27;}.get(esc, esc))
+            else:
+                out.append(c)
+            pos += 1
+        pos += 1                       # пропускаем закрывающую &quot;
+        return &#x27;&#x27;.join(out)
+
+    # read_number, read_array и read_object определяются ниже в этой же функции
+
+    def read_value():
+        nonlocal pos
+        read_ws()
+        c = json_string[pos]
+        if c == &#x27;&quot;&#x27;: return read_string()
+        if c == &#x27;[&#x27;: return read_array()
+        if c == &#x27;{&#x27;: return read_object()
+        if c in &#x27;0123456789-&#x27;: return read_number()
+        if json_string.startswith(&#x27;true&#x27;, pos): pos += 4; return True
+        if json_string.startswith(&#x27;false&#x27;, pos): pos += 5; return False
+        if json_string.startswith(&#x27;null&#x27;, pos): pos += 4; return None
+        raise ValueError(f&#x27;Недопустимый JSON: {c} в {pos}&#x27;)
+
+    return read_value()</code></pre>
+        <p>Паттерн «посмотри на один символ и не тяни с проверкой недопустимости» (single-dispatch) — лучший способ ручного декодирования: строка, массив и объект имеют свои функции и связываются рекурсией.</p>
       </section>
-
       <section>
-        <h2>Основная идея</h2>
-        <p>JSON — это рекурсивная грамматика: значение — это число, строка, булево значение, null, массив или объект. Парсер смотрит на первый символ и вызывает нужный под-разбор.</p>
-        <p>Диспетчеризация значений — несколько строк:</p>
-        <pre class="code"><span class="lang-tag">Python</span><code>def parse_value(s, i):
-    if s[i] == "{": return parse_object(s, i)
-    if s[i] == "[": return parse_array(s, i)
-    if s[i] == '"': return parse_string(s, i)
-    return parse_number_or_null(s, i)</code></pre>
+      <h2>Числа и структуры</h2>
+        <pre class="code"><span class="lang-tag">python</span><code style="direction:ltr;text-align:left">    def read_number():
+        nonlocal pos
+        start = pos
+        while pos &lt; n and json_string[pos] in &#x27;0123456789.eE+-&#x27;:
+            pos += 1
+        text = json_string[start:pos]       # срез прочитанного числа
+        if &#x27;.&#x27; in text or &#x27;e&#x27; in text or &#x27;E&#x27; in text:
+            return float(text)              # дробное число
+        return int(text)                    # целое число
+
+    def read_array():
+        nonlocal pos
+        pos += 1                        # пропускаем [
+        out = []
+        read_ws()
+        if json_string[pos] == &#x27;]&#x27;:     # пустой массив
+            pos += 1; return out
+        while True:
+            out.append(read_value())
+            read_ws()
+            if json_string[pos] == &#x27;,&#x27;: pos += 1
+            elif json_string[pos] == &#x27;]&#x27;:
+                pos += 1; return out</code></pre>
+        <p>Тот же паттерн, что для массива, повторяется для объекта со словарём. С этими 80 строками у вас свой <code>JSON.parse</code> — тот самый, что браузеры выполняют сотни раз в день.</p>
       </section>
-
       <section>
-        <h2>Почему это важно</h2>
-        <p>Каждый API отдаёт JSON, и каждое приложение его читает: написав парсер, вы поймёте, почему форматы данных аккуратны и где прячутся ошибки парсинга.</p>
+      <h2>Итог</h2>
+        <p>После этой работы декодер любого другого формата (YAML, TOML, XML) — это лишь добавленное состояние и несколько правил escape. Понимание такого маленького алгоритма — основа для ответа на вопрос «почему форматы устроены именно так».</p>
+      </section>
+      <section>
+      <h2>Авторские права</h2>
+        <div class="callout note">
+          <strong>Авторские права:</strong> Cheery. Эта страница — лишь перевод и обзор материала; все права на контент, изображения и код принадлежат автору оригинала. Оригинал доступен на <a href="https://github.com/cheery/json-algorithm" target="_blank" rel="noopener">сайте автора</a>.
+        </div>
       </section>
 
       <div class="callout note">
-        <strong>Авторские права:</strong> «Алгоритм декодирования JSON на Python» принадлежит автору оригинала. Эта страница — русский
-        обзор для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала. Читайте оригинал на
+        <strong>Авторские права:</strong> «Алгоритм декодирования JSON на Python» принадлежит автору оригинала (Cheery). Эта страница — русский
+        перевод для платформы BYOX; весь контент, изображения и код принадлежат автору оригинала (Cheery). Читайте оригинал на
         <a href="https://github.com/cheery/json-algorithm" target="_blank" rel="noopener">https://github.com/cheery/json-algorithm</a>.
       </div>
     </article>
